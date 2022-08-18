@@ -2,16 +2,11 @@
 #include <stdio.h>
 #include "eval.h"
 
-static Token *new_token(TokenType type, char *data, int length, Token *prev) {
+static Token *new_token(TokenType type, char *data, int length) {
 	Token *token  = malloc(sizeof(Token));
 	token->data   = data;
 	token->length = length;
 	token->type   = type;
-	token->next   = NULL;
-
-	if(prev) {
-		prev->next = token;
-	}
 
 	return token;
 }
@@ -43,9 +38,8 @@ static bool is_punctuation(char bit) {
 	);
 }
 
-Token *tokenize(char *input) {
-	Token head = {};
-	Token *token = &head;
+void tokenize(char *input, List *tokens) {
+	list_clear(tokens);
 
 	while(*input != '\0') {
 		if(is_identifier(*input)) {
@@ -54,7 +48,8 @@ Token *tokenize(char *input) {
 				input++;
 			}
 
-			token = new_token(TK_IDENTIFIER, start, input - start, token);
+			Token *token = new_token(TK_IDENTIFIER, start, input - start);
+			list_insert(list_end(tokens), token);
 			continue;
 		} else if(is_number(*input)) {
 			char *start = input;
@@ -62,13 +57,15 @@ Token *tokenize(char *input) {
 				input++;
 			}
 
-			token = new_token(TK_NUMBER, start, input - start, token);
+			Token *token = new_token(TK_NUMBER, start, input - start);
+			list_insert(list_end(tokens), token);
 			continue;
 		} else if(is_space(*input)) {
 			input++;
 			continue;
 		} else if(is_punctuation(*input)) {
-			token = new_token(TK_PUNCTUATION, input, 1, token);
+			Token *token = new_token(TK_PUNCTUATION, input, 1);
+			list_insert(list_end(tokens), token);
 			input++;
 			continue;
 		} else {
@@ -78,7 +75,6 @@ Token *tokenize(char *input) {
 
 	}
 
-	token = new_token(TK_EOF, NULL, 0, token);
-
-	return head.next;
+	Token *token = new_token(TK_EOF, NULL, 0);
+	list_insert(list_end(tokens), token);
 }

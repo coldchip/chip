@@ -40,6 +40,13 @@ size_t               list_size (List *);
 #define              list_back(list) ((void *) (list) -> sentinel.previous)
 
 /*
+	eval.c
+*/
+
+char *strndup(const char *s, size_t len);
+char *read_file(char *file);
+
+/*
 	lex.c
 */
 
@@ -57,13 +64,13 @@ typedef struct _Token {
 	int length;
 } Token;
 
-static Token      *new_token(TokenType type, char *data, int length, Token *prev);
+static Token      *new_token(TokenType type, char *data, int length);
 static bool        is_identifier(char bit);
 static bool        is_numeric(char bit);
 static bool        is_number(char bit);
 static bool        is_space(char bit);
 static bool        is_punctuation(char bit);
-Token             *tokenize(char *input);
+void               tokenize(char *input, List *tokens);
 
 /*
 	parse.c
@@ -90,25 +97,49 @@ static Node       *new_node(NodeType type, Token *token);
 static Node       *new_node_binary(NodeType type, Token *token, Node *left, Node *right);
 
 static Token      *next(Token **token);
-static bool        consume_string(Token **tokens, char *data);
-static void        expect_string(Token **tokens, char *data);
-static bool        consume_type(Token **tokens, TokenType type);
-static void        expect_type(Token **tokens, TokenType type);
+static Token      *prev(Token **current);
+static bool        consume_string(Token **current, char *data);
+static void        expect_string(Token **current, char *data);
+static bool        consume_type(Token **current, TokenType type);
+static void        expect_type(Token **current, TokenType type);
 
-static Node       *parse_expr(Token **tokens);
-static Node       *parse_add_sub(Token **tokens);
-static Node       *parse_mul_div(Token **tokens);
-static Node       *parse_primary(Token **tokens);
-Node              *parse(Token *tokens);
+static Node       *parse_expr(Token **current);
+static Node       *parse_add_sub(Token **current);
+static Node       *parse_mul_div(Token **current);
+static Node       *parse_primary(Token **current);
+Node              *parse(List *tokens);
 
 /*
 	gen.c
 */
 
-static void       gen_binary(Node *node);
-static void       gen_number(Node *node);
-static void       gen_call(Node *node);
-static void       visitor(Node *node);
-void              gen(Node *node);
+typedef enum {
+	OP_ADD,
+	OP_SUB,
+	OP_MUL,
+	OP_DIV,
+	OP_PUSH
+} OpType;
+
+typedef struct _Op {
+	ListNode node;
+	OpType op;
+	int left;
+} Op;
+
+static void       emit_op(List *program, OpType op);
+static void       emit_op_left(List *program, OpType op, int left);
+
+static void       gen_binary(Node *node, List *program);
+static void       gen_number(Node *node, List *program);
+static void       gen_call(Node *node, List *program);
+static void       visitor(Node *node, List *program);
+void              gen(Node *node, List *program);
+
+/* 
+	run.c
+*/
+
+void              run(List *program);
 
 #endif
