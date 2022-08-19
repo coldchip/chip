@@ -9,6 +9,8 @@ int main(int argc, char const *argv[]) {
 
 			List tokens;
 			tokenize(input, &tokens);
+
+			
 			Node *nodes = parse(&tokens);
 
 			List program;

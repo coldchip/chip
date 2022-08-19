@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "eval.h"
 
 static Token *new_token(TokenType type, char *data, int length) {
@@ -9,6 +10,46 @@ static Token *new_token(TokenType type, char *data, int length) {
 	token->type   = type;
 
 	return token;
+}
+
+Token *next(Token **current) {
+	*current = (Token*)list_next((ListNode*)*current);
+	return *current;
+}
+
+Token *prev(Token **current) {
+	*current = (Token*)list_previous((ListNode*)*current);
+	return *current;
+}
+
+bool consume_string(Token **current, char *data) {
+	if((*current)->type != TK_EOF && strncmp((*current)->data, data, (*current)->length) == 0) {
+		next(current);
+		return true;
+	}
+	return false;
+}
+
+void expect_string(Token **current, char *data) {
+	if(!consume_string(current, data)) {
+		printf("expected token '%s'\n", data);
+		exit(0);
+	}
+}
+
+bool consume_type(Token **current, TokenType type) {
+	if((*current)->type == type) {
+		next(current);
+		return true;
+	}
+	return false;
+}
+
+void expect_type(Token **current, TokenType type) {
+	if(!consume_type(current, type)) {
+		printf("expected type '%i'\n", type);
+		exit(0);
+	}
 }
 
 static bool is_identifier(char bit) {
@@ -33,8 +74,11 @@ static bool is_punctuation(char bit) {
 		bit == '-' || 
 		bit == '*' || 
 		bit == '/' ||
+		bit == '=' || 
 		bit == '(' ||
-		bit == ')'
+		bit == ')' ||
+		bit == '{' ||
+		bit == '}'
 	);
 }
 

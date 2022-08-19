@@ -65,6 +65,14 @@ typedef struct _Token {
 } Token;
 
 static Token      *new_token(TokenType type, char *data, int length);
+
+Token             *next(Token **token);
+Token             *prev(Token **current);
+bool               consume_string(Token **current, char *data);
+void               expect_string(Token **current, char *data);
+bool               consume_type(Token **current, TokenType type);
+void               expect_type(Token **current, TokenType type);
+
 static bool        is_identifier(char bit);
 static bool        is_numeric(char bit);
 static bool        is_number(char bit);
@@ -77,12 +85,14 @@ void               tokenize(char *input, List *tokens);
 */
 
 typedef enum {
+	ND_CLASS,
 	ND_ADD,
 	ND_SUB,
 	ND_MUL,
 	ND_DIV,
 	ND_NUMBER,
-	ND_CALL
+	ND_CALL,
+	ND_ASSIGN
 } NodeType;
 
 typedef struct _Node {
@@ -90,24 +100,31 @@ typedef struct _Node {
 	struct _Node *left;
 	struct _Node *right;
 	struct _Node *args;
+
+	List body;
+
 	Token *token;
 } Node;
 
-static Node       *new_node(NodeType type, Token *token);
-static Node       *new_node_binary(NodeType type, Token *token, Node *left, Node *right);
+Node              *new_node(NodeType type, Token *token);
+Node              *new_node_binary(NodeType type, Token *token, Node *left, Node *right);
 
-static Token      *next(Token **token);
-static Token      *prev(Token **current);
-static bool        consume_string(Token **current, char *data);
-static void        expect_string(Token **current, char *data);
-static bool        consume_type(Token **current, TokenType type);
-static void        expect_type(Token **current, TokenType type);
+bool               is_class(Token **current);
+bool               is_method(Token **current);
+static Node       *parse_class(Token **current);
+static Node       *parse_method(Token **current);
 
-static Node       *parse_expr(Token **current);
+Node              *parse(List *tokens);
+
+/*
+	parse_expr.c
+*/
+
+Node              *parse_expr(Token **current);
+static Node       *parse_assign(Token **current);
 static Node       *parse_add_sub(Token **current);
 static Node       *parse_mul_div(Token **current);
 static Node       *parse_primary(Token **current);
-Node              *parse(List *tokens);
 
 /*
 	gen.c
