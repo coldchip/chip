@@ -13,6 +13,7 @@ int main(int argc, char const *argv[]) {
 
 			List program;
 			gen(nodes, &program);
+			run(&program);
 		}
 	}
 

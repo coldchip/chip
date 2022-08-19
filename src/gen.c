@@ -15,6 +15,13 @@ static void emit_op_left(List *program, OpType op, int left) {
 	list_insert(list_end(program), ins);
 }
 
+static void emit_op_left_string(List *program, OpType op, char *left_string) {
+	Op *ins = malloc(sizeof(Op));
+	ins->op = op;
+	ins->left_string = left_string;
+	list_insert(list_end(program), ins);
+}
+
 static void emit_gen(List *program) {
 	ListNode *node;
 	for(node = list_begin(program); node != list_end(program); node = list_next(node)) {
@@ -28,7 +35,11 @@ static void emit_gen(List *program) {
 			}
 			break;
 			case OP_PUSH: {
-				printf("%i %i\n", ins->op, ins->left);
+				printf("%i %f\n", ins->op, ins->left);
+			}
+			break;
+			case OP_CALL: {
+				printf("%i %s\n", ins->op, ins->left_string);
 			}
 			break;
 		}
@@ -46,22 +57,18 @@ static void gen_binary(Node *node, List *program) {
 
 	switch(node->type) {
 		case ND_ADD: {
-			printf("add\n");
 			emit_op(program, OP_ADD);
 		}
 		break;
 		case ND_SUB: {
-			printf("sub\n");
 			emit_op(program, OP_SUB);
 		}
 		break;
 		case ND_MUL: {
-			printf("mul\n");
 			emit_op(program, OP_MUL);
 		}
 		break;
 		case ND_DIV: {
-			printf("div\n");
 			emit_op(program, OP_DIV);
 		}
 		break;
@@ -71,7 +78,6 @@ static void gen_binary(Node *node, List *program) {
 static void gen_number(Node *node, List *program) {
 	char *str = strndup(node->token->data, node->token->length);
 	emit_op_left(program, OP_PUSH, atoi(str));
-	printf("push %.*s\n", node->token->length, node->token->data);
 	free(str);
 }
 
@@ -79,7 +85,8 @@ static void gen_call(Node *node, List *program) {
 	if(node->args) {
 		visitor(node->args, program);
 	}
-	printf("call %.*s\n", node->token->length, node->token->data);
+	char *str = strndup(node->token->data, node->token->length);
+	emit_op_left_string(program, OP_CALL, str);
 }
 
 static void visitor(Node *node, List *program) {

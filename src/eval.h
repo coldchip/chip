@@ -118,17 +118,20 @@ typedef enum {
 	OP_SUB,
 	OP_MUL,
 	OP_DIV,
-	OP_PUSH
+	OP_PUSH,
+	OP_CALL
 } OpType;
 
 typedef struct _Op {
 	ListNode node;
 	OpType op;
-	int left;
+	double left;
+	char *left_string;
 } Op;
 
 static void       emit_op(List *program, OpType op);
 static void       emit_op_left(List *program, OpType op, int left);
+static void       emit_op_left_string(List *program, OpType op, char *left_string);
 
 static void       gen_binary(Node *node, List *program);
 static void       gen_number(Node *node, List *program);
