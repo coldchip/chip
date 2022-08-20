@@ -22,8 +22,24 @@ Token *prev(Token **current) {
 	return *current;
 }
 
+bool equals_string(Token **current, char *data) {
+	return ((*current)->type != TK_EOF && strncmp((*current)->data, data, (*current)->length) == 0);
+}
+
+bool equals_type(Token **current, TokenType type) {
+	return ((*current)->type == type);
+}
+
 bool consume_string(Token **current, char *data) {
-	if((*current)->type != TK_EOF && strncmp((*current)->data, data, (*current)->length) == 0) {
+	if(equals_string(current, data)) {
+		next(current);
+		return true;
+	}
+	return false;
+}
+
+bool consume_type(Token **current, TokenType type) {
+	if(equals_type(current, type)) {
 		next(current);
 		return true;
 	}
@@ -35,14 +51,6 @@ void expect_string(Token **current, char *data) {
 		printf("expected token '%s'\n", data);
 		exit(0);
 	}
-}
-
-bool consume_type(Token **current, TokenType type) {
-	if((*current)->type == type) {
-		next(current);
-		return true;
-	}
-	return false;
 }
 
 void expect_type(Token **current, TokenType type) {
@@ -78,7 +86,10 @@ static bool is_punctuation(char bit) {
 		bit == '(' ||
 		bit == ')' ||
 		bit == '{' ||
-		bit == '}'
+		bit == '}' ||
+		bit == '>' ||
+		bit == '<' ||
+		bit == ';'
 	);
 }
 

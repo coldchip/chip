@@ -7,13 +7,28 @@ Node *parse_expr(Token **current) {
 }
 
 static Node *parse_assign(Token **current) {
-	Node *node = parse_add_sub(current);
-
+	Node *node = parse_relational(current);
 	Token *token = *current;
 	if(consume_string(current, "=")) {
 		return new_node_binary(ND_ASSIGN, token, node, parse_assign(current));
 	}
 	return node;
+}
+
+static Node *parse_relational(Token **current) {
+	Node *node = parse_add_sub(current);
+	for(;;) {
+		Token *token = *current;
+		if(consume_string(current, ">")) {
+			node = new_node_binary(ND_GT, token, node, parse_add_sub(current));
+			continue;
+		}
+		if(consume_string(current, "<")) {
+			node = new_node_binary(ND_LT, token, node, parse_add_sub(current));
+			continue;
+		}
+		return node;
+	}
 }
 
 static Node *parse_add_sub(Token **current) {
@@ -54,12 +69,15 @@ static Node *parse_primary(Token **current) {
 		Node *node = parse_expr(current);
 		expect_string(current, ")");
 		return node;
-	} else if(consume_type(current, TK_IDENTIFIER)) {
+	} else if(is_call(current)) {
 		Node *node = new_node(ND_CALL, token);
+		expect_type(current, TK_IDENTIFIER);
 		expect_string(current, "(");
 		node->args = parse_expr(current);
 		expect_string(current, ")");
 		return node;
+	} else if(consume_type(current, TK_IDENTIFIER)) {
+		return new_node(ND_VARIABLE, token);
 	} else if(consume_type(current, TK_NUMBER)) {
 		return new_node(ND_NUMBER, token);
 	} else {

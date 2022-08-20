@@ -8,7 +8,7 @@ static void emit_op(List *program, OpType op) {
 	list_insert(list_end(program), ins);
 }
 
-static void emit_op_left(List *program, OpType op, int left) {
+static void emit_op_left(List *program, OpType op, float left) {
 	Op *ins = malloc(sizeof(Op));
 	ins->op = op;
 	ins->left = left;
@@ -27,23 +27,103 @@ static void emit_gen(List *program) {
 	for(node = list_begin(program); node != list_end(program); node = list_next(node)) {
 		Op *ins = (Op*)node;
 		switch(ins->op) {
-			case OP_ADD:
-			case OP_SUB:
-			case OP_MUL:
+			case OP_LOAD: {
+				printf("LOAD\t%s\n", ins->left_string);
+			}
+			break;
+			case OP_STORE: {
+				printf("STORE\t%s\n", ins->left_string);
+			}
+			break;
+			case OP_CMPGT: {
+				printf("CMPGT\n");
+			}
+			break;
+			case OP_CMPLT: {
+				printf("CMPLT\n");
+			}
+			break;
+			case OP_ADD: {
+				printf("ADD\n");
+			}
+			break;
+			case OP_SUB: {
+				printf("SUB\n");
+			}
+			break;
+			case OP_MUL: {
+				printf("MUL\n");
+			}
+			break;
 			case OP_DIV: {
-				printf("%i\n", ins->op);
+				printf("DIV\n");
 			}
 			break;
 			case OP_PUSH: {
-				printf("%i %f\n", ins->op, ins->left);
+				printf("PUSH\t%f\n", ins->left);
 			}
 			break;
 			case OP_CALL: {
-				printf("%i %s\n", ins->op, ins->left_string);
+				printf("CALL\t%s\n", ins->left_string);
+			}
+			break;
+			case OP_JMPIFT: {
+				printf("JMPIFT\t%i\n", (int)ins->left);
 			}
 			break;
 		}
 	}
+}
+
+static void gen_program(Node *node, List *program) {
+	List *list = &node->bodylist;
+	while(!list_empty(list)) {
+		Node *entry = (Node*)list_remove(list_begin(list));
+		visitor(entry, program);
+	}
+}
+
+static void gen_class(Node *node, List *program) {
+	List *list = &node->bodylist;
+	while(!list_empty(list)) {
+		Node *entry = (Node*)list_remove(list_begin(list));
+		visitor(entry, program);
+	}
+}
+
+static void gen_method(Node *node, List *program) {
+	List *list = &node->bodylist;
+	while(!list_empty(list)) {
+		Node *entry = (Node*)list_remove(list_begin(list));
+		visitor(entry, program);
+	}
+}
+
+static void gen_while(Node *node, List *program) {
+	visitor(node->condition, program);
+	emit_op_left(program, OP_JMPIFT, 90);
+	visitor(node->body, program);
+}
+
+static void gen_declaration(Node *node, List *program) {
+	visitor(node->body, program);
+	char *str = strndup(node->token->data, node->token->length);
+	emit_op_left_string(program, OP_STORE, str);
+}
+
+static void gen_variable(Node *node, List *program) {
+	char *str = strndup(node->token->data, node->token->length);
+	emit_op_left_string(program, OP_LOAD, str);
+}
+
+static void gen_assign(Node *node, List *program) {
+	visitor(node->right, program);
+	gen_store(node->left, program);
+}
+
+static void gen_store(Node *node, List *program) {
+	char *str = strndup(node->token->data, node->token->length);
+	emit_op_left_string(program, OP_STORE, str);
 }
 
 static void gen_binary(Node *node, List *program) {
@@ -56,6 +136,14 @@ static void gen_binary(Node *node, List *program) {
 	}
 
 	switch(node->type) {
+		case ND_GT: {
+			emit_op(program, OP_CMPGT);
+		}
+		break;
+		case ND_LT: {
+			emit_op(program, OP_CMPLT);
+		}
+		break;
 		case ND_ADD: {
 			emit_op(program, OP_ADD);
 		}
@@ -77,7 +165,7 @@ static void gen_binary(Node *node, List *program) {
 
 static void gen_number(Node *node, List *program) {
 	char *str = strndup(node->token->data, node->token->length);
-	emit_op_left(program, OP_PUSH, atoi(str));
+	emit_op_left(program, OP_PUSH, atof(str));
 	free(str);
 }
 
@@ -91,6 +179,36 @@ static void gen_call(Node *node, List *program) {
 
 static void visitor(Node *node, List *program) {
 	switch(node->type) {
+		case ND_PROGRAM: {
+			gen_program(node, program);
+		}
+		break;
+		case ND_CLASS: {
+			gen_class(node, program);
+		}
+		break;
+		case ND_METHOD: {
+			gen_method(node, program);
+		}
+		break;
+		case ND_WHILE: {
+			gen_while(node, program);
+		}
+		break;
+		case ND_DECL: {
+			gen_declaration(node, program);
+		}
+		break;
+		case ND_VARIABLE: {
+			gen_variable(node, program);
+		}
+		break;
+		case ND_ASSIGN: {
+			gen_assign(node, program);
+		}
+		break;
+		case ND_GT:
+		case ND_LT:
 		case ND_ADD:
 		case ND_SUB:
 		case ND_MUL:

@@ -9,7 +9,16 @@ char *strndup(const char *s, size_t len) {
 		return NULL;
 	}
 	new[len] = '\0';
-	return (char *) memcpy (new, s, len);
+	return (char *) memcpy(new, s, len);
+}
+
+char *strdup(const char *s) {
+	size_t len = strlen(s) + 1;
+	void *new = malloc(len);
+	if (new == NULL) {
+		return NULL;
+	}
+	return (char *) memcpy(new, s, len);
 }
 
 char *read_file(char *file) {
