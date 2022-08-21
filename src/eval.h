@@ -165,7 +165,8 @@ typedef enum {
 	OP_DIV,
 	OP_PUSH,
 	OP_CALL,
-	OP_JMPIFT, // pops item from stack and compare with 1, jumps to x if true
+	OP_JMPIFT, // pops 2 items from stack and compare, jumps to x if true
+	OP_JMP     // unconditional jump
 } OpType;
 
 typedef struct _Op {
@@ -175,14 +176,18 @@ typedef struct _Op {
 	char *left_string;
 } Op;
 
-static void       emit_op(List *program, OpType op);
-static void       emit_op_left(List *program, OpType op, float left);
-static void       emit_op_left_string(List *program, OpType op, char *left_string);
+static Op *       emit_op(List *program, OpType op);
+static Op *       emit_op_left(List *program, OpType op, float left);
+static Op *       emit_op_left_string(List *program, OpType op, char *left_string);
+static int        emit_op_get_counter(List *program);
+static void       emit_print(List *program);
 
 static void       gen_program(Node *node, List *program);
 static void       gen_class(Node *node, List *program);
 static void       gen_method(Node *node, List *program);
+static void       gen_if(Node *node, List *program);
 static void       gen_while(Node *node, List *program);
+static void       gen_block(Node *node, List *program);
 static void       gen_declaration(Node *node, List *program);
 static void       gen_variable(Node *node, List *program);
 static void       gen_assign(Node *node, List *program);
@@ -203,6 +208,7 @@ typedef struct _Var {
 	double value;
 } Var;
 
+static Op        *op_at(List *program, int line);
 static void       store_var(char *name, double value);
 static bool       load_var(char *name, double *value);
 void              run(List *program);

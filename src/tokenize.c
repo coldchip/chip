@@ -23,7 +23,7 @@ Token *prev(Token **current) {
 }
 
 bool equals_string(Token **current, char *data) {
-	return ((*current)->type != TK_EOF && strncmp((*current)->data, data, (*current)->length) == 0);
+	return ((*current)->type != TK_EOF && memcmp((*current)->data, data, (*current)->length) == 0) && data[(*current)->length] == '\0';
 }
 
 bool equals_type(Token **current, TokenType type) {

@@ -2,76 +2,93 @@
 #include <stdlib.h>
 #include "eval.h"
 
-static void emit_op(List *program, OpType op) {
+static Op *emit_op(List *program, OpType op) {
 	Op *ins = malloc(sizeof(Op));
 	ins->op = op;
 	list_insert(list_end(program), ins);
+	return ins;
 }
 
-static void emit_op_left(List *program, OpType op, float left) {
+static Op *emit_op_left(List *program, OpType op, float left) {
 	Op *ins = malloc(sizeof(Op));
 	ins->op = op;
 	ins->left = left;
 	list_insert(list_end(program), ins);
+	return ins;
 }
 
-static void emit_op_left_string(List *program, OpType op, char *left_string) {
+static Op *emit_op_left_string(List *program, OpType op, char *left_string) {
 	Op *ins = malloc(sizeof(Op));
 	ins->op = op;
 	ins->left_string = left_string;
 	list_insert(list_end(program), ins);
+	return ins;
 }
 
-static void emit_gen(List *program) {
+static int emit_op_get_counter(List *program) {
+	return list_size(program) + 1;
+}
+
+static void emit_print(List *program) {
+	int line = 1;
+
+	printf("LINE\tOP\tVALUE\n--------------------------\n");
+
 	ListNode *node;
 	for(node = list_begin(program); node != list_end(program); node = list_next(node)) {
 		Op *ins = (Op*)node;
 		switch(ins->op) {
 			case OP_LOAD: {
-				printf("LOAD\t%s\n", ins->left_string);
+				printf("%i\tLOAD\t%s\n", line, ins->left_string);
 			}
 			break;
 			case OP_STORE: {
-				printf("STORE\t%s\n", ins->left_string);
+				printf("%i\tSTORE\t%s\n", line, ins->left_string);
 			}
 			break;
 			case OP_CMPGT: {
-				printf("CMPGT\n");
+				printf("%i\tCMPGT\n", line);
 			}
 			break;
 			case OP_CMPLT: {
-				printf("CMPLT\n");
+				printf("%i\tCMPLT\n", line);
 			}
 			break;
 			case OP_ADD: {
-				printf("ADD\n");
+				printf("%i\tADD\n", line);
 			}
 			break;
 			case OP_SUB: {
-				printf("SUB\n");
+				printf("%i\tSUB\n", line);
 			}
 			break;
 			case OP_MUL: {
-				printf("MUL\n");
+				printf("%i\tMUL\n", line);
 			}
 			break;
 			case OP_DIV: {
-				printf("DIV\n");
+				printf("%i\tDIV\n", line);
 			}
 			break;
 			case OP_PUSH: {
-				printf("PUSH\t%f\n", ins->left);
+				printf("%i\tPUSH\t%f\n", line, ins->left);
 			}
 			break;
 			case OP_CALL: {
-				printf("CALL\t%s\n", ins->left_string);
+				printf("%i\tCALL\t%s\n", line, ins->left_string);
 			}
 			break;
 			case OP_JMPIFT: {
-				printf("JMPIFT\t%i\n", (int)ins->left);
+				printf("%i\tJMPIFT\t%i\n", line, (int)ins->left);
+			}
+			break;
+			case OP_JMP: {
+				printf("%i\tJMP\t%i\n", line, (int)ins->left);
 			}
 			break;
 		}
+
+		line++;
 	}
 }
 
@@ -99,10 +116,36 @@ static void gen_method(Node *node, List *program) {
 	}
 }
 
-static void gen_while(Node *node, List *program) {
+static void gen_if(Node *node, List *program) {
+	int start = emit_op_get_counter(program);
+
 	visitor(node->condition, program);
-	emit_op_left(program, OP_JMPIFT, 90);
+	emit_op_left(program, OP_PUSH, 0);
+	Op *jmp = emit_op_left(program, OP_JMPIFT, 0);
 	visitor(node->body, program);
+	emit_op_left(program, OP_JMP, start);
+
+	jmp->left = emit_op_get_counter(program);
+}
+
+static void gen_while(Node *node, List *program) {
+	int start = emit_op_get_counter(program);
+
+	visitor(node->condition, program);
+	emit_op_left(program, OP_PUSH, 0);
+	Op *jmp = emit_op_left(program, OP_JMPIFT, 0);
+	visitor(node->body, program);
+	emit_op_left(program, OP_JMP, start);
+
+	jmp->left = emit_op_get_counter(program);
+}
+
+static void gen_block(Node *node, List *program) {
+	List *list = &node->bodylist;
+	while(!list_empty(list)) {
+		Node *entry = (Node*)list_remove(list_begin(list));
+		visitor(entry, program);
+	}
 }
 
 static void gen_declaration(Node *node, List *program) {
@@ -191,8 +234,16 @@ static void visitor(Node *node, List *program) {
 			gen_method(node, program);
 		}
 		break;
+		case ND_IF: {
+			gen_if(node, program);
+		}
+		break;
 		case ND_WHILE: {
 			gen_while(node, program);
+		}
+		break;
+		case ND_BLOCK: {
+			gen_block(node, program);
 		}
 		break;
 		case ND_DECL: {
@@ -230,5 +281,6 @@ static void visitor(Node *node, List *program) {
 void gen(Node *node, List *program) {
 	list_clear(program);
 	visitor(node, program);
-	emit_gen(program);
+	emit_print(program);
+
 }

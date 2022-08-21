@@ -1,10 +1,19 @@
 class Main {
 	void main() {
-		int a = 3 + 5;
-		int b = (((8 * 2) / (2 * 2) * 9 / (2 * 5) + 560 / 90 / 2 * (100 + 4) -2 * (50 / 2)) * 9 / 8 / 7 / 6 / 5 / 4 / 3 * 1000 * (1 / 2) + (8 * 2 / 9 * 6 + 2 * 4 - 8 / 2 * 5)) * a;
-	
-		while(b > 0) {
-			b = b - 1;
+		int number = 1;
+
+		int res = 0;
+		int pow = number;
+		int fact = 1;
+
+		int i = 0;
+		while(i < 6) {
+			res = res + (pow / fact);
+			pow = pow * ((0-1) * number * number);
+			fact = fact * ((2 * (i + 1)) * (2 * (i + 1) + 1));
+			i = i + 1;
 		}
+
+		int result = res * 10;
 	}
 }

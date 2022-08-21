@@ -108,7 +108,6 @@ static Node *parse_method(Token **current) {
 static Node *parse_stmt(Token **current) {
 	if(consume_string(current, "if")) {
 		Node *node = new_node(ND_IF, NULL);
-
 		expect_string(current, "(");
 		node->condition = parse_expr(current);
 		expect_string(current, ")");

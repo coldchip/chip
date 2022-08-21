@@ -6,6 +6,20 @@
 
 List varlist;
 
+static Op *op_at(List *program, int line) {
+	int size = 1;
+	ListNode *position;
+
+	for(position = list_begin(program); position != list_end(program); position = list_next(position)) {
+		if(size == line) {
+			return (Op*)position;
+		}
+		size++;
+	}
+
+	return NULL;
+}
+
 static void store_var(char *name, double value) {
 	if(load_var(name, NULL)) {
 		for(ListNode *i = list_begin(&varlist); i != list_end(&varlist); i = list_next(i)) {
@@ -142,9 +156,39 @@ void run(List *program) {
 					stack[sp] = v2;
 					sp++;
 				} else {
-					printf("unknown function call %s\n", current->left_string);
+					printf("VM:: unknown function call %s\n", current->left_string);
+					exit(1);
 				}
 
+			}
+			break;
+			case OP_JMPIFT: {
+				sp--;
+				double v1 = stack[sp];
+				sp--;
+				double v2 = stack[sp];
+
+				if(v2 == v1) {
+					Op *jmp_to = op_at(program, current->left);
+					if(jmp_to) {
+						current = jmp_to;
+						continue;
+					} else {
+						printf("VM:: Unable to jump to op %i\n", (int)current->left);
+						exit(1);
+					}
+				}
+			}
+			break;
+			case OP_JMP: {
+				Op *jmp_to = op_at(program, current->left);
+				if(jmp_to) {
+					current = jmp_to;
+					continue;
+				} else {
+					printf("VM:: Unable to jump to op %i\n", (int)current->left);
+					exit(1);
+				}
 			}
 			break;
 		}
@@ -152,10 +196,14 @@ void run(List *program) {
 		current = (Op*)list_next((ListNode*)current);
 	}
 
+	printf("\n\nVARLIST\n-----------------\n");
+
 	for(ListNode *i = list_begin(&varlist); i != list_end(&varlist); i = list_next(i)) {
 		Var *var = (Var*)i;
-		printf("%s %f\n", var->name, var->value);
+		printf("%s\t%f\n", var->name, var->value);
 	}
+
+	printf("\n\n-----------------\n");
 
 	printf("result: %f sp: %i\n", stack[0], sp);
 }
