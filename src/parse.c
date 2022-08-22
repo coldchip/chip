@@ -28,22 +28,10 @@ Node *new_node_binary(NodeType type, Token *token, Node *left, Node *right) {
 	return node;
 }
 
-bool is_typename(Token **current) {
-	if(equals_string(current, "int")) {
-		return true;
-	}
-	return false;
-}
-
-bool is_class(Token **current) {
-	if(consume_string(current, "class")) {
-		prev(current);
-		return true;
-	}
-	return false;
-}
-
 bool is_method(Token **current) {
+	if(equals_string(current, "function")) {
+		return true;
+	}
 	return false;
 }
 
@@ -62,22 +50,7 @@ static Node *parse_program(Token **current) {
 	Node *node = new_node(ND_PROGRAM, NULL);
 	list_clear(&node->bodylist);
 
-	while(is_class(current)) {
-		list_insert(list_end(&node->bodylist), parse_class(current));
-	}
-
-	return node;
-}
-
-static Node *parse_class(Token **current) {
-	Node *node = new_node(ND_CLASS, NULL);
-	list_clear(&node->bodylist);
-
-	expect_string(current, "class");
-	expect_type(current, TK_IDENTIFIER);
-	expect_string(current, "{");
-
-	while(!consume_string(current, "}")) {
+	while(is_method(current)) {
 		list_insert(list_end(&node->bodylist), parse_method(current));
 	}
 
@@ -98,9 +71,11 @@ static Node *parse_method(Token **current) {
 
 	expect_string(current, "{");
 
-	while(!consume_string(current, "}")) {
+	while(!equals_string(current, "}")) {
 		list_insert(list_end(&node->bodylist), parse_stmt(current));
 	}
+
+	expect_string(current, "}");
 
 	return node;
 }
@@ -134,7 +109,7 @@ static Node *parse_stmt(Token **current) {
 		}
 
 		return node;
-	} else if(is_typename(current)) {
+	} else if(equals_string(current, "var")) {
 		Node *node = parse_declaration(current);
 		expect_string(current, ";");
 		return node;
@@ -146,7 +121,7 @@ static Node *parse_stmt(Token **current) {
 }
 
 static Node *parse_declaration(Token **current) {
-	expect_type(current, TK_IDENTIFIER);
+	expect_string(current, "var");
 
 	Token *token = *current;
 	Node *node = new_node(ND_DECL, token);

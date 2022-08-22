@@ -100,14 +100,6 @@ static void gen_program(Node *node, List *program) {
 	}
 }
 
-static void gen_class(Node *node, List *program) {
-	List *list = &node->bodylist;
-	while(!list_empty(list)) {
-		Node *entry = (Node*)list_remove(list_begin(list));
-		visitor(entry, program);
-	}
-}
-
 static void gen_method(Node *node, List *program) {
 	List *list = &node->bodylist;
 	while(!list_empty(list)) {
@@ -224,10 +216,6 @@ static void visitor(Node *node, List *program) {
 	switch(node->type) {
 		case ND_PROGRAM: {
 			gen_program(node, program);
-		}
-		break;
-		case ND_CLASS: {
-			gen_class(node, program);
 		}
 		break;
 		case ND_METHOD: {

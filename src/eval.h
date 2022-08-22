@@ -89,7 +89,6 @@ void               tokenize(char *input, List *tokens);
 
 typedef enum {
 	ND_PROGRAM,
-	ND_CLASS,
 	ND_METHOD,
 	ND_BLOCK,
 	ND_IF,
@@ -126,13 +125,10 @@ typedef struct _Node {
 Node              *new_node(NodeType type, Token *token);
 Node              *new_node_binary(NodeType type, Token *token, Node *left, Node *right);
 
-bool               is_typename(Token **current);
-bool               is_class(Token **current);
 bool               is_method(Token **current);
 bool               is_call(Token **current);
 
 static Node       *parse_program(Token **current);
-static Node       *parse_class(Token **current);
 static Node       *parse_method(Token **current);
 static Node       *parse_stmt(Token **current);
 static Node       *parse_declaration(Token **current);
@@ -183,7 +179,6 @@ static int        emit_op_get_counter(List *program);
 static void       emit_print(List *program);
 
 static void       gen_program(Node *node, List *program);
-static void       gen_class(Node *node, List *program);
 static void       gen_method(Node *node, List *program);
 static void       gen_if(Node *node, List *program);
 static void       gen_while(Node *node, List *program);
