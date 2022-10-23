@@ -54,6 +54,7 @@ char             *read_file(char *file);
 typedef enum {
 	TK_IDENTIFIER,
 	TK_NUMBER,
+	TK_STRING,
 	TK_PUNCTUATION,
 	TK_EOF
 } TokenType;
@@ -89,7 +90,9 @@ void               tokenize(char *input, List *tokens);
 
 typedef enum {
 	ND_PROGRAM,
+	ND_CLASS,
 	ND_METHOD,
+	ND_MEMBER,
 	ND_BLOCK,
 	ND_IF,
 	ND_WHILE,
@@ -103,6 +106,7 @@ typedef enum {
 	ND_MUL,
 	ND_DIV,
 	ND_NUMBER,
+	ND_STRING,
 	ND_CALL
 } NodeType;
 
@@ -125,10 +129,12 @@ typedef struct _Node {
 Node              *new_node(NodeType type, Token *token);
 Node              *new_node_binary(NodeType type, Token *token, Node *left, Node *right);
 
+bool               is_class(Token **current);
 bool               is_method(Token **current);
 bool               is_call(Token **current);
 
 static Node       *parse_program(Token **current);
+static Node       *parse_class(Token **current);
 static Node       *parse_method(Token **current);
 static Node       *parse_stmt(Token **current);
 static Node       *parse_declaration(Token **current);
@@ -144,6 +150,7 @@ static Node       *parse_assign(Token **current);
 static Node       *parse_relational(Token **current);
 static Node       *parse_add_sub(Token **current);
 static Node       *parse_mul_div(Token **current);
+static Node       *parse_postfix(Token **current);
 static Node       *parse_primary(Token **current);
 
 /*
@@ -160,10 +167,24 @@ typedef enum {
 	OP_MUL,
 	OP_DIV,
 	OP_PUSH,
+	OP_LOAD_CONST,
+	OP_LOAD_MEMBER,
 	OP_CALL,
 	OP_JMPIFT, // pops 2 items from stack and compare, jumps to x if true
 	OP_JMP     // unconditional jump
 } OpType;
+
+typedef struct _Class {
+	ListNode node;
+	char *name;
+	List method;
+} Class;
+
+typedef struct _Method {
+	ListNode node;
+	char *name;
+	List op;
+} Method;
 
 typedef struct _Op {
 	ListNode node;
@@ -172,40 +193,61 @@ typedef struct _Op {
 	char *left_string;
 } Op;
 
-static Op *       emit_op(List *program, OpType op);
-static Op *       emit_op_left(List *program, OpType op, float left);
-static Op *       emit_op_left_string(List *program, OpType op, char *left_string);
-static int        emit_op_get_counter(List *program);
+static Class     *emit_class(List *program, char *name);
+static Method    *emit_method(Class *class, char *name);
+static Op *       emit_op(Method *method, OpType op);
+static Op *       emit_op_left(Method *method, OpType op, float left);
+static Op *       emit_op_left_string(Method *method, OpType op, char *left_string);
+static int        emit_op_get_counter(Method *method);
 static void       emit_print(List *program);
 
-static void       gen_program(Node *node, List *program);
-static void       gen_method(Node *node, List *program);
-static void       gen_if(Node *node, List *program);
-static void       gen_while(Node *node, List *program);
-static void       gen_block(Node *node, List *program);
-static void       gen_declaration(Node *node, List *program);
-static void       gen_variable(Node *node, List *program);
-static void       gen_assign(Node *node, List *program);
-static void       gen_store(Node *node, List *program);
-static void       gen_binary(Node *node, List *program);
-static void       gen_number(Node *node, List *program);
-static void       gen_call(Node *node, List *program);
-static void       visitor(Node *node, List *program);
-void              gen(Node *node, List *program);
+static void       gen_program(Node *node);
+static void       gen_class(Node *node);
+static void       gen_method(Node *node);
+static void       gen_if(Node *node);
+static void       gen_while(Node *node);
+static void       gen_block(Node *node);
+static void       gen_declaration(Node *node);
+static void       gen_variable(Node *node);
+static void       gen_member(Node *node);
+static void       gen_assign(Node *node);
+static void       gen_store(Node *node);
+static void       gen_binary(Node *node);
+static void       gen_number(Node *node);
+static void       gen_string(Node *node);
+static void       gen_call(Node *node);
+static void       visitor(Node *node);
+void              gen(Node *node, List *p);
 
 /* 
 	run.c
 */
 
+typedef enum {
+	TY_NUMBER,
+	TY_STRING,
+	TY_CUSTOM
+} Type;
+
+typedef struct _Object {
+	Type type;
+	double data_number;
+	char *data_string;
+} Object;
+
 typedef struct _Var {
 	ListNode node;
 	char *name;
-	double value;
+	Object *object;
 } Var;
 
 static Op        *op_at(List *program, int line);
-static void       store_var(char *name, double value);
-static bool       load_var(char *name, double *value);
+static void       store_var(char *name, Object *object);
+static Object    *load_var(char *name);
+static Class     *get_class(char *name);
+static Method    *get_method(Class *class, char *name);
+static Object    *new_object();
 void              run(List *program);
+void              eval(Object *instance, Method *method);
 
 #endif

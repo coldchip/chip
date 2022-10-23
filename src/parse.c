@@ -28,6 +28,13 @@ Node *new_node_binary(NodeType type, Token *token, Node *left, Node *right) {
 	return node;
 }
 
+bool is_class(Token **current) {
+	if(equals_string(current, "class")) {
+		return true;
+	}
+	return false;
+}
+
 bool is_method(Token **current) {
 	if(equals_string(current, "function")) {
 		return true;
@@ -50,9 +57,33 @@ static Node *parse_program(Token **current) {
 	Node *node = new_node(ND_PROGRAM, NULL);
 	list_clear(&node->bodylist);
 
+	while(is_class(current)) {
+		list_insert(list_end(&node->bodylist), parse_class(current));
+	}
+
+	return node;
+}
+
+static Node *parse_class(Token **current) {
+	Node *node = new_node(ND_CLASS, NULL);
+	list_clear(&node->bodylist);
+
+	expect_type(current, TK_IDENTIFIER);
+
+	node->token = *current;
+
+	expect_type(current, TK_IDENTIFIER);
+
+	expect_string(current, "(");
+	expect_string(current, ")");
+
+	expect_string(current, "{");
+
 	while(is_method(current)) {
 		list_insert(list_end(&node->bodylist), parse_method(current));
 	}
+
+	expect_string(current, "}");
 
 	return node;
 }
@@ -63,7 +94,8 @@ static Node *parse_method(Token **current) {
 
 	expect_type(current, TK_IDENTIFIER);
 
-	Token *token = *current;
+	node->token = *current;
+
 	expect_type(current, TK_IDENTIFIER);
 
 	expect_string(current, "(");
@@ -115,6 +147,7 @@ static Node *parse_stmt(Token **current) {
 		return node;
 	} else {
 		Node *node = parse_expr(current);
+		printf("%s\n", (*current)->data);
 		expect_string(current, ";");
 		return node;
 	}

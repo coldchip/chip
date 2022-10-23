@@ -115,6 +115,19 @@ void tokenize(char *input, List *tokens) {
 			Token *token = new_token(TK_NUMBER, start, input - start);
 			list_insert(list_end(tokens), token);
 			continue;
+		} else if(*input == '\"') {
+			input++;
+
+			char *start = input;
+			while(*input != '\"' && *input != '\0') {
+				input++;
+			}
+
+			input++;
+
+			Token *token = new_token(TK_STRING, start, (input - start) - 1);
+			list_insert(list_end(tokens), token);
+			continue;
 		} else if(is_space(*input)) {
 			input++;
 			continue;

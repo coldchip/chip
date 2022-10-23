@@ -4,7 +4,8 @@
 #include <stdlib.h>
 #include "eval.h"
 
-List varlist;
+static List *program;
+static List varlist;
 
 static Op *op_at(List *program, int line) {
 	int size = 1;
@@ -20,50 +21,93 @@ static Op *op_at(List *program, int line) {
 	return NULL;
 }
 
-static void store_var(char *name, double value) {
-	if(load_var(name, NULL)) {
+static void store_var(char *name, Object *object) {
+	if(load_var(name)) {
 		for(ListNode *i = list_begin(&varlist); i != list_end(&varlist); i = list_next(i)) {
 			Var *var = (Var*)i;
 			if(strcmp(name, var->name) == 0) {
-				var->value = value;
+				var->object = object;
 			}
 		}
 	} else {
 		Var *var = malloc(sizeof(Var));
 		var->name = strdup(name);
-		var->value = value;
+		var->object = object;
 		list_insert(list_end(&varlist), var);
 	}
 }
 
-static bool load_var(char *name, double *value) {
+static Object *load_var(char *name) {
 	for(ListNode *i = list_begin(&varlist); i != list_end(&varlist); i = list_next(i)) {
 		Var *var = (Var*)i;
 		if(strcmp(name, var->name) == 0) {
-			if(value) {
-				*value = var->value;
-			}
-			return true;
+			return var->object;
 		}
 	}
-
-	return false;
+	return NULL;
 }
 
-void run(List *program) {
+static Class *get_class(char *name) {
+	for(ListNode *i = list_begin(program); i != list_end(program); i = list_next(i)) {
+		Class *class = (Class*)i;
+		if(strcmp(name, class->name) == 0) {
+			return class;
+		}
+	}
+	return NULL;
+}
+
+static Method *get_method(Class *class, char *name) {
+	for(ListNode *i = list_begin(&class->method); i != list_end(&class->method); i = list_next(i)) {
+		Method *method = (Method*)i;
+		if(strcmp(name, method->name) == 0) {
+			return method;
+		}
+	}
+	return NULL;
+}
+
+Object *new_object() {
+	Object *o = malloc(sizeof(Object));
+	return o;
+}
+
+void run(List *p) {
+	program = p;
+
+	Class *class_main = get_class("Main");
+	if(!class_main) {
+		printf("entry point class Main not found\n");
+		exit(1);
+	}
+
+	Method *method_main = get_method(class_main, "main");
+	if(!method_main) {
+		printf("entry point method main not found\n");
+		exit(1);
+	}
+
+	eval(NULL, method_main);
+}
+
+void eval(Object *instance, Method *method) {
+	/*
+		assume if instance == NULL then method is static
+	*/
+
 	list_clear(&varlist);
 	
-	Op *current = (Op*)list_begin(program);
+	Op *current = (Op*)list_begin(&method->op);
 
-	double stack[8192];
+	Object *stack[8192];
 	int sp = 0;
 
-	while(current != (Op*)list_end(program)) {
+	while(current != (Op*)list_end(&method->op)) {
 		switch(current->op) {
 			case OP_LOAD: {
-				double result = 0;
-				if(load_var(current->left_string, &result)) {
-					stack[sp] = result;
+				Object *o = load_var(current->left_string);
+				if(o) {
+					stack[sp] = o;
 					sp++;
 				} else {
 					printf("VM:: Unable to load variable %s as it is not found\n", current->left_string);
@@ -73,90 +117,120 @@ void run(List *program) {
 			break;
 			case OP_STORE: {
 				sp--;
-				double v1 = stack[sp];
+				Object *v1 = stack[sp];
 				store_var(current->left_string, v1);
 			}
 			break;
 			case OP_PUSH: {
-				stack[sp] = current->left;
+				Object *o = new_object();
+				o->type = TY_NUMBER;
+				o->data_number = current->left;
+				stack[sp] = o;
+				sp++;
+			}
+			break;
+			case OP_LOAD_CONST: {
+				Object *o = new_object();
+				o->type = TY_STRING;
+				o->data_string = strdup(current->left_string);
+				stack[sp] = o;
 				sp++;
 			}
 			break;
 			case OP_CMPGT: {
 				sp--;
-				double v1 = stack[sp];
+				Object *v1 = stack[sp];
 				sp--;
-				double v2 = stack[sp];
+				Object *v2 = stack[sp];
 
-				double v3 = v2 > v1;
+				Object *v3 = new_object();
+				v3->data_number = v2->data_number > v1->data_number;
 				stack[sp] = v3;
 				sp++;
 			}
 			break;
 			case OP_CMPLT: {
 				sp--;
-				double v1 = stack[sp];
+				Object *v1 = stack[sp];
 				sp--;
-				double v2 = stack[sp];
+				Object *v2 = stack[sp];
 
-				double v3 = v2 < v1;
+				Object *v3 = new_object();
+				v3->data_number = v2->data_number < v1->data_number;
 				stack[sp] = v3;
 				sp++;
 			}
 			break;
 			case OP_ADD: {
 				sp--;
-				double v1 = stack[sp];
+				Object *v1 = stack[sp];
 				sp--;
-				double v2 = stack[sp];
+				Object *v2 = stack[sp];
 
-				double v3 = v2 + v1;
-				stack[sp] = v3;
-				sp++;
+				if(v1->type == TY_NUMBER && v2->type == TY_NUMBER) {
+					Object *v3 = new_object();
+					v3->data_number = v2->data_number + v1->data_number;
+					stack[sp] = v3;
+					sp++;
+				} else if(v1->type == TY_STRING && v2->type == TY_STRING) {
+					Object *v3 = new_object();
+					v3->type = TY_STRING;
+
+					char *s = malloc(strlen(v1->data_string) + strlen(v2->data_string) + 1);
+					strcpy(s, v2->data_string);
+					strcat(s, v1->data_string);
+					v3->data_string = s;
+					stack[sp] = v3;
+					sp++;
+				}
 			}
 			break;
 			case OP_SUB: {
 				sp--;
-				double v1 = stack[sp];
+				Object *v1 = stack[sp];
 				sp--;
-				double v2 = stack[sp];
+				Object *v2 = stack[sp];
 
-				double v3 = v2 - v1;
+				Object *v3 = new_object();
+				v3->data_number = v2->data_number - v1->data_number;
 				stack[sp] = v3;
 				sp++;
 			}
 			break;
 			case OP_MUL: {
 				sp--;
-				double v1 = stack[sp];
+				Object *v1 = stack[sp];
 				sp--;
-				double v2 = stack[sp];
+				Object *v2 = stack[sp];
 
-				double v3 = v2 * v1;
+				Object *v3 = new_object();
+				v3->data_number = v2->data_number * v1->data_number;
 				stack[sp] = v3;
 				sp++;
 			}
 			break;
 			case OP_DIV: {
 				sp--;
-				double v1 = stack[sp];
+				Object *v1 = stack[sp];
 				sp--;
-				double v2 = stack[sp];
+				Object *v2 = stack[sp];
 
-				double v3 = v2 / v1;
+				Object *v3 = new_object();
+				v3->data_number = v2->data_number / v1->data_number;
 				stack[sp] = v3;
 				sp++;
 			}
 			break;
 			case OP_CALL: {
 				sp--;
-				double v1 = stack[sp];
-				if(strcmp(current->left_string, "sin") == 0) {
-					double v2 = sin(v1);
-					stack[sp] = v2;
-					sp++;
+				Object *v1 = stack[sp];
+
+				Class *class = get_class(v1->data_string);
+
+				if(class) {
+					
 				} else {
-					printf("VM:: unknown function call %s\n", current->left_string);
+					printf("VM:: unknown function call %s\n", v1->data_string);
 					exit(1);
 				}
 
@@ -164,12 +238,12 @@ void run(List *program) {
 			break;
 			case OP_JMPIFT: {
 				sp--;
-				double v1 = stack[sp];
+				Object *v1 = stack[sp];
 				sp--;
-				double v2 = stack[sp];
+				Object *v2 = stack[sp];
 
-				if(v2 == v1) {
-					Op *jmp_to = op_at(program, current->left);
+				if(v2->data_number == v1->data_number) {
+					Op *jmp_to = op_at(&method->op, current->left);
 					if(jmp_to) {
 						current = jmp_to;
 						continue;
@@ -181,7 +255,7 @@ void run(List *program) {
 			}
 			break;
 			case OP_JMP: {
-				Op *jmp_to = op_at(program, current->left);
+				Op *jmp_to = op_at(&method->op, current->left);
 				if(jmp_to) {
 					current = jmp_to;
 					continue;
@@ -200,7 +274,16 @@ void run(List *program) {
 
 	for(ListNode *i = list_begin(&varlist); i != list_end(&varlist); i = list_next(i)) {
 		Var *var = (Var*)i;
-		printf("%s\t%f\n", var->name, var->value);
+		switch(var->object->type) {
+			case TY_NUMBER: {
+				printf("%s\tNumber@%p\t%f\n", var->name, var->object, var->object->data_number);
+			}
+			break;
+			case TY_STRING: {
+				printf("%s\tString@%p\t%s\n", var->name, var->object, var->object->data_string);
+			}
+			break;
+		}
 	}
 
 	printf("\n\n-----------------\n");

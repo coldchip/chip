@@ -48,15 +48,35 @@ static Node *parse_add_sub(Token **current) {
 }
 
 static Node *parse_mul_div(Token **current) {
-	Node *node = parse_primary(current);
+	Node *node = parse_postfix(current);
 	for(;;) {
 		Token *token = *current;
 		if(consume_string(current, "*")) {
-			node = new_node_binary(ND_MUL, token, node, parse_primary(current));
+			node = new_node_binary(ND_MUL, token, node, parse_postfix(current));
 			continue;
 		}
 		if(consume_string(current, "/")) {
-			node = new_node_binary(ND_DIV, token, node, parse_primary(current));
+			node = new_node_binary(ND_DIV, token, node, parse_postfix(current));
+			continue;
+		}
+		return node;
+	}
+}
+
+static Node *parse_postfix(Token **current) {
+	Node *node = parse_primary(current);
+	for(;;) {
+		Token *token = *current;
+		if(consume_string(current, ".")) {
+			Node *left = new_node(ND_MEMBER, *current);
+
+			left->body = node;
+
+
+			node = left;
+
+			expect_type(current, TK_IDENTIFIER);
+
 			continue;
 		}
 		return node;
@@ -80,6 +100,8 @@ static Node *parse_primary(Token **current) {
 		return new_node(ND_VARIABLE, token);
 	} else if(consume_type(current, TK_NUMBER)) {
 		return new_node(ND_NUMBER, token);
+	} else if(consume_type(current, TK_STRING)) {
+		return new_node(ND_STRING, token);
 	} else {
 		printf("error, unexpected token '%.*s'\n", (*current)->length, (*current)->data);
 		exit(1);
