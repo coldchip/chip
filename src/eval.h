@@ -93,6 +93,7 @@ typedef enum {
 	ND_CLASS,
 	ND_METHOD,
 	ND_MEMBER,
+	ND_NEW,
 	ND_BLOCK,
 	ND_IF,
 	ND_WHILE,
@@ -158,18 +159,20 @@ static Node       *parse_primary(Token **current);
 */
 
 typedef enum {
-	OP_LOAD,
-	OP_STORE,
+	OP_LOAD_VAR,
+	OP_STORE_VAR,
 	OP_CMPGT,
 	OP_CMPLT,
 	OP_ADD,
 	OP_SUB,
 	OP_MUL,
 	OP_DIV,
-	OP_PUSH,
+	OP_LOAD_NUMBER,
 	OP_LOAD_CONST,
 	OP_LOAD_MEMBER,
+	OP_STORE_MEMBER,
 	OP_CALL,
+	OP_NEW,
 	OP_JMPIFT, // pops 2 items from stack and compare, jumps to x if true
 	OP_JMP     // unconditional jump
 } OpType;
@@ -226,13 +229,25 @@ void              gen(Node *node, List *p);
 typedef enum {
 	TY_NUMBER,
 	TY_STRING,
+	TY_FUNCTION,
 	TY_CUSTOM
 } Type;
 
 typedef struct _Object {
 	Type type;
+
+	Method *method;
+	struct _Object *bound;
+
+	char *name;
+
 	double data_number;
 	char *data_string;
+
+	List vars;
+
+	List methods;
+	List builtin_methods;
 } Object;
 
 typedef struct _Var {
@@ -242,11 +257,11 @@ typedef struct _Var {
 } Var;
 
 static Op        *op_at(List *program, int line);
-static void       store_var(char *name, Object *object);
-static Object    *load_var(char *name);
+static void       store_var(List *vars, char *name, Object *object);
+static Object    *load_var(List *vars, char *name);
 static Class     *get_class(char *name);
-static Method    *get_method(Class *class, char *name);
-static Object    *new_object();
+static Method    *get_method(char *name1, char *name);
+static Object    *new_object(Type type, char *name);
 void              run(List *program);
 void              eval(Object *instance, Method *method);
 

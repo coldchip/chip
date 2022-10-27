@@ -5,7 +5,6 @@
 #include "eval.h"
 
 static List *program;
-static List varlist;
 
 static Op *op_at(List *program, int line) {
 	int size = 1;
@@ -21,9 +20,9 @@ static Op *op_at(List *program, int line) {
 	return NULL;
 }
 
-static void store_var(char *name, Object *object) {
-	if(load_var(name)) {
-		for(ListNode *i = list_begin(&varlist); i != list_end(&varlist); i = list_next(i)) {
+static void store_var(List *vars, char *name, Object *object) {
+	if(load_var(vars, name)) {
+		for(ListNode *i = list_begin(vars); i != list_end(vars); i = list_next(i)) {
 			Var *var = (Var*)i;
 			if(strcmp(name, var->name) == 0) {
 				var->object = object;
@@ -33,12 +32,12 @@ static void store_var(char *name, Object *object) {
 		Var *var = malloc(sizeof(Var));
 		var->name = strdup(name);
 		var->object = object;
-		list_insert(list_end(&varlist), var);
+		list_insert(list_end(vars), var);
 	}
 }
 
-static Object *load_var(char *name) {
-	for(ListNode *i = list_begin(&varlist); i != list_end(&varlist); i = list_next(i)) {
+static Object *load_var(List *vars, char *name) {
+	for(ListNode *i = list_begin(vars); i != list_end(vars); i = list_next(i)) {
 		Var *var = (Var*)i;
 		if(strcmp(name, var->name) == 0) {
 			return var->object;
@@ -57,31 +56,62 @@ static Class *get_class(char *name) {
 	return NULL;
 }
 
-static Method *get_method(Class *class, char *name) {
-	for(ListNode *i = list_begin(&class->method); i != list_end(&class->method); i = list_next(i)) {
-		Method *method = (Method*)i;
-		if(strcmp(name, method->name) == 0) {
-			return method;
+static Method *get_method(char *name1, char *name2) {
+	Class *class = get_class(name1);
+
+	if(class) {
+		for(ListNode *i = list_begin(&class->method); i != list_end(&class->method); i = list_next(i)) {
+			Method *method = (Method*)i;
+			if(strcmp(name2, method->name) == 0) {
+				return method;
+			}
 		}
 	}
 	return NULL;
 }
 
-Object *new_object() {
+Object *new_object(Type type, char *name) {
 	Object *o = malloc(sizeof(Object));
+	o->type = type;
+	o->name = name;
+
+	list_clear(&o->vars);
+
+	if(type == TY_CUSTOM) {
+		Class *skeleton = get_class(name);
+		if(skeleton) {
+			for(ListNode *i = list_begin(&skeleton->method); i != list_end(&skeleton->method); i = list_next(i)) {
+				Method *method = (Method*)i;
+				Object *var = new_object(TY_FUNCTION, method->name);
+				var->bound = o;
+				var->method = method;
+
+				store_var(&o->vars, method->name, var);
+			}
+		} else {
+			printf("Error, class %s not defined\n", name);
+			exit(1);
+		}
+	}
+
+	if(type == TY_STRING) {
+		Object *l = new_object(TY_NUMBER, "Number");
+		l->data_number = 666;
+
+		Var *var = malloc(sizeof(Var));
+		var->name = strdup("length");
+		var->object = l;
+
+		list_insert(list_end(&o->vars), var);
+	}
+
 	return o;
 }
 
 void run(List *p) {
 	program = p;
 
-	Class *class_main = get_class("Main");
-	if(!class_main) {
-		printf("entry point class Main not found\n");
-		exit(1);
-	}
-
-	Method *method_main = get_method(class_main, "main");
+	Method *method_main = get_method("Main", "main");
 	if(!method_main) {
 		printf("entry point method main not found\n");
 		exit(1);
@@ -94,8 +124,12 @@ void eval(Object *instance, Method *method) {
 	/*
 		assume if instance == NULL then method is static
 	*/
-
+	List varlist;
 	list_clear(&varlist);
+
+	if(instance != NULL) {
+		store_var(&varlist, "this", instance);
+	}
 	
 	Op *current = (Op*)list_begin(&method->op);
 
@@ -104,8 +138,8 @@ void eval(Object *instance, Method *method) {
 
 	while(current != (Op*)list_end(&method->op)) {
 		switch(current->op) {
-			case OP_LOAD: {
-				Object *o = load_var(current->left_string);
+			case OP_LOAD_VAR: {
+				Object *o = load_var(&varlist, current->left_string);
 				if(o) {
 					stack[sp] = o;
 					sp++;
@@ -115,26 +149,51 @@ void eval(Object *instance, Method *method) {
 				}
 			}
 			break;
-			case OP_STORE: {
+			case OP_STORE_VAR: {
 				sp--;
 				Object *v1 = stack[sp];
-				store_var(current->left_string, v1);
+				store_var(&varlist, current->left_string, v1);
 			}
 			break;
-			case OP_PUSH: {
-				Object *o = new_object();
-				o->type = TY_NUMBER;
+			case OP_LOAD_NUMBER: {
+				Object *o = new_object(TY_NUMBER, "Number");
 				o->data_number = current->left;
 				stack[sp] = o;
 				sp++;
 			}
 			break;
 			case OP_LOAD_CONST: {
-				Object *o = new_object();
-				o->type = TY_STRING;
+				Object *o = new_object(TY_STRING, "String");
 				o->data_string = strdup(current->left_string);
 				stack[sp] = o;
 				sp++;
+			}
+			break;
+			case OP_LOAD_MEMBER: {
+				sp--;
+				Object *instance = stack[sp];
+
+				printf("LOAD: %s\n", current->left_string);
+
+				Object *v2 = load_var(&instance->vars, current->left_string);
+				printf("%p\n", v2);
+				if(v2) {
+					stack[sp] = v2;
+					sp++;
+				} else {
+					printf("Unknown variable member %s\n", current->left_string);
+					exit(1);
+				}
+			}
+			break;
+			case OP_STORE_MEMBER: {
+				sp--;
+				Object *v1 = stack[sp];
+
+				sp--;
+				Object *v2 = stack[sp];
+
+				store_var(&v1->vars, current->left_string, v2);
 			}
 			break;
 			case OP_CMPGT: {
@@ -143,7 +202,7 @@ void eval(Object *instance, Method *method) {
 				sp--;
 				Object *v2 = stack[sp];
 
-				Object *v3 = new_object();
+				Object *v3 = new_object(TY_NUMBER, "Number");
 				v3->data_number = v2->data_number > v1->data_number;
 				stack[sp] = v3;
 				sp++;
@@ -155,7 +214,7 @@ void eval(Object *instance, Method *method) {
 				sp--;
 				Object *v2 = stack[sp];
 
-				Object *v3 = new_object();
+				Object *v3 = new_object(TY_NUMBER, "Number");
 				v3->data_number = v2->data_number < v1->data_number;
 				stack[sp] = v3;
 				sp++;
@@ -168,13 +227,12 @@ void eval(Object *instance, Method *method) {
 				Object *v2 = stack[sp];
 
 				if(v1->type == TY_NUMBER && v2->type == TY_NUMBER) {
-					Object *v3 = new_object();
+					Object *v3 = new_object(TY_NUMBER, "Number");
 					v3->data_number = v2->data_number + v1->data_number;
 					stack[sp] = v3;
 					sp++;
 				} else if(v1->type == TY_STRING && v2->type == TY_STRING) {
-					Object *v3 = new_object();
-					v3->type = TY_STRING;
+					Object *v3 = new_object(TY_STRING, "String");
 
 					char *s = malloc(strlen(v1->data_string) + strlen(v2->data_string) + 1);
 					strcpy(s, v2->data_string);
@@ -191,7 +249,7 @@ void eval(Object *instance, Method *method) {
 				sp--;
 				Object *v2 = stack[sp];
 
-				Object *v3 = new_object();
+				Object *v3 = new_object(TY_NUMBER, "Number");
 				v3->data_number = v2->data_number - v1->data_number;
 				stack[sp] = v3;
 				sp++;
@@ -203,7 +261,7 @@ void eval(Object *instance, Method *method) {
 				sp--;
 				Object *v2 = stack[sp];
 
-				Object *v3 = new_object();
+				Object *v3 = new_object(TY_NUMBER, "Number");
 				v3->data_number = v2->data_number * v1->data_number;
 				stack[sp] = v3;
 				sp++;
@@ -215,7 +273,7 @@ void eval(Object *instance, Method *method) {
 				sp--;
 				Object *v2 = stack[sp];
 
-				Object *v3 = new_object();
+				Object *v3 = new_object(TY_NUMBER, "Number");
 				v3->data_number = v2->data_number / v1->data_number;
 				stack[sp] = v3;
 				sp++;
@@ -223,17 +281,40 @@ void eval(Object *instance, Method *method) {
 			break;
 			case OP_CALL: {
 				sp--;
-				Object *v1 = stack[sp];
+				Object *instance = stack[sp];
 
-				Class *class = get_class(v1->data_string);
+				if(instance->type == TY_FUNCTION) {
+					eval(instance->bound, instance->method);
 
-				if(class) {
-					
+					// stack[sp] = v2;
+					// sp++;
 				} else {
-					printf("VM:: unknown function call %s\n", v1->data_string);
+					printf("VM:: unknown function call %s\n", instance->data_string);
 					exit(1);
 				}
+			}
+			break;
+			case OP_NEW: {
+				sp--;
+				Object *name = stack[sp];
 
+				Class *class = get_class(name->data_string);
+				if(class) {
+					Object *instance = new_object(TY_CUSTOM, strdup(name->data_string));
+
+					
+					Method *constructor = get_method(strdup(name->data_string), "constructor");
+					if(constructor) {
+						eval(instance, constructor);
+					}
+					
+
+					stack[sp] = instance;
+					sp++;
+				} else {
+					printf("VM:: cannot clone class %s\n", name->data_string);
+					exit(1);
+				}
 			}
 			break;
 			case OP_JMPIFT: {
@@ -281,6 +362,14 @@ void eval(Object *instance, Method *method) {
 			break;
 			case TY_STRING: {
 				printf("%s\tString@%p\t%s\n", var->name, var->object, var->object->data_string);
+			}
+			break;
+			case TY_FUNCTION: {
+				printf("%s\t#Function@%p\t\n", var->name, var->object);
+			}
+			break;
+			case TY_CUSTOM: {
+				printf("%s\t%s@%p\t\n", var->name, var->object->name, var->object);
 			}
 			break;
 		}

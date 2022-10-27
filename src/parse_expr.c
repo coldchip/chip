@@ -71,11 +71,13 @@ static Node *parse_postfix(Token **current) {
 			Node *left = new_node(ND_MEMBER, *current);
 
 			left->body = node;
-
-
 			node = left;
 
 			expect_type(current, TK_IDENTIFIER);
+
+			if(consume_string(current, "(")) {
+				expect_string(current, ")");
+			}
 
 			continue;
 		}
@@ -85,7 +87,15 @@ static Node *parse_postfix(Token **current) {
 
 static Node *parse_primary(Token **current) {
 	Token *token = *current;
-	if(consume_string(current, "(")) {
+	if(consume_string(current, "new")) {
+		Node *node = new_node(ND_NEW, *current);
+
+		expect_type(current, TK_IDENTIFIER);
+		expect_string(current, "(");
+		expect_string(current, ")");
+
+		return node;
+	} else if(consume_string(current, "(")) {
 		Node *node = parse_expr(current);
 		expect_string(current, ")");
 		return node;

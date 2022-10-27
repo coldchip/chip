@@ -147,7 +147,6 @@ static Node *parse_stmt(Token **current) {
 		return node;
 	} else {
 		Node *node = parse_expr(current);
-		printf("%s\n", (*current)->data);
 		expect_string(current, ";");
 		return node;
 	}

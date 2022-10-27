@@ -1,15 +1,18 @@
-class Main() {
-	function main() {
-		var a = Gay(0);
-	}
-
-	function test() {
-		var a = 0;
+class Dog() {
+	function bark() {
+		this.i = 345;
 	}
 }
 
-class Gay() {
-	function test() {
+class Human() {
+	function constructor() {
+		this.age = 56;
+	}
+}
 
+class Main() {
+	function main() {
+		var h = new Human();
+		var age = h.age;
 	}
 }

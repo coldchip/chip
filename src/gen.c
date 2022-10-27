@@ -64,12 +64,12 @@ static void emit_print(List *program) {
 			for(ListNode *op = list_begin(&m->op); op != list_end(&m->op); op = list_next(op)) {
 				Op *ins = (Op*)op;
 				switch(ins->op) {
-					case OP_LOAD: {
-						printf("\t%i\tLOAD\t%s\n", line, ins->left_string);
+					case OP_LOAD_VAR: {
+						printf("\t%i\tLOAD_VAR\t%s\n", line, ins->left_string);
 					}
 					break;
-					case OP_STORE: {
-						printf("\t%i\tSTORE\t%s\n", line, ins->left_string);
+					case OP_STORE_VAR: {
+						printf("\t%i\tSTORE_VAR\t%s\n", line, ins->left_string);
 					}
 					break;
 					case OP_CMPGT: {
@@ -96,8 +96,8 @@ static void emit_print(List *program) {
 						printf("\t%i\tDIV\n", line);
 					}
 					break;
-					case OP_PUSH: {
-						printf("\t%i\tPUSH\t%f\n", line, ins->left);
+					case OP_LOAD_NUMBER: {
+						printf("\t%i\tLOAD_NUMBER\t%f\n", line, ins->left);
 					}
 					break;
 					case OP_LOAD_CONST: {
@@ -108,8 +108,16 @@ static void emit_print(List *program) {
 						printf("\t%i\tLOAD_MEMBER\t%s\n", line, ins->left_string);
 					}
 					break;
+					case OP_STORE_MEMBER: {
+						printf("\t%i\tSTORE_MEMBER\t%s\n", line, ins->left_string);
+					}
+					break;
 					case OP_CALL: {
 						printf("\t%i\tCALL\t\n", line);
+					}
+					break;
+					case OP_NEW: {
+						printf("\t%i\tNEW\t\n", line);
 					}
 					break;
 					case OP_JMPIFT: {
@@ -164,7 +172,7 @@ static void gen_if(Node *node) {
 	int start = emit_op_get_counter(method);
 
 	visitor(node->condition);
-	emit_op_left(method, OP_PUSH, 0);
+	emit_op_left(method, OP_LOAD_NUMBER, 0);
 	Op *jmp = emit_op_left(method, OP_JMPIFT, 0);
 	visitor(node->body);
 	emit_op_left(method, OP_JMP, start);
@@ -176,7 +184,7 @@ static void gen_while(Node *node) {
 	int start = emit_op_get_counter(method);
 
 	visitor(node->condition);
-	emit_op_left(method, OP_PUSH, 0);
+	emit_op_left(method, OP_LOAD_NUMBER, 0);
 	Op *jmp = emit_op_left(method, OP_JMPIFT, 0);
 	visitor(node->body);
 	emit_op_left(method, OP_JMP, start);
@@ -195,12 +203,12 @@ static void gen_block(Node *node) {
 static void gen_declaration(Node *node) {
 	visitor(node->body);
 	char *str = strndup(node->token->data, node->token->length);
-	emit_op_left_string(method, OP_STORE, str);
+	emit_op_left_string(method, OP_STORE_VAR, str);
 }
 
 static void gen_variable(Node *node) {
 	char *str = strndup(node->token->data, node->token->length);
-	emit_op_left_string(method, OP_LOAD, str);
+	emit_op_left_string(method, OP_LOAD_VAR, str);
 }
 
 static void gen_member(Node *node) {
@@ -211,14 +219,28 @@ static void gen_member(Node *node) {
 	}
 }
 
+static void gen_new(Node *node) {
+	char *str = strndup(node->token->data, node->token->length);
+	emit_op_left_string(method, OP_LOAD_CONST, str);
+
+	emit_op(method, OP_NEW);
+}
+
 static void gen_assign(Node *node) {
 	visitor(node->right);
 	gen_store(node->left);
 }
 
 static void gen_store(Node *node) {
-	char *str = strndup(node->token->data, node->token->length);
-	emit_op_left_string(method, OP_STORE, str);
+	if(node->body) {
+		visitor(node->body);
+		char *str = strndup(node->token->data, node->token->length);
+		emit_op_left_string(method, OP_STORE_MEMBER, str);
+	} else {
+		char *str = strndup(node->token->data, node->token->length);
+		emit_op_left_string(method, OP_STORE_VAR, str);
+	}
+
 }
 
 static void gen_binary(Node *node) {
@@ -260,7 +282,7 @@ static void gen_binary(Node *node) {
 
 static void gen_number(Node *node) {
 	char *str = strndup(node->token->data, node->token->length);
-	emit_op_left(method, OP_PUSH, atof(str));
+	emit_op_left(method, OP_LOAD_NUMBER, atof(str));
 	free(str);
 }
 
@@ -274,7 +296,7 @@ static void gen_call(Node *node) {
 		visitor(node->args);
 	}
 	char *str = strndup(node->token->data, node->token->length);
-	emit_op_left_string(method, OP_LOAD_CONST, str);
+	emit_op_left_string(method, OP_LOAD_VAR, str);
 
 	emit_op(method, OP_CALL);
 }
@@ -315,6 +337,10 @@ static void visitor(Node *node) {
 		break;
 		case ND_MEMBER: {
 			gen_member(node);
+		}
+		break;
+		case ND_NEW: {
+			gen_new(node);
 		}
 		break;
 		case ND_ASSIGN: {
