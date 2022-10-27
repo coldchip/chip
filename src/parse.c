@@ -74,9 +74,6 @@ static Node *parse_class(Token **current) {
 
 	expect_type(current, TK_IDENTIFIER);
 
-	expect_string(current, "(");
-	expect_string(current, ")");
-
 	expect_string(current, "{");
 
 	while(is_method(current)) {
