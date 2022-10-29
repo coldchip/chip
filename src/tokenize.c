@@ -82,6 +82,7 @@ static bool is_punctuation(char bit) {
 		bit == '-' || 
 		bit == '*' || 
 		bit == '/' ||
+		bit == '%' ||
 		bit == '=' || 
 		bit == '(' ||
 		bit == ')' ||
@@ -89,6 +90,7 @@ static bool is_punctuation(char bit) {
 		bit == '}' ||
 		bit == '>' ||
 		bit == '<' ||
+		bit == ',' ||
 		bit == ';'
 	);
 }

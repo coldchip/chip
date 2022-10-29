@@ -91,6 +91,8 @@ void               tokenize(char *input, List *tokens);
 typedef enum {
 	ND_PROGRAM,
 	ND_CLASS,
+	ND_PARAM,
+	ND_ARG,
 	ND_METHOD,
 	ND_MEMBER,
 	ND_NEW,
@@ -106,8 +108,10 @@ typedef enum {
 	ND_SUB,
 	ND_MUL,
 	ND_DIV,
+	ND_MOD,
 	ND_NUMBER,
 	ND_STRING,
+	ND_RETURN,
 	ND_CALL
 } NodeType;
 
@@ -121,6 +125,8 @@ typedef struct _Node {
 	struct _Node *condition;
 	struct _Node *body;
 	struct _Node *alternate;
+
+	int length;
 
 	List bodylist;
 
@@ -137,6 +143,10 @@ bool               is_call(Token **current);
 static Node       *parse_program(Token **current);
 static Node       *parse_class(Token **current);
 static Node       *parse_method(Token **current);
+Node              *parse_param(Token **current);
+Node              *parse_params(Token **current);
+Node              *parse_arg(Token **current);
+Node              *parse_args(Token **current);
 static Node       *parse_stmt(Token **current);
 static Node       *parse_declaration(Token **current);
 
@@ -167,6 +177,7 @@ typedef enum {
 	OP_SUB,
 	OP_MUL,
 	OP_DIV,
+	OP_MOD,
 	OP_LOAD_NUMBER,
 	OP_LOAD_CONST,
 	OP_LOAD_MEMBER,
@@ -174,7 +185,8 @@ typedef enum {
 	OP_CALL,
 	OP_NEW,
 	OP_JMPIFT, // pops 2 items from stack and compare, jumps to x if true
-	OP_JMP     // unconditional jump
+	OP_JMP,    // unconditional jump
+	OP_RET
 } OpType;
 
 typedef struct _Class {
@@ -206,6 +218,8 @@ static void       emit_print(List *program);
 
 static void       gen_program(Node *node);
 static void       gen_class(Node *node);
+static void       gen_param(Node *node);
+static void       gen_arg(Node *node);
 static void       gen_method(Node *node);
 static void       gen_if(Node *node);
 static void       gen_while(Node *node);
@@ -218,6 +232,7 @@ static void       gen_store(Node *node);
 static void       gen_binary(Node *node);
 static void       gen_number(Node *node);
 static void       gen_string(Node *node);
+static void       gen_return(Node *node);
 static void       gen_call(Node *node);
 static void       visitor(Node *node);
 void              gen(Node *node, List *p);
@@ -234,6 +249,8 @@ typedef enum {
 } Type;
 
 typedef struct _Object {
+	ListNode node;
+
 	Type type;
 
 	Method *method;
@@ -245,9 +262,6 @@ typedef struct _Object {
 	char *data_string;
 
 	List vars;
-
-	List methods;
-	List builtin_methods;
 } Object;
 
 typedef struct _Var {
@@ -256,6 +270,9 @@ typedef struct _Var {
 	Object *object;
 } Var;
 
+#define POP_STACK() (sp--, stack[sp])
+#define PUSH_STACK(d) (stack[sp++] = d)
+
 static Op        *op_at(List *program, int line);
 static void       store_var(List *vars, char *name, Object *object);
 static Object    *load_var(List *vars, char *name);
@@ -263,6 +280,6 @@ static Class     *get_class(char *name);
 static Method    *get_method(char *name1, char *name);
 static Object    *new_object(Type type, char *name);
 void              run(List *program);
-void              eval(Object *instance, Method *method);
+Object *          eval(Object *instance, Method *method, List *inject);
 
 #endif

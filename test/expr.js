@@ -1,24 +1,24 @@
-class Dog {
-	function constructor() {
-	}
-
-	function bark() {
-	}
-}
-
 class Human {
-	function constructor() {
-		this.age = 56;
-		this.pet = new Dog();
+	function constructor(name) {
+		this.name = name;
+	}
+
+	function setAge(age) {
+		this.age = age;
+	}
+
+	function getAge() {
+		return this.age;
 	}
 }
 
 class Main {
 	function main() {
-		var h = new Human();
-		var age = h.age;
+		var h = new Human("Ryan" + " ColdChip");
+		h.setAge(32);
 
-		var p = h.pet.bark;
-		p(1);
+		
+
+		return 0;
 	}
 }

@@ -11,6 +11,8 @@ Node *new_node(NodeType type, Token *token) {
 	node->left  = NULL;
 	node->right = NULL;
 
+	list_clear(&node->bodylist);
+
 	return node;
 }
 
@@ -55,7 +57,6 @@ bool is_call(Token **current) {
 
 static Node *parse_program(Token **current) {
 	Node *node = new_node(ND_PROGRAM, NULL);
-	list_clear(&node->bodylist);
 
 	while(is_class(current)) {
 		list_insert(list_end(&node->bodylist), parse_class(current));
@@ -66,7 +67,6 @@ static Node *parse_program(Token **current) {
 
 static Node *parse_class(Token **current) {
 	Node *node = new_node(ND_CLASS, NULL);
-	list_clear(&node->bodylist);
 
 	expect_type(current, TK_IDENTIFIER);
 
@@ -87,7 +87,6 @@ static Node *parse_class(Token **current) {
 
 static Node *parse_method(Token **current) {
 	Node *node = new_node(ND_METHOD, NULL);
-	list_clear(&node->bodylist);
 
 	expect_type(current, TK_IDENTIFIER);
 
@@ -96,6 +95,7 @@ static Node *parse_method(Token **current) {
 	expect_type(current, TK_IDENTIFIER);
 
 	expect_string(current, "(");
+	node->args = parse_params(current);
 	expect_string(current, ")");
 
 	expect_string(current, "{");
@@ -106,6 +106,54 @@ static Node *parse_method(Token **current) {
 
 	expect_string(current, "}");
 
+	return node;
+}
+
+Node *parse_param(Token **current) {
+	Node *node = new_node(ND_VARIABLE, *current);
+	expect_type(current, TK_IDENTIFIER);
+
+	return node;
+}
+
+Node *parse_params(Token **current) {
+	Node *node = new_node(ND_PARAM, NULL);
+	if(equals_string(current, ")")) {
+		return node;
+	}
+
+	node->length = 1;
+
+	list_insert(list_end(&node->bodylist), parse_param(current));
+
+	while(!equals_string(current, ")")) {
+		expect_string(current, ",");
+		list_insert(list_end(&node->bodylist), parse_param(current));
+		node->length++;
+	}
+	return node;
+}
+
+Node *parse_arg(Token **current) {
+	Node *node = parse_expr(current);
+	return node;
+}
+
+Node *parse_args(Token **current) {
+	Node *node = new_node(ND_ARG, NULL);
+	if(equals_string(current, ")")) {
+		return node;
+	}
+
+	node->length = 1;
+
+	list_insert(list_end(&node->bodylist), parse_arg(current));
+
+	while(!equals_string(current, ")")) {
+		expect_string(current, ",");
+		list_insert(list_end(&node->bodylist), parse_arg(current));
+		node->length++;
+	}
 	return node;
 }
 
@@ -131,12 +179,15 @@ static Node *parse_stmt(Token **current) {
 	} else if(consume_string(current, "{")) {
 		Node *node = new_node(ND_BLOCK, NULL);
 
-		list_clear(&node->bodylist);
-
 		while(!consume_string(current, "}")) {
 			list_insert(list_end(&node->bodylist), parse_stmt(current));
 		}
 
+		return node;
+	} else if(consume_string(current, "return")) {
+		Node *node = new_node(ND_RETURN, NULL);
+		node->body = parse_expr(current);
+		expect_string(current, ";");
 		return node;
 	} else if(equals_string(current, "var")) {
 		Node *node = parse_declaration(current);

@@ -72,6 +72,7 @@ static Method *get_method(char *name1, char *name2) {
 
 Object *new_object(Type type, char *name) {
 	Object *o = malloc(sizeof(Object));
+
 	o->type = type;
 	o->name = name;
 
@@ -117,10 +118,10 @@ void run(List *p) {
 		exit(1);
 	}
 
-	eval(NULL, method_main);
+	eval(NULL, method_main, NULL);
 }
 
-void eval(Object *instance, Method *method) {
+Object *eval(Object *instance, Method *method, List *inject) {
 	/*
 		assume if instance == NULL then method is static
 	*/
@@ -136,13 +137,22 @@ void eval(Object *instance, Method *method) {
 	Object *stack[8192];
 	int sp = 0;
 
+	Object *ret = new_object(TY_NUMBER, "Number");
+	ret->data_number = 0;
+
+	if(inject) {
+		for(ListNode *i = list_begin(inject); i != list_end(inject); i = list_next(i)) {
+			Object *param = (Object*)i;
+			PUSH_STACK(param);
+		}
+	}
+
 	while(current != (Op*)list_end(&method->op)) {
 		switch(current->op) {
 			case OP_LOAD_VAR: {
 				Object *o = load_var(&varlist, current->left_string);
 				if(o) {
-					stack[sp] = o;
-					sp++;
+					PUSH_STACK(o);
 				} else {
 					printf("VM:: Unable to load variable %s as it is not found\n", current->left_string);
 					exit(1);
@@ -150,36 +160,28 @@ void eval(Object *instance, Method *method) {
 			}
 			break;
 			case OP_STORE_VAR: {
-				sp--;
-				Object *v1 = stack[sp];
+				Object *v1 = POP_STACK();
 				store_var(&varlist, current->left_string, v1);
 			}
 			break;
 			case OP_LOAD_NUMBER: {
 				Object *o = new_object(TY_NUMBER, "Number");
 				o->data_number = current->left;
-				stack[sp] = o;
-				sp++;
+				PUSH_STACK(o);
 			}
 			break;
 			case OP_LOAD_CONST: {
 				Object *o = new_object(TY_STRING, "String");
 				o->data_string = strdup(current->left_string);
-				stack[sp] = o;
-				sp++;
+				PUSH_STACK(o);
 			}
 			break;
 			case OP_LOAD_MEMBER: {
-				sp--;
-				Object *instance = stack[sp];
-
-				printf("LOAD: %s\n", current->left_string);
+				Object *instance = POP_STACK();
 
 				Object *v2 = load_var(&instance->vars, current->left_string);
-				printf("%p\n", v2);
 				if(v2) {
-					stack[sp] = v2;
-					sp++;
+					PUSH_STACK(v2);
 				} else {
 					printf("Unknown variable member %s\n", current->left_string);
 					exit(1);
@@ -187,50 +189,65 @@ void eval(Object *instance, Method *method) {
 			}
 			break;
 			case OP_STORE_MEMBER: {
-				sp--;
-				Object *v1 = stack[sp];
-
-				sp--;
-				Object *v2 = stack[sp];
+				Object *v1 = POP_STACK();
+				Object *v2 = POP_STACK();
 
 				store_var(&v1->vars, current->left_string, v2);
 			}
 			break;
 			case OP_CMPGT: {
-				sp--;
-				Object *v1 = stack[sp];
-				sp--;
-				Object *v2 = stack[sp];
+				Object *v1 = POP_STACK();
+				Object *v2 = POP_STACK();
 
 				Object *v3 = new_object(TY_NUMBER, "Number");
 				v3->data_number = v2->data_number > v1->data_number;
-				stack[sp] = v3;
-				sp++;
+
+				PUSH_STACK(v3);
 			}
 			break;
 			case OP_CMPLT: {
-				sp--;
-				Object *v1 = stack[sp];
-				sp--;
-				Object *v2 = stack[sp];
+				Object *v1 = POP_STACK();
+				Object *v2 = POP_STACK();
 
 				Object *v3 = new_object(TY_NUMBER, "Number");
 				v3->data_number = v2->data_number < v1->data_number;
-				stack[sp] = v3;
-				sp++;
+				
+				PUSH_STACK(v3);
 			}
 			break;
 			case OP_ADD: {
-				sp--;
-				Object *v1 = stack[sp];
-				sp--;
-				Object *v2 = stack[sp];
+				Object *v1 = POP_STACK();
+				Object *v2 = POP_STACK();
 
 				if(v1->type == TY_NUMBER && v2->type == TY_NUMBER) {
 					Object *v3 = new_object(TY_NUMBER, "Number");
 					v3->data_number = v2->data_number + v1->data_number;
-					stack[sp] = v3;
-					sp++;
+					
+					PUSH_STACK(v3);
+				} else if(v1->type == TY_NUMBER && v2->type == TY_STRING) {
+					Object *v3 = new_object(TY_STRING, "String");
+
+					char str[512];
+					sprintf(str, "%i", (int)v1->data_number);
+
+					char *s = malloc(strlen(str) + strlen(v2->data_string) + 1);
+					strcpy(s, v2->data_string);
+					strcat(s, str);
+					v3->data_string = s;
+					
+					PUSH_STACK(v3);
+				} else if(v1->type == TY_STRING && v2->type == TY_NUMBER) {
+					Object *v3 = new_object(TY_STRING, "String");
+
+					char str[512];
+					sprintf(str, "%i", (int)v2->data_number);
+
+					char *s = malloc(strlen(v1->data_string) + strlen(str) + 1);
+					strcpy(s, str);
+					strcat(s, v1->data_string);
+					v3->data_string = s;
+					
+					PUSH_STACK(v3);
 				} else if(v1->type == TY_STRING && v2->type == TY_STRING) {
 					Object *v3 = new_object(TY_STRING, "String");
 
@@ -238,56 +255,70 @@ void eval(Object *instance, Method *method) {
 					strcpy(s, v2->data_string);
 					strcat(s, v1->data_string);
 					v3->data_string = s;
-					stack[sp] = v3;
-					sp++;
+					
+					PUSH_STACK(v3);
+				} else {
+					printf("Unable to binary add unknown types\n");
+					exit(1);
 				}
 			}
 			break;
 			case OP_SUB: {
-				sp--;
-				Object *v1 = stack[sp];
-				sp--;
-				Object *v2 = stack[sp];
+				Object *v1 = POP_STACK();
+				Object *v2 = POP_STACK();
 
 				Object *v3 = new_object(TY_NUMBER, "Number");
 				v3->data_number = v2->data_number - v1->data_number;
-				stack[sp] = v3;
-				sp++;
+				
+				PUSH_STACK(v3);
 			}
 			break;
 			case OP_MUL: {
-				sp--;
-				Object *v1 = stack[sp];
-				sp--;
-				Object *v2 = stack[sp];
+				Object *v1 = POP_STACK();
+				Object *v2 = POP_STACK();
 
 				Object *v3 = new_object(TY_NUMBER, "Number");
 				v3->data_number = v2->data_number * v1->data_number;
-				stack[sp] = v3;
-				sp++;
+				
+				PUSH_STACK(v3);
 			}
 			break;
 			case OP_DIV: {
-				sp--;
-				Object *v1 = stack[sp];
-				sp--;
-				Object *v2 = stack[sp];
+				Object *v1 = POP_STACK();
+				Object *v2 = POP_STACK();
 
 				Object *v3 = new_object(TY_NUMBER, "Number");
 				v3->data_number = v2->data_number / v1->data_number;
-				stack[sp] = v3;
-				sp++;
+				
+				PUSH_STACK(v3);
+			}
+			break;
+			case OP_MOD: {
+				Object *v1 = POP_STACK();
+				Object *v2 = POP_STACK();
+
+				Object *v3 = new_object(TY_NUMBER, "Number");
+				v3->data_number = ((int)v2->data_number) % ((int)v1->data_number);
+				
+				PUSH_STACK(v3);
 			}
 			break;
 			case OP_CALL: {
-				sp--;
-				Object *instance = stack[sp];
+				List args;
+				list_clear(&args);
+
+				for(int i = 0; i < current->left; i++) {
+					Object *arg = POP_STACK();
+
+					list_insert(list_end(&args), arg);
+				}
+
+				Object *instance = POP_STACK();
 
 				if(instance->type == TY_FUNCTION) {
-					eval(instance->bound, instance->method);
-
-					// stack[sp] = v2;
-					// sp++;
+					Object *ret = eval(instance->bound, instance->method, &args);
+					
+					PUSH_STACK(ret);
 				} else {
 					printf("VM:: unknown function call %s\n", instance->data_string);
 					exit(1);
@@ -295,22 +326,26 @@ void eval(Object *instance, Method *method) {
 			}
 			break;
 			case OP_NEW: {
-				sp--;
-				Object *name = stack[sp];
+				List args;
+				list_clear(&args);
+
+				for(int i = 0; i < current->left; i++) {
+					Object *arg = POP_STACK();
+					list_insert(list_end(&args), arg);
+				}
+
+				Object *name = POP_STACK();
 
 				Class *class = get_class(name->data_string);
 				if(class) {
 					Object *instance = new_object(TY_CUSTOM, strdup(name->data_string));
-
 					
 					Method *constructor = get_method(strdup(name->data_string), "constructor");
 					if(constructor) {
-						eval(instance, constructor);
+						eval(instance, constructor, &args);
 					}
 					
-
-					stack[sp] = instance;
-					sp++;
+					PUSH_STACK(instance);
 				} else {
 					printf("VM:: cannot clone class %s\n", name->data_string);
 					exit(1);
@@ -318,10 +353,8 @@ void eval(Object *instance, Method *method) {
 			}
 			break;
 			case OP_JMPIFT: {
-				sp--;
-				Object *v1 = stack[sp];
-				sp--;
-				Object *v2 = stack[sp];
+				Object *v1 = POP_STACK();
+				Object *v2 = POP_STACK();
 
 				if(v2->data_number == v1->data_number) {
 					Op *jmp_to = op_at(&method->op, current->left);
@@ -344,6 +377,10 @@ void eval(Object *instance, Method *method) {
 					printf("VM:: Unable to jump to op %i\n", (int)current->left);
 					exit(1);
 				}
+			}
+			break;
+			case OP_RET: {
+				ret = POP_STACK();
 			}
 			break;
 		}
@@ -376,6 +413,7 @@ void eval(Object *instance, Method *method) {
 	}
 
 	printf("\n\n-----------------\n");
-
 	printf("result: %f sp: %i\n", stack[0], sp);
+
+	return ret;
 }

@@ -96,6 +96,10 @@ static void emit_print(List *program) {
 						printf("\t%i\tDIV\n", line);
 					}
 					break;
+					case OP_MOD: {
+						printf("\t%i\tMOD\n", line);
+					}
+					break;
 					case OP_LOAD_NUMBER: {
 						printf("\t%i\tLOAD_NUMBER\t%f\n", line, ins->left);
 					}
@@ -113,11 +117,11 @@ static void emit_print(List *program) {
 					}
 					break;
 					case OP_CALL: {
-						printf("\t%i\tCALL\t\n", line);
+						printf("\t%i\tCALL\tARGLEN: %i\n", line, (int)ins->left);
 					}
 					break;
 					case OP_NEW: {
-						printf("\t%i\tNEW\t\n", line);
+						printf("\t%i\tNEW\tARGLEN: %i\n", line, (int)ins->left);
 					}
 					break;
 					case OP_JMPIFT: {
@@ -126,6 +130,10 @@ static void emit_print(List *program) {
 					break;
 					case OP_JMP: {
 						printf("\t%i\tJMP\t%i\n", line, (int)ins->left);
+					}
+					break;
+					case OP_RET: {
+						printf("\t%i\tRET\t\n", line);
 					}
 					break;
 				}
@@ -158,8 +166,26 @@ static void gen_class(Node *node) {
 	}
 }
 
+static void gen_param(Node *node) {
+	List *list = &node->bodylist;
+	while(!list_empty(list)) {
+		Node *entry = (Node*)list_remove(list_back(list));
+		gen_store(entry);
+	}
+}
+
+static void gen_arg(Node *node) {
+	List *list = &node->bodylist;
+	while(!list_empty(list)) {
+		Node *entry = (Node*)list_remove(list_back(list));
+		visitor(entry);
+	}
+}
+
 static void gen_method(Node *node) {
 	method = emit_method(class, strndup(node->token->data, node->token->length));
+
+	visitor(node->args);
 
 	List *list = &node->bodylist;
 	while(!list_empty(list)) {
@@ -223,7 +249,9 @@ static void gen_new(Node *node) {
 	char *str = strndup(node->token->data, node->token->length);
 	emit_op_left_string(method, OP_LOAD_CONST, str);
 
-	emit_op(method, OP_NEW);
+	visitor(node->args);
+
+	emit_op_left(method, OP_NEW, node->args->length);
 }
 
 static void gen_assign(Node *node) {
@@ -277,6 +305,10 @@ static void gen_binary(Node *node) {
 			emit_op(method, OP_DIV);
 		}
 		break;
+		case ND_MOD: {
+			emit_op(method, OP_MOD);
+		}
+		break;
 	}
 }
 
@@ -291,14 +323,17 @@ static void gen_string(Node *node) {
 	emit_op_left_string(method, OP_LOAD_CONST, str);
 }
 
-static void gen_call(Node *node) {
-	if(node->args) {
-		visitor(node->args);
-	}
-	char *str = strndup(node->token->data, node->token->length);
-	emit_op_left_string(method, OP_LOAD_VAR, str);
+static void gen_return(Node *node) {
+	visitor(node->body);
 
-	emit_op(method, OP_CALL);
+	emit_op(method, OP_RET);
+}
+
+static void gen_call(Node *node) {
+	visitor(node->body);
+	visitor(node->args);
+
+	emit_op_left(method, OP_CALL, node->args->length);
 }
 
 static void visitor(Node *node) {
@@ -309,6 +344,14 @@ static void visitor(Node *node) {
 		break;
 		case ND_CLASS: {
 			gen_class(node);
+		}
+		break;
+		case ND_PARAM: {
+			gen_param(node);
+		}
+		break;
+		case ND_ARG: {
+			gen_arg(node);
 		}
 		break;
 		case ND_METHOD: {
@@ -352,7 +395,8 @@ static void visitor(Node *node) {
 		case ND_ADD:
 		case ND_SUB:
 		case ND_MUL:
-		case ND_DIV: {
+		case ND_DIV:
+		case ND_MOD: {
 			gen_binary(node);
 		}
 		break;
@@ -362,6 +406,10 @@ static void visitor(Node *node) {
 		break;
 		case ND_STRING: {
 			gen_string(node);
+		}
+		break;
+		case ND_RETURN: {
+			gen_return(node);
 		}
 		break;
 		case ND_CALL: {

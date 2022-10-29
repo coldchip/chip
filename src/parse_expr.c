@@ -59,6 +59,10 @@ static Node *parse_mul_div(Token **current) {
 			node = new_node_binary(ND_DIV, token, node, parse_postfix(current));
 			continue;
 		}
+		if(consume_string(current, "%")) {
+			node = new_node_binary(ND_MOD, token, node, parse_postfix(current));
+			continue;
+		}
 		return node;
 	}
 }
@@ -75,9 +79,19 @@ static Node *parse_postfix(Token **current) {
 
 			expect_type(current, TK_IDENTIFIER);
 
-			if(consume_string(current, "(")) {
-				expect_string(current, ")");
-			}
+			continue;
+		}
+
+		if(consume_string(current, "(")) {
+
+			Node *left = new_node(ND_CALL, token);
+			left->args = parse_args(current);
+
+			left->body = node;
+			node = left;
+
+			expect_string(current, ")");
+
 
 			continue;
 		}
@@ -92,6 +106,7 @@ static Node *parse_primary(Token **current) {
 
 		expect_type(current, TK_IDENTIFIER);
 		expect_string(current, "(");
+		node->args = parse_args(current);
 		expect_string(current, ")");
 
 		return node;
