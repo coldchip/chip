@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "eval.h"
 
 static Class *emit_class(List *program, char *name) {
@@ -35,115 +36,108 @@ static Op *emit_op_left(Method *method, OpType op, float left) {
 	return ins;
 }
 
-static Op *emit_op_left_string(Method *method, OpType op, char *left_string) {
-	Op *ins = malloc(sizeof(Op));
-	ins->op = op;
-	ins->left_string = left_string;
-	list_insert(list_end(&method->op), ins);
-	return ins;
+static int emit_constant(List *list, char *data) {
+	int i = 0;
+	for(ListNode *c = list_begin(list); c != list_end(list); c = list_next(c)) {
+		Constant *constant = (Constant*)c;
+		if(strcmp(data, constant->data) == 0) {
+			return i;
+		}
+		i++;
+	}
+
+	Constant *constant = malloc(sizeof(Constant));
+	constant->data = data;
+	list_insert(list_end(list), constant);
+	return list_size(list) - 1;
 }
 
 static int emit_op_get_counter(Method *program) {
 	return list_size(&program->op) + 1;
 }
 
-static void emit_print(List *program) {
+static void emit_file(List *constants, List *program) {
+	FILE *prg = fopen("~prg.out", "wb");
+
+	int class_count = list_size(program);
+	fwrite(&class_count, sizeof(int), 1, prg);
 
 	for(ListNode *cn = list_begin(program); cn != list_end(program); cn = list_next(cn)) {
 		Class *c = (Class*)cn;
 
-		printf("@class %s\n", c->name);
+		short method_count = list_size(&c->method);
+		short class_name = emit_constant(constants, c->name);
+		fwrite(&method_count, sizeof(short), 1, prg);
+		fwrite(&class_name, sizeof(short), 1, prg);
 
 		for(ListNode *mn = list_begin(&c->method); mn != list_end(&c->method); mn = list_next(mn)) {
 			Method *m = (Method*)mn;
-
-			int line = 1;
-			printf("\t@method %s\n", m->name);
-			printf("\tLINE\tOP\tVALUE\n\t--------------------------\n");
+			
+			short op_count = list_size(&m->op);
+			short method_name = emit_constant(constants, m->name);
+			fwrite(&op_count, sizeof(short), 1, prg);
+			fwrite(&method_name, sizeof(short), 1, prg);
 
 			for(ListNode *op = list_begin(&m->op); op != list_end(&m->op); op = list_next(op)) {
 				Op *ins = (Op*)op;
-				switch(ins->op) {
-					case OP_LOAD_VAR: {
-						printf("\t%i\tLOAD_VAR\t%s\n", line, ins->left_string);
-					}
-					break;
-					case OP_STORE_VAR: {
-						printf("\t%i\tSTORE_VAR\t%s\n", line, ins->left_string);
-					}
-					break;
-					case OP_CMPGT: {
-						printf("\t%i\tCMPGT\n", line);
-					}
-					break;
-					case OP_CMPLT: {
-						printf("\t%i\tCMPLT\n", line);
-					}
-					break;
-					case OP_ADD: {
-						printf("\t%i\tADD\n", line);
-					}
-					break;
-					case OP_SUB: {
-						printf("\t%i\tSUB\n", line);
-					}
-					break;
-					case OP_MUL: {
-						printf("\t%i\tMUL\n", line);
-					}
-					break;
-					case OP_DIV: {
-						printf("\t%i\tDIV\n", line);
-					}
-					break;
-					case OP_MOD: {
-						printf("\t%i\tMOD\n", line);
-					}
-					break;
-					case OP_LOAD_NUMBER: {
-						printf("\t%i\tLOAD_NUMBER\t%f\n", line, ins->left);
-					}
-					break;
-					case OP_LOAD_CONST: {
-						printf("\t%i\tLOAD_CONST\t%s\n", line, ins->left_string);
-					}
-					break;
-					case OP_LOAD_MEMBER: {
-						printf("\t%i\tLOAD_MEMBER\t%s\n", line, ins->left_string);
-					}
-					break;
-					case OP_STORE_MEMBER: {
-						printf("\t%i\tSTORE_MEMBER\t%s\n", line, ins->left_string);
-					}
-					break;
-					case OP_CALL: {
-						printf("\t%i\tCALL\tARGLEN: %i\n", line, (int)ins->left);
-					}
-					break;
-					case OP_NEW: {
-						printf("\t%i\tNEW\tARGLEN: %i\n", line, (int)ins->left);
-					}
-					break;
-					case OP_JMPIFT: {
-						printf("\t%i\tJMPIFT\t%i\n", line, (int)ins->left);
-					}
-					break;
-					case OP_JMP: {
-						printf("\t%i\tJMP\t%i\n", line, (int)ins->left);
-					}
-					break;
-					case OP_RET: {
-						printf("\t%i\tRET\t\n", line);
-					}
-					break;
-				}
-
-				line++;
+				
+				fwrite(&ins->op, sizeof(char), 1, prg);
+				fwrite(&ins->left, sizeof(double), 1, prg);
 			}
 		}
 	}
-}
 
+	fclose(prg);
+
+	FILE *cst = fopen("~cst.out", "wb");
+
+	int constants_size = list_size(constants);
+	fwrite(&constants_size, sizeof(constants_size), 1, cst);
+
+	for(ListNode *c = list_begin(constants); c != list_end(constants); c = list_next(c)) {
+		Constant *constant = (Constant*)c;
+
+		int constant_size = strlen(constant->data);
+		fwrite(&constant_size, sizeof(constant_size), 1, cst);
+		fwrite(constant->data, sizeof(char), constant_size, cst);
+	}
+
+	fclose(cst);
+
+	FILE *fp = fopen("a.out", "wb");
+
+	prg = fopen("~prg.out", "rb");
+	fseek(prg, 0, SEEK_END);
+	int prg_size = ftell(prg);
+	fseek(prg, 0, SEEK_SET);
+
+	fwrite(&prg_size, sizeof(prg_size), 1, fp);
+
+	char ch;
+	while((ch = fgetc(prg)) != EOF) {
+		fputc(ch, fp);
+	}
+
+	fclose(prg);
+
+
+
+	cst = fopen("~cst.out", "rb");
+	fseek(cst, 0, SEEK_END);
+	int cst_size = ftell(cst);
+	fseek(cst, 0, SEEK_SET);
+
+	fwrite(&cst_size, sizeof(cst_size), 1, fp);
+
+	while((ch = fgetc(cst)) != EOF) {
+		fputc(ch, fp);
+	}
+
+	fclose(cst);
+
+	fclose(fp);
+}
+static List constants;
 static List *program;
 static Class *class = NULL;
 static Method *method = NULL;
@@ -201,8 +195,6 @@ static void gen_if(Node *node) {
 	emit_op_left(method, OP_LOAD_NUMBER, 0);
 	Op *jmp = emit_op_left(method, OP_JMPIFT, 0);
 	visitor(node->body);
-	emit_op_left(method, OP_JMP, start);
-
 	jmp->left = emit_op_get_counter(method);
 }
 
@@ -229,25 +221,25 @@ static void gen_block(Node *node) {
 static void gen_declaration(Node *node) {
 	visitor(node->body);
 	char *str = strndup(node->token->data, node->token->length);
-	emit_op_left_string(method, OP_STORE_VAR, str);
+	emit_op_left(method, OP_STORE_VAR, emit_constant(&constants, str));
 }
 
 static void gen_variable(Node *node) {
 	char *str = strndup(node->token->data, node->token->length);
-	emit_op_left_string(method, OP_LOAD_VAR, str);
+	emit_op_left(method, OP_LOAD_VAR, emit_constant(&constants, str));
 }
 
 static void gen_member(Node *node) {
 	if(node->body) {
 		visitor(node->body);
 		char *str = strndup(node->token->data, node->token->length);
-		emit_op_left_string(method, OP_LOAD_MEMBER, str);
+		emit_op_left(method, OP_LOAD_MEMBER, emit_constant(&constants, str));
 	}
 }
 
 static void gen_new(Node *node) {
 	char *str = strndup(node->token->data, node->token->length);
-	emit_op_left_string(method, OP_LOAD_CONST, str);
+	emit_op_left(method, OP_LOAD_CONST, emit_constant(&constants, str));
 
 	visitor(node->args);
 
@@ -263,10 +255,10 @@ static void gen_store(Node *node) {
 	if(node->body) {
 		visitor(node->body);
 		char *str = strndup(node->token->data, node->token->length);
-		emit_op_left_string(method, OP_STORE_MEMBER, str);
+		emit_op_left(method, OP_STORE_MEMBER, emit_constant(&constants, str));
 	} else {
 		char *str = strndup(node->token->data, node->token->length);
-		emit_op_left_string(method, OP_STORE_VAR, str);
+		emit_op_left(method, OP_STORE_VAR, emit_constant(&constants, str));
 	}
 
 }
@@ -320,7 +312,7 @@ static void gen_number(Node *node) {
 
 static void gen_string(Node *node) {
 	char *str = strndup(node->token->data, node->token->length);
-	emit_op_left_string(method, OP_LOAD_CONST, str);
+	emit_op_left(method, OP_LOAD_CONST, emit_constant(&constants, str));
 }
 
 static void gen_return(Node *node) {
@@ -420,8 +412,9 @@ static void visitor(Node *node) {
 }
 
 void gen(Node *node, List *p) {
+	list_clear(&constants);
 	list_clear(p);
 	program = p;
 	visitor(node);
-	emit_print(p);
+	emit_file(&constants, p);
 }

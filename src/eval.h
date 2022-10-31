@@ -189,6 +189,11 @@ typedef enum {
 	OP_RET
 } OpType;
 
+typedef struct _Constant {
+	ListNode node;
+	char *data;
+} Constant;
+
 typedef struct _Class {
 	ListNode node;
 	char *name;
@@ -212,9 +217,9 @@ static Class     *emit_class(List *program, char *name);
 static Method    *emit_method(Class *class, char *name);
 static Op *       emit_op(Method *method, OpType op);
 static Op *       emit_op_left(Method *method, OpType op, float left);
-static Op *       emit_op_left_string(Method *method, OpType op, char *left_string);
+static int        emit_constant(List *list, char *data);
 static int        emit_op_get_counter(Method *method);
-static void       emit_print(List *program);
+static void       emit_file(List *constants, List *program);
 
 static void       gen_program(Node *node);
 static void       gen_class(Node *node);

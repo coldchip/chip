@@ -1,1 +1,2 @@
-# A toy compiler
+# ChipCode Compiler
+
