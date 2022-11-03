@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "eval.h"
+#include "chip.h"
 
 char *strndup(const char *s, size_t len) {
 	char *new = (char *)malloc(len + 1);

@@ -1,10 +1,10 @@
 CC=gcc
 
-eval:
-	$(CC) src/*.c -o eval -Ofast -std=c99 -lm
+chip:
+	$(CC) src/*.c -o chip -Ofast -std=c99 -lm
 
 run:
-	./eval
+	./chip
 
 clean:
-	rm -rf eval
+	rm -rf chip

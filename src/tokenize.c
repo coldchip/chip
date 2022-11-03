@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "eval.h"
+#include "chip.h"
 
 static Token *new_token(TokenType type, char *data, int length) {
 	Token *token  = malloc(sizeof(Token));

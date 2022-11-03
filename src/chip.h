@@ -1,8 +1,8 @@
 /*
 	shared header file
 */
-#ifndef EVAL_H
-#define EVAL_H
+#ifndef CHIP_H
+#define CHIP_H
 
 #include <stdbool.h>
 #include <stddef.h>

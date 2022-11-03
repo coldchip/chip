@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
-#include "eval.h"
+#include "chip.h"
 
 Node *new_node(NodeType type, Token *token) {
 	Node *node  = malloc(sizeof(Node));

@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "eval.h"
+#include "chip.h"
 
 Node *parse_expr(Token **current) {
 	return parse_assign(current);

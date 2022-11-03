@@ -5,7 +5,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include "eval.h"
+#include "chip.h"
 
 static List constants;
 static List program;
