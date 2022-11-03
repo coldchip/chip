@@ -115,10 +115,10 @@ static Node *parse_primary(Token **current) {
 		expect_string(current, ")");
 		return node;
 	} else if(is_call(current)) {
-		Node *node = new_node(ND_CALL, token);
+		Node *node = new_node(ND_SYSCALL, token);
 		expect_type(current, TK_IDENTIFIER);
 		expect_string(current, "(");
-		node->args = parse_expr(current);
+		node->args = parse_args(current);
 		expect_string(current, ")");
 		return node;
 	} else if(consume_type(current, TK_IDENTIFIER)) {

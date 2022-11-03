@@ -112,7 +112,8 @@ typedef enum {
 	ND_NUMBER,
 	ND_STRING,
 	ND_RETURN,
-	ND_CALL
+	ND_CALL,
+	ND_SYSCALL,
 } NodeType;
 
 typedef struct _Node {
@@ -183,6 +184,7 @@ typedef enum {
 	OP_LOAD_MEMBER,
 	OP_STORE_MEMBER,
 	OP_CALL,
+	OP_SYSCALL,
 	OP_NEW,
 	OP_JMPIFT, // pops 2 items from stack and compare, jumps to x if true
 	OP_JMP,    // unconditional jump
@@ -239,11 +241,12 @@ static void       gen_number(Node *node);
 static void       gen_string(Node *node);
 static void       gen_return(Node *node);
 static void       gen_call(Node *node);
+static void       gen_syscall(Node *node);
 static void       visitor(Node *node);
 void              gen(Node *node, List *p);
 
-/* 
-	run.c
+/*
+	intepreter.c
 */
 
 typedef enum {
@@ -278,13 +281,16 @@ typedef struct _Var {
 #define POP_STACK() (sp--, stack[sp])
 #define PUSH_STACK(d) (stack[sp++] = d)
 
+static void       load_file(const char *name);
+static void       emit_print();
+static char      *lookup_constant(int pos);
 static Op        *op_at(List *program, int line);
 static void       store_var(List *vars, char *name, Object *object);
 static Object    *load_var(List *vars, char *name);
 static Class     *get_class(char *name);
 static Method    *get_method(char *name1, char *name);
 static Object    *new_object(Type type, char *name);
-void              run(List *program);
 Object *          eval(Object *instance, Method *method, List *inject);
+void              intepreter(const char *input);
 
 #endif

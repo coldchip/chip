@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "eval.h"
 
 static Class *emit_class(List *program, char *name) {
@@ -136,6 +137,9 @@ static void emit_file(List *constants, List *program) {
 	fclose(cst);
 
 	fclose(fp);
+
+	unlink("~prg.out");
+	unlink("~cst.out");
 }
 static List constants;
 static List *program;
@@ -322,10 +326,18 @@ static void gen_return(Node *node) {
 }
 
 static void gen_call(Node *node) {
-	visitor(node->body);
 	visitor(node->args);
+	visitor(node->body);
 
 	emit_op_left(method, OP_CALL, node->args->length);
+}
+
+static void gen_syscall(Node *node) {
+	visitor(node->args);
+	char *str = strndup(node->token->data, node->token->length);
+	emit_op_left(method, OP_LOAD_CONST, emit_constant(&constants, str));
+
+	emit_op_left(method, OP_SYSCALL, node->args->length);
 }
 
 static void visitor(Node *node) {
@@ -406,6 +418,10 @@ static void visitor(Node *node) {
 		break;
 		case ND_CALL: {
 			gen_call(node);
+		}
+		break;
+		case ND_SYSCALL: {
+			gen_syscall(node);
 		}
 		break;
 	}

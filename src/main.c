@@ -13,8 +13,10 @@ int main(int argc, char const *argv[]) {
 
 		List program;
 		gen(nodes, &program);
+
+		intepreter("a.out");
 	} else {
-		printf("usage: eval <file>\n");
+		printf("usage: %s <file>\n", argv[0]);
 	}
 
 	return 0;
