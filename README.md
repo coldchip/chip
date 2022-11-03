@@ -5,15 +5,15 @@ Chip is a compiled and interpreted programming language. The syntax was designed
 The whole point of this project is to not only create a functioning compiler but to teach how compilers work in the simplest way possible.
 
 # Examples
-Examples are in the ```test``` folder
+Examples are in the ```examples``` folder
 
 # Compiling it
 
 ```$ make```
 
 # Running it
-```$ ./eval test/expr.js```
-This will run and compile the sample test code in the folder ```test```
+```$ ./eval examples/socket.chip```
+This will run and compile the sample test code in the folder ```examples```
 
 # Data types
 
