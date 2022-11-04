@@ -16,7 +16,7 @@ This will generate the binary ```chip```
 
 # Running it
 ```$ ./chip examples/socket.chip```<br />
-This will run and compile the sample test code in the folder ```examples```
+This will compile and run the sample test code in the folder ```examples```
 
 # Data types
 
