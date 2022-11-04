@@ -1,3 +1,4 @@
+
 # Chip Programming Language
 
 Chip is a compiled and interpreted programming language. The syntax was designed relatively close to JavaScript and Java but with some extra features.
@@ -9,10 +10,12 @@ Examples are in the ```examples``` folder
 
 # Compiling it
 
-```$ make```
+```$ make```<br />
+This will generate the binary ```chip```
+
 
 # Running it
-```$ ./eval examples/socket.chip```
+```$ ./chip examples/socket.chip```<br />
 This will run and compile the sample test code in the folder ```examples```
 
 # Data types
