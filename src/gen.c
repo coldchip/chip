@@ -104,9 +104,14 @@ static void gen_declaration(Node *node) {
 }
 
 static void gen_variable(Node *node) {
-	//char *str = strndup(node->token->data, node->token->length);
-
-	fprintf(fp, "\tmov rax, [rbp-%i]\n", node->offset + 8);
+	if(node->index) {
+		fprintf(fp, "\txor rdi, rdi\n");
+		visitor(node->index);
+		fprintf(fp, "\tmov rdi, rax\n");
+		fprintf(fp, "\tmov rax, [rbp-%i+(rdi*8)]\n", node->offset + node->size);
+	} else {
+		fprintf(fp, "\tmov rax, [rbp-%i]\n", node->offset + node->size);
+	}
 }
 
 static void gen_assign(Node *node) {
@@ -119,9 +124,19 @@ static void gen_store(Node *node) {
 		visitor(node->body);
 	}
 
-	fprintf(fp, "\tmov [rbp-%i], rax\n", node->offset + 8);
 
-	// char *str = strndup(node->token->data, node->token->length);
+	if(node->index) {
+		fprintf(fp, "\tpush rax\n");
+		fprintf(fp, "\txor rdi, rdi\n");
+		visitor(node->index);
+		fprintf(fp, "\tmov rdi, rax\n");
+		fprintf(fp, "\tpop rax\n");
+		fprintf(fp, "\tmov [rbp-%i+(rdi*8)], rax\n", node->offset + node->size);
+
+	} else {
+		fprintf(fp, "\tmov [rbp-%i], rax\n", node->offset + node->size);
+	}
+
 }
 
 static void gen_binary(Node *node) {
