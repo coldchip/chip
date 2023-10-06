@@ -1,54 +1,53 @@
-class Client {
-	function constructor(fd) {
-		this.fd = fd;
-	}
+function main() {
+	int i = 1;
 
-	function read() {
-		read(this.fd);
-	}
+	int t1 = 0;
+	int t2 = 1;
 
-	function write(data) {
-		write(this.fd, data);
-	}
+	int nextTerm = t1 + t2;
 
-	function close() {
-		close(this.fd);
-	}
-}
+	while(i < 40) {
+		t1 = t2;
+		t2 = nextTerm;
+		nextTerm = t1 + t2;
 
-class Socket {
-	function constructor(ip, port) {
-		this.ip = ip;
-		this.port = port;
-		this.socket = socket();
-	}
+		itoa(t2);
+		printf(10);
 
-	function bind() {
-		bind(this.socket, this.ip, this.port);
-	}
-
-	function accept() {
-		var fd = accept(this.socket);
-
-		return new Client(fd);
+		i = i + 1;
 	}
 }
 
-class Main {
-	function main() {
-		var s = new Socket("0.0.0.0", 19132);
-		s.bind();
+function itoa(int n) {
+	int base = 10;
 
-		while(1) {
-			var c = s.accept();
+	while(n > 0) {
+        int r = n % base;
 
-			print("new connection\n");
+        if(r > 9) {
+        	r = r + 7;
+        }
 
-			c.read();
-			c.write("HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nHello");
-			c.close();
-		}
+        int c = 48 + r;
 
-		return 0;
-	}
+        printf(c);
+ 
+        n = n / base;
+    }
+
+	return 0;
+}
+
+function printf(int a) {
+	__asm__var_addr(a);
+	__asm__("
+		mov 	rsi, rax
+		mov 	rdx, 1				; number of bytes
+		mov     rax, 1                  ; system call for write
+		mov     rdi, 1                  ; file handle 1 is stdout
+		syscall                         ; invoke operating system to do the write
+
+	");
+
+	return 0;
 }

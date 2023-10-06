@@ -4,159 +4,14 @@
 #include <unistd.h>
 #include "chip.h"
 
-static Class *emit_class(List *program, char *name) {
-	Class *c = malloc(sizeof(Class));
-	c->name = strdup(name);
+FILE *fp = NULL;
 
-	list_clear(&c->method);
-	list_insert(list_end(program), c);
-	return c;
+static int current_index() {
+	static int i = 0;
+	return i++;
 }
-
-static Method *emit_method(Class *class, char *name) {
-	Method *m = malloc(sizeof(Method));
-	m->name = strdup(name);
-
-	list_clear(&m->op);
-	list_insert(list_end(&class->method), m);
-	return m;
-}
-
-static Op *emit_op(Method *method, OpType op) {
-	Op *ins = malloc(sizeof(Op));
-	ins->op = op;
-	list_insert(list_end(&method->op), ins);
-	return ins;
-}
-
-static Op *emit_op_left(Method *method, OpType op, float left) {
-	Op *ins = malloc(sizeof(Op));
-	ins->op = op;
-	ins->left = left;
-	list_insert(list_end(&method->op), ins);
-	return ins;
-}
-
-static int emit_constant(List *list, char *data) {
-	int i = 0;
-	for(ListNode *c = list_begin(list); c != list_end(list); c = list_next(c)) {
-		Constant *constant = (Constant*)c;
-		if(strcmp(data, constant->data) == 0) {
-			return i;
-		}
-		i++;
-	}
-
-	Constant *constant = malloc(sizeof(Constant));
-	constant->data = data;
-	list_insert(list_end(list), constant);
-	return list_size(list) - 1;
-}
-
-static int emit_op_get_counter(Method *program) {
-	return list_size(&program->op) + 1;
-}
-
-static void emit_file(List *constants, List *program) {
-	FILE *prg = fopen("~prg.out", "wb");
-
-	int class_count = list_size(program);
-	fwrite(&class_count, sizeof(int), 1, prg);
-
-	for(ListNode *cn = list_begin(program); cn != list_end(program); cn = list_next(cn)) {
-		Class *c = (Class*)cn;
-
-		short method_count = list_size(&c->method);
-		short class_name = emit_constant(constants, c->name);
-		fwrite(&method_count, sizeof(short), 1, prg);
-		fwrite(&class_name, sizeof(short), 1, prg);
-
-		for(ListNode *mn = list_begin(&c->method); mn != list_end(&c->method); mn = list_next(mn)) {
-			Method *m = (Method*)mn;
-			
-			short op_count = list_size(&m->op);
-			short method_name = emit_constant(constants, m->name);
-			fwrite(&op_count, sizeof(short), 1, prg);
-			fwrite(&method_name, sizeof(short), 1, prg);
-
-			for(ListNode *op = list_begin(&m->op); op != list_end(&m->op); op = list_next(op)) {
-				Op *ins = (Op*)op;
-				
-				fwrite(&ins->op, sizeof(char), 1, prg);
-				fwrite(&ins->left, sizeof(double), 1, prg);
-			}
-		}
-	}
-
-	fclose(prg);
-
-	FILE *cst = fopen("~cst.out", "wb");
-
-	int constants_size = list_size(constants);
-	fwrite(&constants_size, sizeof(constants_size), 1, cst);
-
-	for(ListNode *c = list_begin(constants); c != list_end(constants); c = list_next(c)) {
-		Constant *constant = (Constant*)c;
-
-		int constant_size = strlen(constant->data);
-		fwrite(&constant_size, sizeof(constant_size), 1, cst);
-		fwrite(constant->data, sizeof(char), constant_size, cst);
-	}
-
-	fclose(cst);
-
-	FILE *fp = fopen("a.out", "wb");
-
-	prg = fopen("~prg.out", "rb");
-	fseek(prg, 0, SEEK_END);
-	int prg_size = ftell(prg);
-	fseek(prg, 0, SEEK_SET);
-
-	fwrite(&prg_size, sizeof(prg_size), 1, fp);
-
-	char ch;
-	while((ch = fgetc(prg)) != EOF) {
-		fputc(ch, fp);
-	}
-
-	fclose(prg);
-
-
-
-	cst = fopen("~cst.out", "rb");
-	fseek(cst, 0, SEEK_END);
-	int cst_size = ftell(cst);
-	fseek(cst, 0, SEEK_SET);
-
-	fwrite(&cst_size, sizeof(cst_size), 1, fp);
-
-	while((ch = fgetc(cst)) != EOF) {
-		fputc(ch, fp);
-	}
-
-	fclose(cst);
-
-	fclose(fp);
-
-	unlink("~prg.out");
-	unlink("~cst.out");
-}
-static List constants;
-static List *program;
-static Class *class = NULL;
-static Method *method = NULL;
 
 static void gen_program(Node *node) {
-	List *list = &node->bodylist;
-	while(!list_empty(list)) {
-		Node *entry = (Node*)list_remove(list_begin(list));
-		visitor(entry);
-	}
-}
-
-static void gen_class(Node *node) {
-	class = emit_class(program, strndup(node->token->data, node->token->length));
-
 	List *list = &node->bodylist;
 	while(!list_empty(list)) {
 		Node *entry = (Node*)list_remove(list_begin(list));
@@ -177,11 +32,19 @@ static void gen_arg(Node *node) {
 	while(!list_empty(list)) {
 		Node *entry = (Node*)list_remove(list_back(list));
 		visitor(entry);
+		fprintf(fp, "\tpush\trax\n");
 	}
 }
 
-static void gen_method(Node *node) {
-	method = emit_method(class, strndup(node->token->data, node->token->length));
+static void gen_function(Node *node) {
+	char *name = strndup(node->token->data, node->token->length);
+	fprintf(fp, "chip_func_%s:\n", name);
+	free(name);
+
+	fprintf(fp, "\tpush\trbp\n");
+	fprintf(fp, "\tmov\trbp, rsp\n");
+
+	fprintf(fp, "\tsub\trsp, %i\n", node->size);
 
 	visitor(node->args);
 
@@ -190,28 +53,42 @@ static void gen_method(Node *node) {
 		Node *entry = (Node*)list_remove(list_begin(list));
 		visitor(entry);
 	}
+
+	fprintf(fp, "\tmov\trsp, rbp\n");
+	fprintf(fp, "\tpop\trbp\n");
+	fprintf(fp, "\tret\n\n\n");
 }
 
 static void gen_if(Node *node) {
-	int start = emit_op_get_counter(method);
+	int label = current_index();
 
 	visitor(node->condition);
-	emit_op_left(method, OP_LOAD_NUMBER, 0);
-	Op *jmp = emit_op_left(method, OP_JMPIFT, 0);
+
+	fprintf(fp, "\tmov\trbx, 1\n");
+	fprintf(fp, "\tcmp\trbx, rax\n");
+	fprintf(fp, "\tjg\tL%i\n", label);
+
 	visitor(node->body);
-	jmp->left = emit_op_get_counter(method);
+
+	fprintf(fp, "L%i:\n", label);
 }
 
 static void gen_while(Node *node) {
-	int start = emit_op_get_counter(method);
+	int label = current_index();
+	int e = current_index();
+
+	fprintf(fp, "L%i:\n", label);
 
 	visitor(node->condition);
-	emit_op_left(method, OP_LOAD_NUMBER, 0);
-	Op *jmp = emit_op_left(method, OP_JMPIFT, 0);
-	visitor(node->body);
-	emit_op_left(method, OP_JMP, start);
 
-	jmp->left = emit_op_get_counter(method);
+	fprintf(fp, "\tmov\trbx, 1\n");
+	fprintf(fp, "\tcmp\trbx, rax\n");
+	fprintf(fp, "\tjg\tL%i\n", e);
+
+	visitor(node->body);
+
+	fprintf(fp, "\tjmp\tL%i\n", label);
+	fprintf(fp, "L%i:\n", e);
 }
 
 static void gen_block(Node *node) {
@@ -223,31 +100,13 @@ static void gen_block(Node *node) {
 }
 
 static void gen_declaration(Node *node) {
-	visitor(node->body);
-	char *str = strndup(node->token->data, node->token->length);
-	emit_op_left(method, OP_STORE_VAR, emit_constant(&constants, str));
+	gen_store(node);
 }
 
 static void gen_variable(Node *node) {
-	char *str = strndup(node->token->data, node->token->length);
-	emit_op_left(method, OP_LOAD_VAR, emit_constant(&constants, str));
-}
+	//char *str = strndup(node->token->data, node->token->length);
 
-static void gen_member(Node *node) {
-	if(node->body) {
-		visitor(node->body);
-		char *str = strndup(node->token->data, node->token->length);
-		emit_op_left(method, OP_LOAD_MEMBER, emit_constant(&constants, str));
-	}
-}
-
-static void gen_new(Node *node) {
-	char *str = strndup(node->token->data, node->token->length);
-	emit_op_left(method, OP_LOAD_CONST, emit_constant(&constants, str));
-
-	visitor(node->args);
-
-	emit_op_left(method, OP_NEW, node->args->length);
+	fprintf(fp, "\tmov rax, [rbp-%i]\n", node->offset + 8);
 }
 
 static void gen_assign(Node *node) {
@@ -258,51 +117,61 @@ static void gen_assign(Node *node) {
 static void gen_store(Node *node) {
 	if(node->body) {
 		visitor(node->body);
-		char *str = strndup(node->token->data, node->token->length);
-		emit_op_left(method, OP_STORE_MEMBER, emit_constant(&constants, str));
-	} else {
-		char *str = strndup(node->token->data, node->token->length);
-		emit_op_left(method, OP_STORE_VAR, emit_constant(&constants, str));
 	}
 
+	fprintf(fp, "\tmov [rbp-%i], rax\n", node->offset + 8);
+
+	// char *str = strndup(node->token->data, node->token->length);
 }
 
 static void gen_binary(Node *node) {
 	if(node->left) {
 		visitor(node->left);
+		fprintf(fp, "\tpush rax\n");
 	}
 
 	if(node->right) {
 		visitor(node->right);
+		fprintf(fp, "\tpush rax\n");
 	}
+
+	fprintf(fp, "\tpop rbx\n");
+	fprintf(fp, "\tpop rax\n");
 
 	switch(node->type) {
 		case ND_GT: {
-			emit_op(method, OP_CMPGT);
+			fprintf(fp, "\tcmp rax, rbx\n");
+			fprintf(fp, "\tsetg al\n");
+			fprintf(fp, "\tmovzx rax, al\n");
 		}
 		break;
 		case ND_LT: {
-			emit_op(method, OP_CMPLT);
+			fprintf(fp, "\tcmp rax, rbx\n");
+			fprintf(fp, "\tsetl al\n");
+			fprintf(fp, "\tmovzx rax, al\n");
 		}
 		break;
 		case ND_ADD: {
-			emit_op(method, OP_ADD);
+			fprintf(fp, "\tadd rax, rbx\n");
 		}
 		break;
 		case ND_SUB: {
-			emit_op(method, OP_SUB);
+			fprintf(fp, "\tsub rax, rbx\n");
 		}
 		break;
 		case ND_MUL: {
-			emit_op(method, OP_MUL);
+			fprintf(fp, "\timul rax, rbx\n");
 		}
 		break;
 		case ND_DIV: {
-			emit_op(method, OP_DIV);
+			fprintf(fp, "\tcdq\n");
+			fprintf(fp, "\tidiv rbx\n");
 		}
 		break;
 		case ND_MOD: {
-			emit_op(method, OP_MOD);
+			fprintf(fp, "\tcdq\n");
+			fprintf(fp, "\tidiv rbx\n");
+			fprintf(fp, "\tmov rax, rdx\n");
 		}
 		break;
 	}
@@ -310,44 +179,49 @@ static void gen_binary(Node *node) {
 
 static void gen_number(Node *node) {
 	char *str = strndup(node->token->data, node->token->length);
-	emit_op_left(method, OP_LOAD_NUMBER, atof(str));
+
+	fprintf(fp, "\tmov rax, %s\n", str);
+
 	free(str);
 }
 
 static void gen_string(Node *node) {
 	char *str = strndup(node->token->data, node->token->length);
-	emit_op_left(method, OP_LOAD_CONST, emit_constant(&constants, str));
 }
 
 static void gen_return(Node *node) {
 	visitor(node->body);
-
-	emit_op(method, OP_RET);
 }
 
 static void gen_call(Node *node) {
-	visitor(node->args);
-	visitor(node->body);
+	Node *args = node->args;
+	visitor(args);
 
-	emit_op_left(method, OP_CALL, node->args->length);
+	char *name = strndup(node->token->data, node->token->length);
+	fprintf(fp, "\tcall\tchip_func_%s\n", name);
+	free(name);
+
+	fprintf(fp, "\tadd rsp, %i\n", args->length * 8);
+}
+
+static void gen_asm(Node *node) {
+	char *data = strndup(node->token->data, node->token->length);
+	fprintf(fp, "%s", data);
+}
+
+static void gen_asm_var_addr(Node *node) {
+	fprintf(fp, "\tlea rax, [rbp-%i]\n", node->offset + 8);
 }
 
 static void gen_syscall(Node *node) {
 	visitor(node->args);
 	char *str = strndup(node->token->data, node->token->length);
-	emit_op_left(method, OP_LOAD_CONST, emit_constant(&constants, str));
-
-	emit_op_left(method, OP_SYSCALL, node->args->length);
 }
 
 static void visitor(Node *node) {
 	switch(node->type) {
 		case ND_PROGRAM: {
 			gen_program(node);
-		}
-		break;
-		case ND_CLASS: {
-			gen_class(node);
 		}
 		break;
 		case ND_PARAM: {
@@ -358,8 +232,8 @@ static void visitor(Node *node) {
 			gen_arg(node);
 		}
 		break;
-		case ND_METHOD: {
-			gen_method(node);
+		case ND_FUNCTION: {
+			gen_function(node);
 		}
 		break;
 		case ND_IF: {
@@ -380,14 +254,6 @@ static void visitor(Node *node) {
 		break;
 		case ND_VARIABLE: {
 			gen_variable(node);
-		}
-		break;
-		case ND_MEMBER: {
-			gen_member(node);
-		}
-		break;
-		case ND_NEW: {
-			gen_new(node);
 		}
 		break;
 		case ND_ASSIGN: {
@@ -420,6 +286,14 @@ static void visitor(Node *node) {
 			gen_call(node);
 		}
 		break;
+		case ND_ASM: {
+			gen_asm(node);
+		}
+		break;
+		case ND_ASM_VAR_ADDR: {
+			gen_asm_var_addr(node);
+		}
+		break;
 		case ND_SYSCALL: {
 			gen_syscall(node);
 		}
@@ -428,9 +302,20 @@ static void visitor(Node *node) {
 }
 
 void gen(Node *node, List *p) {
-	list_clear(&constants);
-	list_clear(p);
-	program = p;
+	fp = fopen("out.S", "wb+");
+	if(!fp) {
+		fprintf(stdout, "unable to open output file");
+		exit(1);
+	}
+
+	fprintf(fp, "global\t_start\n\n");
+	fprintf(fp, "_start:\n");
+	fprintf(fp, "\tcall\tchip_func_main\n");
+
+	fprintf(fp, "\tmov\trax, 60\n");
+	fprintf(fp, "\txor\trdi, rdi\n");
+	fprintf(fp, "\tsyscall\n\n\n");
+
 	visitor(node);
-	emit_file(&constants, p);
+	fclose(fp);
 }
