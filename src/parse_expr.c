@@ -146,6 +146,13 @@ static Node *parse_primary(List *varlist, Token **current) {
 		}
 
 		Node *node = new_node(ND_VARIABLE, token);
+
+		int displacement = 0;
+		if(consume_string(current, "[")) {
+			node->index = parse_expr(varlist, current);
+			expect_string(current, "]");
+		}
+
 		node->offset = var_pos(varlist, strndup(token->data, token->length));
 		node->size = var->size;
 		return node;

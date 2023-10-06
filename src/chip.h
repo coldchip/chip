@@ -47,6 +47,7 @@ typedef struct _Var {
 	ListNode node;
 	int size;
 	char *name;
+	bool is_array;
 } Var;
 
 Var                 *get_var(List* varlist, char *name);
@@ -144,6 +145,7 @@ typedef struct _Node {
 	struct _Node *body;
 	struct _Node *alternate;
 
+	struct _Node *index;
 	int offset;
 	int size;
 	int length;

@@ -10,6 +10,7 @@ Node *new_node(NodeType type, Token *token) {
 	node->token = token;
 	node->left  = NULL;
 	node->right = NULL;
+	node->index = NULL;
 
 	list_clear(&node->bodylist);
 
@@ -108,6 +109,7 @@ Node *parse_param(List *varlist, Token **current) {
 	Var *var = malloc(sizeof(Var));
 	var->name = strndup(token->data, token->length);
 	var->size = 8;
+	var->is_array = false;
 	list_insert(list_end(varlist), var);
 
 	expect_type(current, TK_IDENTIFIER);
@@ -203,6 +205,7 @@ static Node *parse_declaration(List *varlist, Token **current) {
 	VarType type = parse_type(current);
 
 	Token *token = *current;
+
 	Node *node = new_node(ND_DECL, token);
 	node->offset = total_var_size(varlist);
 	node->size = type;
@@ -215,9 +218,20 @@ static Node *parse_declaration(List *varlist, Token **current) {
 	Var *var = malloc(sizeof(Var));
 	var->name = strndup(token->data, token->length);
 	var->size = type;
+	var->is_array = false;
 	list_insert(list_end(varlist), var);
 
 	expect_type(current, TK_IDENTIFIER);
+
+	if(consume_string(current, "[")) {
+		int size = atoi(strndup((*current)->data, (*current)->length));
+		var->size *= size;
+		var->is_array = false;
+
+		node->size *= size;
+		expect_type(current, TK_NUMBER);
+		expect_string(current, "]");
+	}
 
 	if(consume_string(current, "=")) {
 		node->body = parse_expr(varlist, current);
