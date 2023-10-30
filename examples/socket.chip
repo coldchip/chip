@@ -1,83 +1,69 @@
-function main() {
-	int welcome[32];
-	welcome[0] = 72; 
-	welcome[1] = 101; 
-	welcome[2] = 108; 
-	welcome[3] = 108; 
-	welcome[4] = 111; 
-	welcome[5] = 32; 
-	welcome[6] = 87; 
-	welcome[7] = 111; 
-	welcome[8] = 114; 
-	welcome[9] = 108; 
-	welcome[10] = 100;
+class String {
+	function length() {
 
-	int w = 0;
-	while(w < 11) {
-		printf(welcome[w]);
-		w = w + 1;
-	}
-
-	printf(10);
-
-	int i = 1;
-	int t1 = 0;
-	int t2 = 1;
-
-	int nextTerm = t1 + t2;
-
-	while(i < 46) {
-		t1 = t2;
-		t2 = nextTerm;
-		nextTerm = t1 + t2;
-
-		itoa(t2);
-		printf(10);
-
-		i = i + 1;
 	}
 }
 
-function itoa(int n) {
-	int re[32];
+class Client {
+	function constructor(fd) {
+		this.fd = fd;
+	}
 
-	int base = 16;
+	function read() {
+		return read(this.fd);
+	}
 
-	int index = 0;
+	function write(data) {
+		return write(this.fd, data);
+	}
 
-	while(n > 0) {
-        int r = n % base;
-
-        if(r > 9) {
-        	r = r + 7;
-        }
-
-        int c = 48 + r;
-        re[index] = c;
- 
-        n = n / base;
-
-        index = index + 1;
-    }
-
-    while(index > 0-1) {
-    	printf(re[index]);
-    	index = index - 1;
-    }
-
-	return 0;
+	function close() {
+		close(this.fd);
+	}
 }
 
-function printf(int a) {
-	__asm__var_addr(a);
-	__asm__("
-		mov 	rsi, rax
-		mov 	rdx, 1				; number of bytes
-		mov     rax, 1                  ; system call for write
-		mov     rdi, 1                  ; file handle 1 is stdout
-		syscall                         ; invoke operating system to do the write
+class Socket {
+	function constructor(ip, port) {
+		this.ip = ip;
+		this.port = port;
+		this.socket = socket();
+	}
 
-	");
+	function bind() {
+		bind(this.socket, this.ip, this.port);
+	}
 
-	return 0;
+	function accept() {
+		fd = accept(this.socket);
+
+		return new Client(fd);
+	}
+}
+
+class Main {
+	function main() {
+		s = new Socket("0.0.0.0", 19132);
+		s.bind();
+
+		while(1) {
+			c = s.accept();
+
+			print("new connection\n");
+
+			input = c.read();
+			c.write("HTTP/1.0 200 OK\r\n");
+			c.write("Content-Length: " + "5000" + "\r\n\r\n");
+
+			i = 0;
+			while(i < 500) {
+				c.write(i + "\n");
+				i = i + 1;
+			}
+			c.close();
+
+			print("close\n");
+		}
+
+		return 0;
+	}
 }

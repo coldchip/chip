@@ -1,12 +1,47 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "sb.h"
 #include "chip.h"
 
 static Token *new_token(TokenType type, char *data, int length) {
-	Token *token  = malloc(sizeof(Token));
-	token->data   = data;
-	token->length = length;
+	Token *token = malloc(sizeof(Token));
+
+	if(!token) {
+		return NULL;
+	}
+
+	StringBuilder *sb = sb_create();
+
+	int i = 0;
+	while(i < length) {
+		if(data[i] == '\\') {
+			++i;
+			switch(data[i]) {
+				case 'r': {
+					sb_append(sb, "\r");
+				}
+				break;
+				case 'n': {
+					sb_append(sb, "\n");
+				}
+				break;
+				default: {
+					fprintf(stderr, "unknown escape character %c\n", data[i]);
+					exit(1);
+				}
+				break;
+			}
+		} else {
+			sb_appendf(sb, "%c", *(data + i));
+		}
+		++i;
+	}
+
+	char *t = sb_concat(sb);
+	sb_free(sb);
+
+	token->data   = t;
 	token->type   = type;
 
 	return token;
@@ -23,7 +58,7 @@ Token *prev(Token **current) {
 }
 
 bool equals_string(Token **current, char *data) {
-	return ((*current)->type != TK_EOF && memcmp((*current)->data, data, (*current)->length) == 0) && data[(*current)->length] == '\0';
+	return ((*current)->type != TK_EOF && strcmp((*current)->data, data) == 0);
 }
 
 bool equals_type(Token **current, TokenType type) {
@@ -91,8 +126,6 @@ static bool is_punctuation(char bit) {
 		bit == '>' ||
 		bit == '<' ||
 		bit == ',' ||
-		bit == '[' ||
-		bit == ']' ||
 		bit == ';'
 	);
 }
