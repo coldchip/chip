@@ -14,7 +14,7 @@ class Client {
 	}
 
 	function write(data) {
-		return write(this.fd, data);
+		return write(this.fd, data, data.length());
 	}
 
 	function close() {
@@ -51,14 +51,20 @@ class Main {
 			print("new connection\n");
 
 			input = c.read();
-			c.write("HTTP/1.0 200 OK\r\n");
-			c.write("Content-Length: " + "5000" + "\r\n\r\n");
+
+			output = "";
 
 			i = 0;
-			while(i < 500) {
-				c.write(i + "\n");
+			while(i < 20) {
+				output = output + rand() + "</br>";
 				i = i + 1;
 			}
+
+			c.write("HTTP/1.0 200 OK\r\n");
+			c.write("Content-Type: text/html; charset=utf-8\r\n");
+			c.write("Content-Length: " + output.length() + "\r\n\r\n");
+
+			c.write(output);
 			c.close();
 
 			print("close\n");

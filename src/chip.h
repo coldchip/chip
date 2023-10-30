@@ -202,17 +202,19 @@ typedef struct _Class {
 	List method;
 } Class;
 
+typedef struct _Object *(*native_t)(struct _Object *instance);
+
 typedef struct _Method {
 	ListNode node;
 	char *name;
 	List op;
+	native_t native;
 } Method;
 
 typedef struct _Op {
 	ListNode node;
 	OpType op;
 	double left;
-	char *left_string;
 } Op;
 
 static Class     *emit_class(List *program, char *name);
@@ -281,16 +283,22 @@ typedef struct _Var {
 #define POP_STACK() (sp--, stack[sp])
 #define PUSH_STACK(d) (stack[sp++] = d)
 
-static void       load_file(const char *name);
-static void       emit_print();
-static char      *lookup_constant(int pos);
-static Op        *op_at(List *program, int line);
-static void       store_var(List *vars, char *name, Object *object);
-static Object    *load_var(List *vars, char *name);
-static Class     *get_class(char *name);
-static Method    *get_method(char *name1, char *name);
-static Object    *new_object(Type type, char *name);
-Object *          eval(Object *instance, Method *method, List *inject);
+void              load_file(const char *name);
+void              emit_print();
+char             *lookup_constant(int pos);
+Op               *op_at(List *program, int line);
+void              store_var(List *vars, char *name, Object *object);
+Object           *load_var(List *vars, char *name);
+Class            *get_class(char *name);
+Method           *get_method(char *name1, char *name);
+Object           *new_object(Type type, char *name);
+Object           *eval(Object *instance, Method *method, List *inject);
 void              intepreter(const char *input);
+
+/*
+	string_builtin.c
+*/
+
+Object            *string_length(Object *instance);
 
 #endif
