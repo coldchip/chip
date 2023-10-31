@@ -10,6 +10,7 @@
 
 static List constants;
 static List program;
+static List arena;
 
 void load_file(const char *name) {
 	FILE *fp = fopen(name, "rb");
@@ -57,12 +58,12 @@ void load_file(const char *name) {
 
 		for(int x = 0; x < method_count; x++) {
 			short op_count = 0;
-			short method_name = 0;
+			short method_id = 0;
 			fread(&op_count, sizeof(op_count), 1, fp);
-			fread(&method_name, sizeof(method_name), 1, fp);
+			fread(&method_id, sizeof(method_id), 1, fp);
 
 			Method *method = malloc(sizeof(Method));
-			method->name = lookup_constant(method_name);
+			method->name = lookup_constant(method_id);
 			method->native = NULL;
 			list_clear(&method->op);
 
@@ -221,29 +222,35 @@ Op *op_at(List *program, int line) {
 }
 
 void store_var(List *vars, char *name, Object *object) {
-	if(load_var(vars, name)) {
-		for(ListNode *i = list_begin(vars); i != list_end(vars); i = list_next(i)) {
-			Var *var = (Var*)i;
-			if(strcmp(name, var->name) == 0) {
-				var->object = object;
-			}
-		}
-	} else {
-		Var *var = malloc(sizeof(Var));
-		var->name = strdup(name);
-		var->object = object;
-		list_insert(list_end(vars), var);
+	Var *previous = load_var(vars, name);
+	if(previous) {
+		decref_object(previous->object);
+		list_remove(&previous->node);
+		free(previous->name);
+		free(previous);
 	}
+
+	Var *var = malloc(sizeof(Var));
+	var->name = strdup(name);
+	var->object = object;
+	incref_object(object);
+	list_insert(list_end(vars), var);
 }
 
-Object *load_var(List *vars, char *name) {
+Var *load_var(List *vars, char *name) {
 	for(ListNode *i = list_begin(vars); i != list_end(vars); i = list_next(i)) {
 		Var *var = (Var*)i;
 		if(strcmp(name, var->name) == 0) {
-			return var->object;
+			return var;
 		}
 	}
 	return NULL;
+}
+
+void free_var(Var *var) {
+	var->object->refs--;
+	list_remove(&var->node);
+	free(var);
 }
 
 Class *get_class(char *name) {
@@ -269,21 +276,18 @@ Method *get_method(char *name1, char *name2) {
 	return NULL;
 }
 
-int count = 0;
-
 Object *new_object(Type type, char *name) {
-
-	count++;
-
-	printf("%i\n", count);
-
 	Object *o = malloc(sizeof(Object));
 	o->type = type;
 	o->name = name;
-
+	o->refs = 0;
 	list_clear(&o->varlist);
 
-	if(type == TY_CUSTOM) {
+	GCArenaObject *gc_object = malloc(sizeof(GCArenaObject));
+	gc_object->item = o;
+	list_insert(list_end(&arena), gc_object);
+
+	if(type != TY_FUNCTION) {
 		Class *skeleton = get_class(name);
 		if(skeleton) {
 			for(ListNode *i = list_begin(&skeleton->method); i != list_end(&skeleton->method); i = list_next(i)) {
@@ -300,23 +304,53 @@ Object *new_object(Type type, char *name) {
 		}
 	}
 
-	if(type == TY_STRING) {
-		Method *method = malloc(sizeof(Method));
-		method->name = strdup("length");
-		method->native = string_length;
-		list_clear(&method->op);
-
-		Object *var = new_object(TY_FUNCTION, method->name);
-		var->bound = o;
-		var->method = method;
-
-		store_var(&o->varlist, method->name, var);
-	}
-
 	return o;
 }
 
-Object *eval(Object *instance, Method *method, List *inject) {
+void incref_object(Object *object) {
+	object->refs++;
+}
+
+void decref_object(Object *object) {
+	object->refs--;
+}
+
+void free_object(Object *object) {
+	while(!list_empty(&object->varlist)) {
+		Var *var = (Var*)list_remove(list_begin(&object->varlist));
+		free_var(var);
+	}
+	free(object);
+}
+
+int frees = 0;
+
+void garbage_collector() {
+	/* mark and sweep */
+	printf("GCGCGCGCGCGCGC\n");
+	ListNode *i = list_begin(&arena);
+	while(i != list_end(&arena)) {
+		GCArenaObject *gc_object = (GCArenaObject*)i;
+		i = list_next(i);
+
+		if(gc_object->item->refs == 0) {
+			free_object(gc_object->item);
+			list_remove(&gc_object->node);
+			free(gc_object);
+
+			frees++;
+		} else {
+			if(strcmp(gc_object->item->name, "String") == 0)
+				printf("type: %i %s refs %i %s\n", gc_object->item->type, gc_object->item->name, gc_object->item->refs, gc_object->item->data_string);
+			else
+				printf("type: %i %s refs %i %i\n", gc_object->item->type, gc_object->item->name, gc_object->item->refs, gc_object->item->data_number);
+		}
+	}
+
+	printf("OBJECTS STILL REFRENCED: %li\nOBEJCTS FREED: %i\n\n", list_size(&arena), frees);
+}
+
+Object *eval(Object *instance, Method *method, List *args) {
 	/*
 		assume if instance == NULL then method is static
 	*/
@@ -332,13 +366,14 @@ Object *eval(Object *instance, Method *method, List *inject) {
 	Object *stack[8192];
 	int sp = 0;
 
-	Object *ret = new_object(TY_NUMBER, "Number");
+	Object *ret = new_object(TY_CUSTOM, "Number");
 	ret->data_number = 0;
+	incref_object(ret);
 
-	if(inject) {
-		for(ListNode *i = list_begin(inject); i != list_end(inject); i = list_next(i)) {
-			Object *param = (Object*)i;
-			PUSH_STACK(param);
+	if(args) {
+		while(!list_empty(args)) {
+			Object *arg = (Object*)list_remove(list_begin(args));
+			PUSH_STACK(arg);
 		}
 	}
 
@@ -349,9 +384,11 @@ Object *eval(Object *instance, Method *method, List *inject) {
 	while(current != (Op*)list_end(&method->op)) {
 		switch(current->op) {
 			case OP_LOAD_VAR: {
-				Object *o = load_var(&varlist, lookup_constant(current->left));
-				if(o) {
-					PUSH_STACK(o);
+				Var *var = load_var(&varlist, lookup_constant(current->left));
+				if(var) {
+					Object *v1 = var->object;
+					
+					PUSH_STACK(v1);
 				} else {
 					printf("VM:: Unable to load variable %s as it is not found\n", lookup_constant(current->left));
 					exit(1);
@@ -366,23 +403,27 @@ Object *eval(Object *instance, Method *method, List *inject) {
 			}
 			break;
 			case OP_LOAD_NUMBER: {
-				Object *o = new_object(TY_NUMBER, "Number");
+				Object *o = new_object(TY_CUSTOM, "Number");
 				o->data_number = current->left;
+				
 				PUSH_STACK(o);
 			}
 			break;
 			case OP_LOAD_CONST: {
-				Object *o = new_object(TY_STRING, "String");
+				Object *o = new_object(TY_CUSTOM, "String");
 				o->data_string = lookup_constant(current->left);
+				
 				PUSH_STACK(o);
 			}
 			break;
 			case OP_LOAD_MEMBER: {
 				Object *instance = POP_STACK();
 
-				Object *v2 = load_var(&instance->varlist, lookup_constant(current->left));
-				if(v2) {
-					PUSH_STACK(v2);
+				Var *var = load_var(&instance->varlist, lookup_constant(current->left));
+				if(var) {
+					Object *v1 = var->object;
+					
+					PUSH_STACK(v1);
 				} else {
 					printf("Unknown variable member %s\n", lookup_constant(current->left));
 					exit(1);
@@ -404,7 +445,7 @@ Object *eval(Object *instance, Method *method, List *inject) {
 				Object *v1 = POP_STACK();
 				Object *v2 = POP_STACK();
 
-				Object *v3 = new_object(TY_NUMBER, "Number");
+				Object *v3 = new_object(TY_CUSTOM, "Number");
 				v3->data_number = v2->data_number > v1->data_number;
 
 				PUSH_STACK(v3);
@@ -414,7 +455,7 @@ Object *eval(Object *instance, Method *method, List *inject) {
 				Object *v1 = POP_STACK();
 				Object *v2 = POP_STACK();
 
-				Object *v3 = new_object(TY_NUMBER, "Number");
+				Object *v3 = new_object(TY_CUSTOM, "Number");
 				v3->data_number = v2->data_number < v1->data_number;
 
 				PUSH_STACK(v3);
@@ -424,13 +465,14 @@ Object *eval(Object *instance, Method *method, List *inject) {
 				Object *v1 = POP_STACK();
 				Object *v2 = POP_STACK();
 
-				if(v1->type == TY_NUMBER && v2->type == TY_NUMBER) {
-					Object *v3 = new_object(TY_NUMBER, "Number");
+				if(strcmp(v1->name, "Number") == 0 && strcmp(v2->name, "Number") == 0) {
+					Object *v3 = new_object(TY_CUSTOM, "Number");
 					v3->data_number = v2->data_number + v1->data_number;
 					
+					
 					PUSH_STACK(v3);
-				} else if(v1->type == TY_NUMBER && v2->type == TY_STRING) {
-					Object *v3 = new_object(TY_STRING, "String");
+				} else if(strcmp(v1->name, "Number") == 0 && strcmp(v2->name, "String") == 0) {
+					Object *v3 = new_object(TY_CUSTOM, "String");
 
 					char str[512];
 					sprintf(str, "%i", (int)v1->data_number);
@@ -440,9 +482,10 @@ Object *eval(Object *instance, Method *method, List *inject) {
 					strcat(s, str);
 					v3->data_string = s;
 					
+					
 					PUSH_STACK(v3);
-				} else if(v1->type == TY_STRING && v2->type == TY_NUMBER) {
-					Object *v3 = new_object(TY_STRING, "String");
+				} else if(strcmp(v1->name, "String") == 0 && strcmp(v2->name, "Number") == 0) {
+					Object *v3 = new_object(TY_CUSTOM, "String");
 
 					char str[512];
 					sprintf(str, "%i", (int)v2->data_number);
@@ -452,14 +495,16 @@ Object *eval(Object *instance, Method *method, List *inject) {
 					strcat(s, v1->data_string);
 					v3->data_string = s;
 					
+					
 					PUSH_STACK(v3);
-				} else if(v1->type == TY_STRING && v2->type == TY_STRING) {
-					Object *v3 = new_object(TY_STRING, "String");
+				} else if(strcmp(v1->name, "String") == 0 && strcmp(v2->name, "String") == 0) {
+					Object *v3 = new_object(TY_CUSTOM, "String");
 
 					char *s = malloc(strlen(v1->data_string) + strlen(v2->data_string) + 1);
 					strcpy(s, v2->data_string);
 					strcat(s, v1->data_string);
 					v3->data_string = s;
+					
 					
 					PUSH_STACK(v3);
 				} else {
@@ -472,7 +517,7 @@ Object *eval(Object *instance, Method *method, List *inject) {
 				Object *v1 = POP_STACK();
 				Object *v2 = POP_STACK();
 
-				Object *v3 = new_object(TY_NUMBER, "Number");
+				Object *v3 = new_object(TY_CUSTOM, "Number");
 				v3->data_number = v2->data_number - v1->data_number;
 				
 				PUSH_STACK(v3);
@@ -482,7 +527,7 @@ Object *eval(Object *instance, Method *method, List *inject) {
 				Object *v1 = POP_STACK();
 				Object *v2 = POP_STACK();
 
-				Object *v3 = new_object(TY_NUMBER, "Number");
+				Object *v3 = new_object(TY_CUSTOM, "Number");
 				v3->data_number = v2->data_number * v1->data_number;
 				
 				PUSH_STACK(v3);
@@ -492,7 +537,7 @@ Object *eval(Object *instance, Method *method, List *inject) {
 				Object *v1 = POP_STACK();
 				Object *v2 = POP_STACK();
 
-				Object *v3 = new_object(TY_NUMBER, "Number");
+				Object *v3 = new_object(TY_CUSTOM, "Number");
 				v3->data_number = v2->data_number / v1->data_number;
 				
 				PUSH_STACK(v3);
@@ -502,7 +547,7 @@ Object *eval(Object *instance, Method *method, List *inject) {
 				Object *v1 = POP_STACK();
 				Object *v2 = POP_STACK();
 
-				Object *v3 = new_object(TY_NUMBER, "Number");
+				Object *v3 = new_object(TY_CUSTOM, "Number");
 				v3->data_number = ((int)v2->data_number) % ((int)v1->data_number);
 				
 				PUSH_STACK(v3);
@@ -510,6 +555,7 @@ Object *eval(Object *instance, Method *method, List *inject) {
 			break;
 			case OP_CALL: {
 				Object *instance = POP_STACK();
+				
 
 				List args;
 				list_clear(&args);
@@ -521,9 +567,10 @@ Object *eval(Object *instance, Method *method, List *inject) {
 				}
 
 				if(instance->type == TY_FUNCTION) {
-					Object *ret = eval(instance->bound, instance->method, &args);
+					Object *r = eval(instance->bound, instance->method, &args);
 					
-					PUSH_STACK(ret);
+					PUSH_STACK(r);
+					garbage_collector();
 				} else {
 					printf("VM:: unknown function call %s\n", instance->data_string);
 					exit(1);
@@ -538,9 +585,9 @@ Object *eval(Object *instance, Method *method, List *inject) {
 
 				if(strcmp(name->data_string, "print") == 0) {
 					Object *arg = POP_STACK();
-					if(arg->type == TY_STRING) {
+					if(strcmp(arg->name, "String") == 0) {
 						printf("%s", arg->data_string);
-					} else if(arg->type == TY_NUMBER) {
+					} else if(strcmp(arg->name, "Number") == 0) {
 						printf("%f", arg->data_number);
 					} else {
 						printf("VM:: print of unknown type\n");
@@ -553,7 +600,7 @@ Object *eval(Object *instance, Method *method, List *inject) {
 
 					setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
 
-					Object *r = new_object(TY_NUMBER, "Number");
+					Object *r = new_object(TY_CUSTOM, "Number");
 					r->data_number = sockfd;
 
 					PUSH_STACK(r);
@@ -576,7 +623,7 @@ Object *eval(Object *instance, Method *method, List *inject) {
 
 					int newfd = accept((int)fd->data_number, NULL, 0);
 
-					Object *r = new_object(TY_NUMBER, "Number");
+					Object *r = new_object(TY_CUSTOM, "Number");
 					r->data_number = newfd;
 
 					PUSH_STACK(r);
@@ -586,7 +633,7 @@ Object *eval(Object *instance, Method *method, List *inject) {
 					char data[8192];
 					read((int)fd->data_number, data, sizeof(data));
 
-					Object *o = new_object(TY_STRING, "String");
+					Object *o = new_object(TY_CUSTOM, "String");
 					o->data_string = strdup(data);
 
 					PUSH_STACK(o);
@@ -596,7 +643,7 @@ Object *eval(Object *instance, Method *method, List *inject) {
 					Object *length = POP_STACK();
 
 					int w = write((int)fd->data_number, data->data_string, (int)length->data_number);
-					Object *r1 = new_object(TY_NUMBER, "Number");
+					Object *r1 = new_object(TY_CUSTOM, "Number");
 					r1->data_number = w;
 
 					PUSH_STACK(r1);
@@ -607,7 +654,7 @@ Object *eval(Object *instance, Method *method, List *inject) {
 
 					PUSH_STACK(ret);
 				} else if(strcmp(name->data_string, "rand") == 0) {
-					Object *r1 = new_object(TY_NUMBER, "Number");
+					Object *r1 = new_object(TY_CUSTOM, "Number");
 					r1->data_number = rand();
 
 					PUSH_STACK(r1);
@@ -672,7 +719,9 @@ Object *eval(Object *instance, Method *method, List *inject) {
 			}
 			break;
 			case OP_RET: {
+				decref_object(ret);
 				ret = POP_STACK();
+				incref_object(ret);
 			}
 			break;
 		}
@@ -680,33 +729,14 @@ Object *eval(Object *instance, Method *method, List *inject) {
 		current = (Op*)list_next((ListNode*)current);
 	}
 
-	// printf("\n\nVARLIST\n-----------------\n");
+	// remove vars
+	while(!list_empty(&varlist)) {
+		Var *var = (Var*)list_remove(list_begin(&varlist));
+		
+		free_var(var);
+	}
 
-	// for(ListNode *i = list_begin(&varlist); i != list_end(&varlist); i = list_next(i)) {
-	// 	Var *var = (Var*)i;
-	// 	switch(var->object->type) {
-	// 		case TY_NUMBER: {
-	// 			printf("%s\tNumber@%p\t%f\n", var->name, var->object, var->object->data_number);
-	// 		}
-	// 		break;
-	// 		case TY_STRING: {
-	// 			printf("%s\tString@%p\t%s\n", var->name, var->object, var->object->data_string);
-	// 		}
-	// 		break;
-	// 		case TY_FUNCTION: {
-	// 			printf("%s\t#Function@%p\t\n", var->name, var->object);
-	// 		}
-	// 		break;
-	// 		case TY_CUSTOM: {
-	// 			printf("%s\t%s@%p\t\n", var->name, var->object->name, var->object);
-	// 		}
-	// 		break;
-	// 	}
-	// }
-
-	// printf("\n\n-----------------\n");
-	// printf("sp: %i\n", sp);
-
+	decref_object(ret);
 	return ret;
 }
 
@@ -716,10 +746,35 @@ void intepreter(const char *input) {
 
 	list_clear(&constants);
 	list_clear(&program);
+	list_clear(&arena);
 
 	load_file(input);
 
 	emit_print();
+
+	/* inject native string class */
+
+	Class *string_class = malloc(sizeof(Class));
+	string_class->name = strdup("String");
+	list_clear(&string_class->method);
+
+	Method *method = malloc(sizeof(Method));
+	method->name = strdup("length");
+	method->native = string_length;
+	list_clear(&method->op);
+
+	list_insert(list_end(&string_class->method), method);
+	list_insert(list_end(&program), string_class);
+
+	/* inject native number class */
+
+	Class *number_class = malloc(sizeof(Class));
+	number_class->name = strdup("Number");
+	list_clear(&number_class->method);
+	list_insert(list_end(&program), number_class);
+
+
+
 
 	Method *method_main = get_method("Main", "main");
 	if(!method_main) {

@@ -252,8 +252,6 @@ void              gen(Node *node, List *p);
 */
 
 typedef enum {
-	TY_NUMBER,
-	TY_STRING,
 	TY_FUNCTION,
 	TY_CUSTOM
 } Type;
@@ -272,6 +270,8 @@ typedef struct _Object {
 	char *data_string;
 
 	List varlist;
+
+	int refs;
 } Object;
 
 typedef struct _Var {
@@ -280,19 +280,24 @@ typedef struct _Var {
 	Object *object;
 } Var;
 
-#define POP_STACK() (sp--, stack[sp])
-#define PUSH_STACK(d) (stack[sp++] = d)
+typedef struct _GCArenaObject {
+	ListNode node;
+	Object *item;
+} GCArenaObject;
+
+#define POP_STACK() (sp--, stack[sp]->refs--, stack[sp])
+#define PUSH_STACK(d) (stack[sp++] = d, d->refs++)
 
 void              load_file(const char *name);
 void              emit_print();
 char             *lookup_constant(int pos);
 Op               *op_at(List *program, int line);
 void              store_var(List *vars, char *name, Object *object);
-Object           *load_var(List *vars, char *name);
+Var              *load_var(List *vars, char *name);
 Class            *get_class(char *name);
 Method           *get_method(char *name1, char *name);
 Object           *new_object(Type type, char *name);
-Object           *eval(Object *instance, Method *method, List *inject);
+Object           *eval(Object *instance, Method *method, List *args);
 void              intepreter(const char *input);
 
 /*
