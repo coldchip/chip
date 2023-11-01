@@ -199,7 +199,7 @@ char *lookup_constant(int pos) {
 	for(ListNode *position = list_begin(&constants); position != list_end(&constants); position = list_next(position)) {
 		Constant *constant = (Constant*)position;
 		if(i == pos) {
-			return constant->data;
+			return strdup(constant->data);
 		}
 		i++;
 	}
@@ -320,6 +320,10 @@ void free_object(Object *object) {
 		Var *var = (Var*)list_remove(list_begin(&object->varlist));
 		free_var(var);
 	}
+
+	if(strcmp(object->name, "String") == 0) {
+		free(object->data_string);
+	}
 	free(object);
 }
 
@@ -327,13 +331,13 @@ int frees = 0;
 
 void garbage_collector() {
 	/* mark and sweep */
-	printf("GCGCGCGCGCGCGC\n");
+	printf("Garbage Collecter\n");
 	ListNode *i = list_begin(&arena);
 	while(i != list_end(&arena)) {
 		GCArenaObject *gc_object = (GCArenaObject*)i;
 		i = list_next(i);
 
-		if(gc_object->item->refs == 0) {
+		if(!gc_object->item->refs > 0) {
 			free_object(gc_object->item);
 			list_remove(&gc_object->node);
 			free(gc_object);
@@ -347,7 +351,7 @@ void garbage_collector() {
 		}
 	}
 
-	printf("OBJECTS STILL REFRENCED: %li\nOBEJCTS FREED: %i\n\n", list_size(&arena), frees);
+	printf("OBJECTS STILL REFRENCED: %li\nOBJECTS FREED: %i\n\n", list_size(&arena), frees);
 }
 
 Object *eval(Object *instance, Method *method, List *args) {
@@ -366,7 +370,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 	Object *stack[8192];
 	int sp = 0;
 
-	Object *ret = new_object(TY_CUSTOM, "Number");
+	Object *ret = new_object(TY_VARIABLE, "Number");
 	ret->data_number = 0;
 	incref_object(ret);
 
@@ -390,7 +394,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 					
 					PUSH_STACK(v1);
 				} else {
-					printf("VM:: Unable to load variable %s as it is not found\n", lookup_constant(current->left));
+					printf("unable to load variable %s as it is not found\n", lookup_constant(current->left));
 					exit(1);
 				}
 			}
@@ -398,19 +402,17 @@ Object *eval(Object *instance, Method *method, List *args) {
 			case OP_STORE_VAR: {
 				Object *v1 = POP_STACK();
 				store_var(&varlist, lookup_constant(current->left), v1);
-
-				//printf("sp: %i, scope: %p\n", sp, instance);
 			}
 			break;
 			case OP_LOAD_NUMBER: {
-				Object *o = new_object(TY_CUSTOM, "Number");
+				Object *o = new_object(TY_VARIABLE, "Number");
 				o->data_number = current->left;
 				
 				PUSH_STACK(o);
 			}
 			break;
 			case OP_LOAD_CONST: {
-				Object *o = new_object(TY_CUSTOM, "String");
+				Object *o = new_object(TY_VARIABLE, "String");
 				o->data_string = lookup_constant(current->left);
 				
 				PUSH_STACK(o);
@@ -445,7 +447,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 				Object *v1 = POP_STACK();
 				Object *v2 = POP_STACK();
 
-				Object *v3 = new_object(TY_CUSTOM, "Number");
+				Object *v3 = new_object(TY_VARIABLE, "Number");
 				v3->data_number = v2->data_number > v1->data_number;
 
 				PUSH_STACK(v3);
@@ -455,7 +457,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 				Object *v1 = POP_STACK();
 				Object *v2 = POP_STACK();
 
-				Object *v3 = new_object(TY_CUSTOM, "Number");
+				Object *v3 = new_object(TY_VARIABLE, "Number");
 				v3->data_number = v2->data_number < v1->data_number;
 
 				PUSH_STACK(v3);
@@ -466,13 +468,13 @@ Object *eval(Object *instance, Method *method, List *args) {
 				Object *v2 = POP_STACK();
 
 				if(strcmp(v1->name, "Number") == 0 && strcmp(v2->name, "Number") == 0) {
-					Object *v3 = new_object(TY_CUSTOM, "Number");
+					Object *v3 = new_object(TY_VARIABLE, "Number");
 					v3->data_number = v2->data_number + v1->data_number;
 					
 					
 					PUSH_STACK(v3);
 				} else if(strcmp(v1->name, "Number") == 0 && strcmp(v2->name, "String") == 0) {
-					Object *v3 = new_object(TY_CUSTOM, "String");
+					Object *v3 = new_object(TY_VARIABLE, "String");
 
 					char str[512];
 					sprintf(str, "%i", (int)v1->data_number);
@@ -485,7 +487,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 					
 					PUSH_STACK(v3);
 				} else if(strcmp(v1->name, "String") == 0 && strcmp(v2->name, "Number") == 0) {
-					Object *v3 = new_object(TY_CUSTOM, "String");
+					Object *v3 = new_object(TY_VARIABLE, "String");
 
 					char str[512];
 					sprintf(str, "%i", (int)v2->data_number);
@@ -498,7 +500,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 					
 					PUSH_STACK(v3);
 				} else if(strcmp(v1->name, "String") == 0 && strcmp(v2->name, "String") == 0) {
-					Object *v3 = new_object(TY_CUSTOM, "String");
+					Object *v3 = new_object(TY_VARIABLE, "String");
 
 					char *s = malloc(strlen(v1->data_string) + strlen(v2->data_string) + 1);
 					strcpy(s, v2->data_string);
@@ -517,7 +519,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 				Object *v1 = POP_STACK();
 				Object *v2 = POP_STACK();
 
-				Object *v3 = new_object(TY_CUSTOM, "Number");
+				Object *v3 = new_object(TY_VARIABLE, "Number");
 				v3->data_number = v2->data_number - v1->data_number;
 				
 				PUSH_STACK(v3);
@@ -527,7 +529,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 				Object *v1 = POP_STACK();
 				Object *v2 = POP_STACK();
 
-				Object *v3 = new_object(TY_CUSTOM, "Number");
+				Object *v3 = new_object(TY_VARIABLE, "Number");
 				v3->data_number = v2->data_number * v1->data_number;
 				
 				PUSH_STACK(v3);
@@ -537,7 +539,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 				Object *v1 = POP_STACK();
 				Object *v2 = POP_STACK();
 
-				Object *v3 = new_object(TY_CUSTOM, "Number");
+				Object *v3 = new_object(TY_VARIABLE, "Number");
 				v3->data_number = v2->data_number / v1->data_number;
 				
 				PUSH_STACK(v3);
@@ -547,7 +549,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 				Object *v1 = POP_STACK();
 				Object *v2 = POP_STACK();
 
-				Object *v3 = new_object(TY_CUSTOM, "Number");
+				Object *v3 = new_object(TY_VARIABLE, "Number");
 				v3->data_number = ((int)v2->data_number) % ((int)v1->data_number);
 				
 				PUSH_STACK(v3);
@@ -555,7 +557,6 @@ Object *eval(Object *instance, Method *method, List *args) {
 			break;
 			case OP_CALL: {
 				Object *instance = POP_STACK();
-				
 
 				List args;
 				list_clear(&args);
@@ -572,7 +573,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 					PUSH_STACK(r);
 					garbage_collector();
 				} else {
-					printf("VM:: unknown function call %s\n", instance->data_string);
+					printf("unknown function call %s\n", instance->data_string);
 					exit(1);
 				}
 			}
@@ -590,17 +591,18 @@ Object *eval(Object *instance, Method *method, List *args) {
 					} else if(strcmp(arg->name, "Number") == 0) {
 						printf("%f", arg->data_number);
 					} else {
-						printf("VM:: print of unknown type\n");
-						exit(1);
+						printf("%s@%p", arg->name, arg);
 					}
 
-					PUSH_STACK(ret);
+					Object *r = new_object(TY_VARIABLE, "Number");
+					r->data_number = 0;
+					PUSH_STACK(r);
 				} else if(strcmp(name->data_string, "socket") == 0) {
 					int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
 					setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
 
-					Object *r = new_object(TY_CUSTOM, "Number");
+					Object *r = new_object(TY_VARIABLE, "Number");
 					r->data_number = sockfd;
 
 					PUSH_STACK(r);
@@ -617,13 +619,15 @@ Object *eval(Object *instance, Method *method, List *args) {
 					bind((int)fd->data_number, (struct sockaddr*)&servaddr, sizeof(servaddr));
 					listen((int)fd->data_number, 5);
 
-					PUSH_STACK(ret);
+					Object *r = new_object(TY_VARIABLE, "Number");
+					r->data_number = 0;
+					PUSH_STACK(r);
 				} else if(strcmp(name->data_string, "accept") == 0) {
 					Object *fd = POP_STACK();
 
 					int newfd = accept((int)fd->data_number, NULL, 0);
 
-					Object *r = new_object(TY_CUSTOM, "Number");
+					Object *r = new_object(TY_VARIABLE, "Number");
 					r->data_number = newfd;
 
 					PUSH_STACK(r);
@@ -633,7 +637,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 					char data[8192];
 					read((int)fd->data_number, data, sizeof(data));
 
-					Object *o = new_object(TY_CUSTOM, "String");
+					Object *o = new_object(TY_VARIABLE, "String");
 					o->data_string = strdup(data);
 
 					PUSH_STACK(o);
@@ -643,7 +647,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 					Object *length = POP_STACK();
 
 					int w = write((int)fd->data_number, data->data_string, (int)length->data_number);
-					Object *r1 = new_object(TY_CUSTOM, "Number");
+					Object *r1 = new_object(TY_VARIABLE, "Number");
 					r1->data_number = w;
 
 					PUSH_STACK(r1);
@@ -652,9 +656,11 @@ Object *eval(Object *instance, Method *method, List *args) {
 
 					close((int)fd->data_number);
 
-					PUSH_STACK(ret);
+					Object *r = new_object(TY_VARIABLE, "Number");
+					r->data_number = 0;
+					PUSH_STACK(r);
 				} else if(strcmp(name->data_string, "rand") == 0) {
-					Object *r1 = new_object(TY_CUSTOM, "Number");
+					Object *r1 = new_object(TY_VARIABLE, "Number");
 					r1->data_number = rand();
 
 					PUSH_STACK(r1);
@@ -677,7 +683,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 
 				Class *class = get_class(name->data_string);
 				if(class) {
-					Object *instance = new_object(TY_CUSTOM, strdup(name->data_string));
+					Object *instance = new_object(TY_VARIABLE, strdup(name->data_string));
 					
 					Method *constructor = get_method(strdup(name->data_string), "constructor");
 					if(constructor) {

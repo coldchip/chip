@@ -253,7 +253,7 @@ void              gen(Node *node, List *p);
 
 typedef enum {
 	TY_FUNCTION,
-	TY_CUSTOM
+	TY_VARIABLE
 } Type;
 
 typedef struct _Object {
