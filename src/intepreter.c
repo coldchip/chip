@@ -250,6 +250,7 @@ Var *load_var(List *vars, char *name) {
 void free_var(Var *var) {
 	var->object->refs--;
 	list_remove(&var->node);
+	free(var->name);
 	free(var);
 }
 
@@ -278,6 +279,7 @@ Method *get_method(char *name1, char *name2) {
 
 Object *new_object(Type type, char *name) {
 	Object *o = malloc(sizeof(Object));
+	o->bound = NULL;
 	o->type = type;
 	o->name = name;
 	o->refs = 0;
@@ -344,10 +346,10 @@ void garbage_collector() {
 
 			frees++;
 		} else {
-			if(strcmp(gc_object->item->name, "String") == 0)
-				printf("type: %i %s refs %i %s\n", gc_object->item->type, gc_object->item->name, gc_object->item->refs, gc_object->item->data_string);
-			else
-				printf("type: %i %s refs %i %i\n", gc_object->item->type, gc_object->item->name, gc_object->item->refs, gc_object->item->data_number);
+			// if(strcmp(gc_object->item->name, "String") == 0)
+			// 	printf("%p type: %i %s refs %i %s\n", gc_object->item, gc_object->item->type, gc_object->item->name, gc_object->item->refs, gc_object->item->data_string);
+			// else
+			// 	printf("%p type: %i %s refs %i %i\n", gc_object->item, gc_object->item->type, gc_object->item->name, gc_object->item->refs, gc_object->item->data_number);
 		}
 	}
 
@@ -382,7 +384,9 @@ Object *eval(Object *instance, Method *method, List *args) {
 	}
 
 	if(method->native) {
-		return method->native(instance);
+		decref_object(ret);
+		ret = method->native(instance);
+		incref_object(ret);
 	}
 
 	while(current != (Op*)list_end(&method->op)) {

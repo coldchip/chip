@@ -56,13 +56,15 @@ class Main {
 
 			output = "<h1>Simple Web Server created in Chip</h1><br>";
 
-			count = 256;
+			count = 2048;
 
 			i = 0;
 			while(i < count) {
 				output = output + rand() + "</br>";
 				i = i + 1;
 			}
+
+			output = output + input;
 
 			c.write("HTTP/1.0 200 OK\r\n");
 			c.write("Content-Type: text/html; charset=utf-8\r\n");
