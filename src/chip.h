@@ -63,9 +63,10 @@ typedef struct _Token {
 	ListNode node;
 	TokenType type;
 	char *data;
+	int line;
 } Token;
 
-static Token      *new_token(TokenType type, char *data, int length);
+static Token      *new_token(TokenType type, char *data, int length, int line);
 
 Token             *next(Token **token);
 Token             *prev(Token **current);
@@ -80,6 +81,7 @@ static bool        is_identifier(char bit);
 static bool        is_numeric(char bit);
 static bool        is_number(char bit);
 static bool        is_space(char bit);
+static bool        is_break(char bit);
 static bool        is_punctuation(char bit);
 void               tokenize(char *input, List *tokens);
 
@@ -138,7 +140,6 @@ Node              *new_node_binary(NodeType type, Token *token, Node *left, Node
 
 bool               is_class(Token **current);
 bool               is_method(Token **current);
-bool               is_call(Token **current);
 bool               is_assign(Token **current);
 
 static Node       *parse_program(Token **current);
@@ -194,6 +195,7 @@ typedef enum {
 typedef struct _Constant {
 	ListNode node;
 	char *data;
+	bool obfuscated;
 } Constant;
 
 typedef struct _Class {
@@ -217,11 +219,13 @@ typedef struct _Op {
 	double left;
 } Op;
 
+static char      *rand_string(char *str, size_t size);
+
 static Class     *emit_class(List *program, char *name);
 static Method    *emit_method(Class *class, char *name);
 static Op *       emit_op(Method *method, OpType op);
 static Op *       emit_op_left(Method *method, OpType op, float left);
-static int        emit_constant(List *list, char *data);
+static int        emit_constant(List *list, char *data, bool obfuscated);
 static int        emit_op_get_counter(Method *method);
 static void       emit_file(List *constants, List *program);
 
@@ -272,6 +276,7 @@ typedef struct _Object {
 	List varlist;
 
 	int refs;
+	int gc_refs;
 } Object;
 
 typedef struct _Var {
@@ -285,8 +290,10 @@ typedef struct _GCArenaObject {
 	Object *item;
 } GCArenaObject;
 
-#define POP_STACK() (sp--, stack[sp]->refs--, stack[sp])
-#define PUSH_STACK(d) (stack[sp++] = d, d->refs++)
+#define DECREF(o) (decref_object(o))
+#define INCREF(o) (incref_object(o))
+#define POP_STACK() (sp--, DECREF(stack[sp]), stack[sp])
+#define PUSH_STACK(d) (stack[sp++] = d, INCREF(d))
 
 void              load_file(const char *name);
 void              emit_print();
@@ -299,11 +306,5 @@ Method           *get_method(char *name1, char *name);
 Object           *new_object(Type type, char *name);
 Object           *eval(Object *instance, Method *method, List *args);
 void              intepreter(const char *input);
-
-/*
-	string_builtin.c
-*/
-
-Object            *string_length(Object *instance);
 
 #endif

@@ -44,17 +44,6 @@ bool is_method(Token **current) {
 	return false;
 }
 
-bool is_call(Token **current) {
-	if(consume_type(current, TK_IDENTIFIER)) {
-		if(consume_string(current, "(")) {
-			prev(current); prev(current);
-			return true;
-		}
-		prev(current);
-	}
-	return false;
-}
-
 /* 
 	a = (expr)
 */
@@ -62,7 +51,7 @@ bool is_call(Token **current) {
 bool is_assign(Token **current) {
 	Token *state = *current;
 
-	if(parse_primary(current)) {
+	if(parse_expr(current)) {
 		if(consume_string(current, "=")) {
 			*current = state;			
 			return true;
@@ -216,9 +205,7 @@ static Node *parse_stmt(Token **current) {
 static Node *parse_expr_stmt(Token **current) {
 	if(is_assign(current)) {
 		Node *node = new_node(ND_ASSIGN, NULL);
-
-		node->left = parse_primary(current);
-
+		node->left = parse_expr(current);
 		if(consume_string(current, "=")) {
 			node->right = parse_expr(current);
 		}

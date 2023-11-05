@@ -277,6 +277,8 @@ Method *get_method(char *name1, char *name2) {
 	return NULL;
 }
 
+int allocs = 0;
+
 Object *new_object(Type type, char *name) {
 	Object *o = malloc(sizeof(Object));
 	o->bound = NULL;
@@ -284,6 +286,8 @@ Object *new_object(Type type, char *name) {
 	o->name = name;
 	o->refs = 0;
 	list_clear(&o->varlist);
+
+	allocs++;
 
 	GCArenaObject *gc_object = malloc(sizeof(GCArenaObject));
 	gc_object->item = o;
@@ -297,7 +301,6 @@ Object *new_object(Type type, char *name) {
 				Object *var = new_object(TY_FUNCTION, method->name);
 				var->bound = o;
 				var->method = method;
-
 				store_var(&o->varlist, method->name, var);
 			}
 		} else {
@@ -327,13 +330,13 @@ void free_object(Object *object) {
 		free(object->data_string);
 	}
 	free(object);
-}
 
-int frees = 0;
+	allocs--;
+}
 
 void garbage_collector() {
 	/* mark and sweep */
-	printf("Garbage Collecter\n");
+	//printf("Garbage Collecter\n");
 	ListNode *i = list_begin(&arena);
 	while(i != list_end(&arena)) {
 		GCArenaObject *gc_object = (GCArenaObject*)i;
@@ -343,17 +346,10 @@ void garbage_collector() {
 			free_object(gc_object->item);
 			list_remove(&gc_object->node);
 			free(gc_object);
-
-			frees++;
-		} else {
-			// if(strcmp(gc_object->item->name, "String") == 0)
-			// 	printf("%p type: %i %s refs %i %s\n", gc_object->item, gc_object->item->type, gc_object->item->name, gc_object->item->refs, gc_object->item->data_string);
-			// else
-			// 	printf("%p type: %i %s refs %i %i\n", gc_object->item, gc_object->item->type, gc_object->item->name, gc_object->item->refs, gc_object->item->data_number);
 		}
 	}
 
-	printf("OBJECTS STILL REFRENCED: %li\nOBJECTS FREED: %i\n\n", list_size(&arena), frees);
+	printf("OBJECTS STILL REFRENCED: %i\n\n", allocs);
 }
 
 Object *eval(Object *instance, Method *method, List *args) {
@@ -369,7 +365,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 	
 	Op *current = (Op*)list_begin(&method->op);
 
-	Object *stack[8192];
+	Object *stack[512];
 	int sp = 0;
 
 	Object *ret = new_object(TY_VARIABLE, "Number");
@@ -393,14 +389,14 @@ Object *eval(Object *instance, Method *method, List *args) {
 		switch(current->op) {
 			case OP_LOAD_VAR: {
 				Var *var = load_var(&varlist, lookup_constant(current->left));
-				if(var) {
-					Object *v1 = var->object;
-					
-					PUSH_STACK(v1);
-				} else {
+				if(!var) {
 					printf("unable to load variable %s as it is not found\n", lookup_constant(current->left));
 					exit(1);
 				}
+
+				Object *v1 = var->object;
+				
+				PUSH_STACK(v1);
 			}
 			break;
 			case OP_STORE_VAR: {
@@ -426,14 +422,14 @@ Object *eval(Object *instance, Method *method, List *args) {
 				Object *instance = POP_STACK();
 
 				Var *var = load_var(&instance->varlist, lookup_constant(current->left));
-				if(var) {
-					Object *v1 = var->object;
-					
-					PUSH_STACK(v1);
-				} else {
+				if(!var) {
 					printf("Unknown variable member %s\n", lookup_constant(current->left));
 					exit(1);
 				}
+
+				Object *v1 = var->object;
+				
+				PUSH_STACK(v1);
 			}
 			break;
 			case OP_STORE_MEMBER: {
@@ -571,15 +567,16 @@ Object *eval(Object *instance, Method *method, List *args) {
 					list_insert(list_end(&args), arg);
 				}
 
-				if(instance->type == TY_FUNCTION) {
-					Object *r = eval(instance->bound, instance->method, &args);
-					
-					PUSH_STACK(r);
-					garbage_collector();
-				} else {
+				if(instance->type != TY_FUNCTION) {
 					printf("unknown function call %s\n", instance->data_string);
 					exit(1);
 				}
+
+				Object *r = eval(instance->bound, instance->method, &args);
+				
+				PUSH_STACK(r);
+
+				garbage_collector();
 			}
 			break;
 			case OP_SYSCALL: {
@@ -668,6 +665,24 @@ Object *eval(Object *instance, Method *method, List *args) {
 					r1->data_number = rand();
 
 					PUSH_STACK(r1);
+				} else if(strcmp(name->data_string, "delay") == 0) {
+					Object *sec = POP_STACK();
+
+					sleep((int)sec->data_number);
+
+					Object *r = new_object(TY_VARIABLE, "Number");
+					r->data_number = 0;
+
+					PUSH_STACK(r);
+				} else if(strcmp(name->data_string, "string_length") == 0) {
+					Object *i = POP_STACK();
+
+					int length = strlen(i->data_string);
+
+					Object *r = new_object(TY_VARIABLE, "Number");
+					r->data_number = length;
+
+					PUSH_STACK(r);
 				} else {
 					printf("VM:: unknown syscall %s\n", name->data_string);
 					exit(1);
@@ -686,19 +701,19 @@ Object *eval(Object *instance, Method *method, List *args) {
 				Object *name = POP_STACK();
 
 				Class *class = get_class(name->data_string);
-				if(class) {
-					Object *instance = new_object(TY_VARIABLE, strdup(name->data_string));
-					
-					Method *constructor = get_method(strdup(name->data_string), "constructor");
-					if(constructor) {
-						eval(instance, constructor, &args);
-					}
-					
-					PUSH_STACK(instance);
-				} else {
+				if(!class) {
 					printf("VM:: cannot clone class %s\n", name->data_string);
 					exit(1);
 				}
+
+				Object *instance = new_object(TY_VARIABLE, strdup(name->data_string));
+				
+				Method *constructor = get_method(strdup(name->data_string), "constructor");
+				if(constructor) {
+					eval(instance, constructor, &args);
+				}
+				
+				PUSH_STACK(instance);
 			}
 			break;
 			case OP_JMPIFT: {
@@ -707,25 +722,25 @@ Object *eval(Object *instance, Method *method, List *args) {
 
 				if(v2->data_number == v1->data_number) {
 					Op *jmp_to = op_at(&method->op, current->left);
-					if(jmp_to) {
-						current = jmp_to;
-						continue;
-					} else {
+					if(!jmp_to) {
 						printf("VM:: Unable to jump to op %i\n", (int)current->left);
 						exit(1);
 					}
+
+					current = jmp_to;
+					continue;
 				}
 			}
 			break;
 			case OP_JMP: {
 				Op *jmp_to = op_at(&method->op, current->left);
-				if(jmp_to) {
-					current = jmp_to;
-					continue;
-				} else {
+				if(!jmp_to) {
 					printf("VM:: Unable to jump to op %i\n", (int)current->left);
 					exit(1);
 				}
+
+				current = jmp_to;
+				continue;
 			}
 			break;
 			case OP_RET: {
@@ -761,30 +776,6 @@ void intepreter(const char *input) {
 	load_file(input);
 
 	emit_print();
-
-	/* inject native string class */
-
-	Class *string_class = malloc(sizeof(Class));
-	string_class->name = strdup("String");
-	list_clear(&string_class->method);
-
-	Method *method = malloc(sizeof(Method));
-	method->name = strdup("length");
-	method->native = string_length;
-	list_clear(&method->op);
-
-	list_insert(list_end(&string_class->method), method);
-	list_insert(list_end(&program), string_class);
-
-	/* inject native number class */
-
-	Class *number_class = malloc(sizeof(Class));
-	number_class->name = strdup("Number");
-	list_clear(&number_class->method);
-	list_insert(list_end(&program), number_class);
-
-
-
 
 	Method *method_main = get_method("Main", "main");
 	if(!method_main) {

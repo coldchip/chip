@@ -4,6 +4,19 @@
 #include <unistd.h>
 #include "chip.h"
 
+static char *rand_string(char *str, size_t size) {
+    const char charset[] = "abcdefghijklmnopqrstuvwxyz";
+    if(size) {
+        --size;
+        for (size_t n = 0; n < size; n++) {
+            int key = rand() % (int) (sizeof charset - 1);
+            str[n] = charset[key];
+        }
+        str[size] = '\0';
+    }
+    return str;
+}
+
 static Class *emit_class(List *program, char *name) {
 	Class *c = malloc(sizeof(Class));
 	c->name = strdup(name);
@@ -37,11 +50,11 @@ static Op *emit_op_left(Method *method, OpType op, float left) {
 	return ins;
 }
 
-static int emit_constant(List *list, char *data) {
+static int emit_constant(List *list, char *data, bool obfuscated) {
 	int i = 0;
 	for(ListNode *c = list_begin(list); c != list_end(list); c = list_next(c)) {
 		Constant *constant = (Constant*)c;
-		if(strcmp(data, constant->data) == 0) {
+		if(strcmp(data, constant->data) == 0 && constant->obfuscated == obfuscated) {
 			return i;
 		}
 		i++;
@@ -49,6 +62,7 @@ static int emit_constant(List *list, char *data) {
 
 	Constant *constant = malloc(sizeof(Constant));
 	constant->data = data;
+	constant->obfuscated = obfuscated;
 	list_insert(list_end(list), constant);
 	return list_size(list) - 1;
 }
@@ -67,7 +81,7 @@ static void emit_file(List *constants, List *program) {
 		Class *c = (Class*)cn;
 
 		short method_count = list_size(&c->method);
-		short class_name = emit_constant(constants, c->name);
+		short class_name = emit_constant(constants, c->name, true);
 		fwrite(&method_count, sizeof(short), 1, prg);
 		fwrite(&class_name, sizeof(short), 1, prg);
 
@@ -75,7 +89,7 @@ static void emit_file(List *constants, List *program) {
 			Method *m = (Method*)mn;
 			
 			short op_count = list_size(&m->op);
-			short method_name = emit_constant(constants, m->name);
+			short method_name = emit_constant(constants, m->name, true);
 			fwrite(&op_count, sizeof(short), 1, prg);
 			fwrite(&method_name, sizeof(short), 1, prg);
 
@@ -98,9 +112,31 @@ static void emit_file(List *constants, List *program) {
 	for(ListNode *c = list_begin(constants); c != list_end(constants); c = list_next(c)) {
 		Constant *constant = (Constant*)c;
 
-		int constant_size = strlen(constant->data);
-		fwrite(&constant_size, sizeof(constant_size), 1, cst);
-		fwrite(constant->data, sizeof(char), constant_size, cst);
+		printf("%s %i\n", constant->data, constant-> obfuscated);
+
+		if(
+			constant->obfuscated && 
+			!strcasecmp(constant->data, "main") == 0 && 
+			!strcasecmp(constant->data, "this") == 0 && 
+			!strcasecmp(constant->data, "constructor") == 0 &&
+			!strcasecmp(constant->data, "string") == 0 &&
+			!strcasecmp(constant->data, "number") == 0
+		) {
+			char obfuscated[512];
+			rand_string(obfuscated, 16);
+
+			char obfuscated2[1024];
+			strcpy(obfuscated2, obfuscated);
+
+			int constant_size = strlen(obfuscated2);
+			fwrite(&constant_size, sizeof(constant_size), 1, cst);
+			fwrite(obfuscated2, sizeof(char), constant_size, cst);
+		} else {
+
+			int constant_size = strlen(constant->data);
+			fwrite(&constant_size, sizeof(constant_size), 1, cst);
+			fwrite(constant->data, sizeof(char), constant_size, cst);
+		}
 	}
 
 	fclose(cst);
@@ -223,18 +259,18 @@ static void gen_block(Node *node) {
 }
 
 static void gen_variable(Node *node) {
-	emit_op_left(method, OP_LOAD_VAR, emit_constant(&constants, node->token->data));
+	emit_op_left(method, OP_LOAD_VAR, emit_constant(&constants, node->token->data, true));
 }
 
 static void gen_member(Node *node) {
 	if(node->body) {
 		visitor(node->body);
-		emit_op_left(method, OP_LOAD_MEMBER, emit_constant(&constants, node->token->data));
+		emit_op_left(method, OP_LOAD_MEMBER, emit_constant(&constants, node->token->data, true));
 	}
 }
 
 static void gen_new(Node *node) {
-	emit_op_left(method, OP_LOAD_CONST, emit_constant(&constants, node->token->data));
+	emit_op_left(method, OP_LOAD_CONST, emit_constant(&constants, node->token->data, true));
 
 	visitor(node->args);
 
@@ -255,10 +291,12 @@ static void gen_assign(Node *node) {
 
 static void gen_store(Node *node) {
 	if(node->body) {
+		/* x.y = z */
 		visitor(node->body);
-		emit_op_left(method, OP_STORE_MEMBER, emit_constant(&constants, node->token->data));
+		emit_op_left(method, OP_STORE_MEMBER, emit_constant(&constants, node->token->data, true));
 	} else {
-		emit_op_left(method, OP_STORE_VAR, emit_constant(&constants, node->token->data));
+		/* x = y */
+		emit_op_left(method, OP_STORE_VAR, emit_constant(&constants, node->token->data, true));
 	}
 
 }
@@ -309,7 +347,7 @@ static void gen_number(Node *node) {
 }
 
 static void gen_string(Node *node) {
-	emit_op_left(method, OP_LOAD_CONST, emit_constant(&constants, node->token->data));
+	emit_op_left(method, OP_LOAD_CONST, emit_constant(&constants, node->token->data, false));
 }
 
 static void gen_return(Node *node) {
@@ -327,8 +365,6 @@ static void gen_call(Node *node) {
 
 static void gen_syscall(Node *node) {
 	visitor(node->args);
-	emit_op_left(method, OP_LOAD_CONST, emit_constant(&constants, node->token->data));
-
 	emit_op_left(method, OP_SYSCALL, node->args->length);
 }
 

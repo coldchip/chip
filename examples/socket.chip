@@ -1,14 +1,30 @@
+class String {
+	function constructor() {
+		
+	}
+
+	function length() {
+		return syscall("string_length", this);
+	}
+}
+
+class Number {
+	function constructor() {
+
+	}
+}
+
 class Client {
 	function constructor(fd) {
 		this.fd = fd;
 	}
 
 	function read() {
-		return read(this.fd);
+		return syscall("read", this.fd);
 	}
 
 	function write(data) {
-		return write(this.fd, data, data.length());
+		return syscall("write", this.fd, data, data.length());
 	}
 
 	function test2(data, l) {
@@ -20,7 +36,13 @@ class Client {
 	}
 
 	function close() {
-		close(this.fd);
+		syscall("close", this.fd);
+	}
+}
+
+class Cicular {
+	function setNext(next) {
+		this.next = next;
 	}
 }
 
@@ -28,15 +50,15 @@ class Socket {
 	function constructor(ip, port) {
 		this.ip = ip;
 		this.port = port;
-		this.socket = socket();
+		this.socket = syscall("socket");
 	}
 
 	function bind() {
-		bind(this.socket, this.ip, this.port);
+		syscall("bind", this.socket, this.ip, this.port);
 	}
 
 	function accept() {
-		fd = accept(this.socket);
+		fd = syscall("accept", this.socket);
 
 		return new Client(fd);
 	}
@@ -50,17 +72,17 @@ class Main {
 		while(1) {
 			c = s.accept();
 
-			print("new connection\n");
+			syscall("print", "new connection\n");
 
 			input = c.read();
 
 			output = "<h1>Simple Web Server created in Chip</h1><br>";
 
-			count = 2048;
+			count = 128;
 
 			i = 0;
 			while(i < count) {
-				output = output + rand() + "</br>";
+				output = output + syscall("rand") + "</br>";
 				i = i + 1;
 			}
 
@@ -71,12 +93,11 @@ class Main {
 			c.test("omg: LOL\r\n");
 			c.write("Content-Length: " + output.length() + "\r\n\r\n");
 
-			print(s);
-			print("\n");
+			syscall("print", s);
+			syscall("print", "\n");
 
 			c.write(output);
 			c.close();
-
 		}
 
 		return 0;

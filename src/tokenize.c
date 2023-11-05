@@ -4,7 +4,7 @@
 #include "sb.h"
 #include "chip.h"
 
-static Token *new_token(TokenType type, char *data, int length) {
+static Token *new_token(TokenType type, char *data, int length, int line) {
 	Token *token = malloc(sizeof(Token));
 
 	if(!token) {
@@ -41,8 +41,9 @@ static Token *new_token(TokenType type, char *data, int length) {
 	char *t = sb_concat(sb);
 	sb_free(sb);
 
-	token->data   = t;
-	token->type   = type;
+	token->data = t;
+	token->type = type;
+	token->line = line;
 
 	return token;
 }
@@ -108,7 +109,11 @@ static bool is_number(char bit) {
 }
 
 static bool is_space(char bit) {
-	return (bit == '	' || bit == ' ' || bit == 0x0d || bit == 0x0a);
+	return (bit == '	' || bit == ' ');
+}
+
+static bool is_break(char bit) {
+	return (bit == 0x0d || bit == 0x0a);
 }
 
 static bool is_punctuation(char bit) {
@@ -133,6 +138,8 @@ static bool is_punctuation(char bit) {
 void tokenize(char *input, List *tokens) {
 	list_clear(tokens);
 
+	int line = 1;
+
 	while(*input != '\0') {
 		if(is_identifier(*input)) {
 			char *start = input;
@@ -140,7 +147,7 @@ void tokenize(char *input, List *tokens) {
 				input++;
 			}
 
-			Token *token = new_token(TK_IDENTIFIER, start, input - start);
+			Token *token = new_token(TK_IDENTIFIER, start, input - start, line);
 			list_insert(list_end(tokens), token);
 			continue;
 		} else if(is_number(*input)) {
@@ -149,7 +156,7 @@ void tokenize(char *input, List *tokens) {
 				input++;
 			}
 
-			Token *token = new_token(TK_NUMBER, start, input - start);
+			Token *token = new_token(TK_NUMBER, start, input - start, line);
 			list_insert(list_end(tokens), token);
 			continue;
 		} else if(*input == '\"') {
@@ -162,14 +169,18 @@ void tokenize(char *input, List *tokens) {
 
 			input++;
 
-			Token *token = new_token(TK_STRING, start, (input - start) - 1);
+			Token *token = new_token(TK_STRING, start, (input - start) - 1, line);
 			list_insert(list_end(tokens), token);
 			continue;
 		} else if(is_space(*input)) {
 			input++;
 			continue;
+		} else if(is_break(*input)) {
+			line++;
+			input++;
+			continue;
 		} else if(is_punctuation(*input)) {
-			Token *token = new_token(TK_PUNCTUATION, input, 1);
+			Token *token = new_token(TK_PUNCTUATION, input, 1, line);
 			list_insert(list_end(tokens), token);
 			input++;
 			continue;
@@ -180,6 +191,6 @@ void tokenize(char *input, List *tokens) {
 
 	}
 
-	Token *token = new_token(TK_EOF, NULL, 0);
+	Token *token = new_token(TK_EOF, NULL, 0, line);
 	list_insert(list_end(tokens), token);
 }

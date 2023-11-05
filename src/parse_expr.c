@@ -63,6 +63,16 @@ static Node *parse_postfix(Token **current) {
 	for(;;) {
 		Token *token = *current;
 
+		if(consume_string(current, ".")) {
+			Node *left = new_node(ND_MEMBER, *current);
+
+			left->body = node;
+			node = left;
+			expect_type(current, TK_IDENTIFIER);
+
+			continue;
+		}
+
 		if(consume_string(current, "(")) {
 
 			Node *left = new_node(ND_CALL, token);
@@ -91,26 +101,18 @@ Node *parse_primary(Token **current) {
 		expect_string(current, ")");
 
 		return node;
-	} else if(consume_string(current, "(")) {
-		Node *node = parse_expr(current);
-		expect_string(current, ")");
-		return node;
-	} else if(is_call(current)) {
-		Node *node = new_node(ND_SYSCALL, token);
-		expect_type(current, TK_IDENTIFIER);
+	} else if(consume_string(current, "syscall")) {
+		Node *node = new_node(ND_SYSCALL, NULL);
 		expect_string(current, "(");
 		node->args = parse_args(current);
 		expect_string(current, ")");
 		return node;
+	} else if(consume_string(current, "(")) {
+		Node *node = parse_expr(current);
+		expect_string(current, ")");
+		return node;
 	} else if(consume_type(current, TK_IDENTIFIER)) {
 		Node *node = new_node(ND_VARIABLE, token);
-		while(consume_string(current, ".")) {
-			Node *left = new_node(ND_MEMBER, *current);
-
-			left->body = node;
-			node = left;
-			expect_type(current, TK_IDENTIFIER);
-		}
 
 		return node;
 	} else if(consume_type(current, TK_NUMBER)) {
