@@ -115,12 +115,7 @@ static void emit_file(List *constants, List *program) {
 		printf("%s %i\n", constant->data, constant-> obfuscated);
 
 		if(
-			constant->obfuscated && 
-			!strcasecmp(constant->data, "main") == 0 && 
-			!strcasecmp(constant->data, "this") == 0 && 
-			!strcasecmp(constant->data, "constructor") == 0 &&
-			!strcasecmp(constant->data, "string") == 0 &&
-			!strcasecmp(constant->data, "number") == 0
+			false
 		) {
 			char obfuscated[512];
 			rand_string(obfuscated, 16);

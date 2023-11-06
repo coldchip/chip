@@ -64,10 +64,50 @@ class Socket {
 	}
 }
 
+class ListNode {
+	function constructor(item) {
+		this.item = item;
+		this.next = "";	
+		this.hasNext = 0;	
+	}
+
+	function setNext(next) {
+		this.next = next;
+		this.hasNext = 1;
+	}
+
+	function getNext() {
+		return this.next;
+	}
+}
+
+class List {
+	function constructor() {
+		this.head = new ListNode(0);
+		this.current = this.head;
+	}
+
+	function push(item) {
+		a = new ListNode(item);
+		this.current.setNext(a);
+		this.current = a;
+	}
+}
+
 class Main {
 	function main() {
 		s = new Socket("0.0.0.0", 19132);
 		s.bind();
+
+		list = new List();
+
+		i = 0;
+		while(i < 10000) {
+			list.push(syscall("rand"));
+			i = i + 1;
+		}
+
+		syscall("print", "done\n");
 
 		while(1) {
 			c = s.accept();
@@ -78,19 +118,19 @@ class Main {
 
 			output = "<h1>Simple Web Server created in Chip</h1><br>";
 
-			count = 128;
-
-			i = 0;
-			while(i < count) {
-				output = output + syscall("rand") + "</br>";
-				i = i + 1;
+			z = 0;
+			start = list.head;
+			while(start.hasNext > 0) {
+				start = start.getNext();
+				output = output + z + ":" + start.item + "<br>";
+				z = z + 1;
 			}
 
 			output = output + input;
 
 			c.write("HTTP/1.0 200 OK\r\n");
 			c.write("Content-Type: text/html; charset=utf-8\r\n");
-			c.test("omg: LOL\r\n");
+			c.write("omg: LOL\r\n");
 			c.write("Content-Length: " + output.length() + "\r\n\r\n");
 
 			syscall("print", s);

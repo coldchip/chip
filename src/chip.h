@@ -285,15 +285,10 @@ typedef struct _Var {
 	Object *object;
 } Var;
 
-typedef struct _GCArenaObject {
-	ListNode node;
-	Object *item;
-} GCArenaObject;
-
 #define DECREF(o) (decref_object(o))
 #define INCREF(o) (incref_object(o))
-#define POP_STACK() (sp--, DECREF(stack[sp]), stack[sp])
-#define PUSH_STACK(d) (stack[sp++] = d, INCREF(d))
+#define POP_STACK() (sp--, stack[sp])
+#define PUSH_STACK(d) (stack[sp++] = d)
 
 void              load_file(const char *name);
 void              emit_print();
