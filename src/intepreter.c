@@ -8,7 +8,7 @@
 #include <signal.h>
 #include "chip.h"
 
-static List constants;
+static char *constants[8192] = {};
 static List program;
 
 void load_file(const char *name) {
@@ -34,10 +34,7 @@ void load_file(const char *name) {
 
 		fread(&constant_data, sizeof(char), constant_length, fp);
 
-		Constant *constant = malloc(sizeof(Constant));
-		constant->data = strdup(constant_data);
-
-		list_insert(list_end(&constants), constant);
+		constants[z] = strdup(constant_data);
 	}
 
 	fseek(fp, 4, SEEK_SET);
@@ -52,7 +49,7 @@ void load_file(const char *name) {
 		fread(&class_name, sizeof(class_name), 1, fp);
 
 		Class *class = malloc(sizeof(Class));
-		class->name = lookup_constant(class_name);
+		class->name = GET_CONST(class_name);
 		list_clear(&class->method);
 
 		for(int x = 0; x < method_count; x++) {
@@ -62,7 +59,7 @@ void load_file(const char *name) {
 			fread(&method_id, sizeof(method_id), 1, fp);
 
 			Method *method = malloc(sizeof(Method));
-			method->name = lookup_constant(method_id);
+			method->name = GET_CONST(method_id);
 			method->native = NULL;
 			list_clear(&method->op);
 
@@ -105,11 +102,11 @@ void emit_print() {
 				Op *ins = (Op*)op;
 				switch(ins->op) {
 					case OP_LOAD_VAR: {
-						printf("\t%i\tLOAD_VAR\t%s\n", line, lookup_constant(ins->left));
+						printf("\t%i\tLOAD_VAR\t%s\n", line, GET_CONST(ins->left));
 					}
 					break;
 					case OP_STORE_VAR: {
-						printf("\t%i\tSTORE_VAR\t%s\n", line, lookup_constant(ins->left));
+						printf("\t%i\tSTORE_VAR\t%s\n", line, GET_CONST(ins->left));
 					}
 					break;
 					case OP_POP: {
@@ -149,15 +146,15 @@ void emit_print() {
 					}
 					break;
 					case OP_LOAD_CONST: {
-						printf("\t%i\tLOAD_CONST\t%s\n", line, lookup_constant(ins->left));
+						printf("\t%i\tLOAD_CONST\t%s\n", line, GET_CONST(ins->left));
 					}
 					break;
 					case OP_LOAD_MEMBER: {
-						printf("\t%i\tLOAD_MEMBER\t%s\n", line, lookup_constant(ins->left));
+						printf("\t%i\tLOAD_MEMBER\t%s\n", line, GET_CONST(ins->left));
 					}
 					break;
 					case OP_STORE_MEMBER: {
-						printf("\t%i\tSTORE_MEMBER\t%s\n", line, lookup_constant(ins->left));
+						printf("\t%i\tSTORE_MEMBER\t%s\n", line, GET_CONST(ins->left));
 					}
 					break;
 					case OP_CALL: {
@@ -190,20 +187,6 @@ void emit_print() {
 			}
 		}
 	}
-}
-
-char *lookup_constant(int pos) {
-	int i = 0;
-
-	for(ListNode *position = list_begin(&constants); position != list_end(&constants); position = list_next(position)) {
-		Constant *constant = (Constant*)position;
-		if(i == pos) {
-			return constant->data;
-		}
-		i++;
-	}
-
-	return NULL;
 }
 
 Op *op_at(List *program, int line) {
@@ -335,6 +318,8 @@ void free_object(Object *object) {
 	// printf("OBJECTS STILL REFRENCED: %i\n\n", allocs);
 }
 
+Object *cache[8192] = {};
+
 Object *empty_return = NULL;
 
 Object *eval(Object *instance, Method *method, List *args) {
@@ -366,9 +351,9 @@ Object *eval(Object *instance, Method *method, List *args) {
 	while(current != (Op*)list_end(&method->op)) {
 		switch(current->op) {
 			case OP_LOAD_VAR: {
-				Var *var = load_var(&varlist, lookup_constant(current->left));
+				Var *var = load_var(&varlist, GET_CONST(current->left));
 				if(!var) {
-					printf("unable to load variable %s as it is not found\n", lookup_constant(current->left));
+					printf("unable to load variable %s as it is not found\n", GET_CONST(current->left));
 					exit(1);
 				}
 
@@ -380,7 +365,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 			break;
 			case OP_STORE_VAR: {
 				Object *v1 = POP_STACK();
-				store_var(&varlist, lookup_constant(current->left), v1);
+				store_var(&varlist, GET_CONST(current->left), v1);
 
 				DECREF(v1);
 			}
@@ -394,19 +379,28 @@ Object *eval(Object *instance, Method *method, List *args) {
 			}
 			break;
 			case OP_LOAD_CONST: {
-				Object *o = new_object(TY_VARIABLE, "String");
-				o->data_string = strdup(lookup_constant(current->left));
-				
-				PUSH_STACK(o);
-				INCREF(o);
+				if(cache[(int)current->left]) {
+					Object *o = cache[(int)current->left];
+					
+					PUSH_STACK(o);
+					INCREF(o);
+				} else {
+					Object *o = new_object(TY_VARIABLE, "String");
+					o->data_string = strdup(GET_CONST(current->left));
+					cache[(int)current->left] = o;
+					INCREF(o);
+					
+					PUSH_STACK(o);
+					INCREF(o);
+				}
 			}
 			break;
 			case OP_LOAD_MEMBER: {
 				Object *instance = POP_STACK();
 
-				Var *var = load_var(&instance->varlist, lookup_constant(current->left));
+				Var *var = load_var(&instance->varlist, GET_CONST(current->left));
 				if(!var) {
-					printf("Unknown variable member %s\n", lookup_constant(current->left));
+					printf("Unknown variable member %s\n", GET_CONST(current->left));
 					exit(1);
 				}
 
@@ -419,12 +413,12 @@ Object *eval(Object *instance, Method *method, List *args) {
 			}
 			break;
 			case OP_STORE_MEMBER: {
-				Object *v1 = POP_STACK();
+				Object *instance = POP_STACK();
 				Object *v2 = POP_STACK();
 
-				store_var(&v1->varlist, lookup_constant(current->left), v2);
+				store_var(&instance->varlist, GET_CONST(current->left), v2);
 
-				DECREF(v1);
+				DECREF(instance);
 				DECREF(v2);
 			}
 			break;
@@ -509,7 +503,6 @@ Object *eval(Object *instance, Method *method, List *args) {
 					strcpy(s, v2->data_string);
 					strcat(s, v1->data_string);
 					v3->data_string = s;
-					
 					
 					PUSH_STACK(v3);
 
@@ -836,7 +829,6 @@ void intepreter(const char *input) {
 	/* code */
 	signal(SIGPIPE, SIG_IGN);
 
-	list_clear(&constants);
 	list_clear(&program);
 
 	load_file(input);

@@ -285,6 +285,8 @@ typedef struct _Var {
 	Object *object;
 } Var;
 
+#define GET_CONST(i) (constants[(int)i])
+
 #define DECREF(o) (decref_object(o))
 #define INCREF(o) (incref_object(o))
 #define POP_STACK() (sp--, stack[sp])
@@ -292,7 +294,6 @@ typedef struct _Var {
 
 void              load_file(const char *name);
 void              emit_print();
-char             *lookup_constant(int pos);
 Op               *op_at(List *program, int line);
 void              store_var(List *vars, char *name, Object *object);
 Var              *load_var(List *vars, char *name);
