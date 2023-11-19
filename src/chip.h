@@ -103,6 +103,7 @@ typedef enum {
 	ND_VARIABLE,
 	ND_EXPR,
 	ND_ASSIGN,
+	ND_EQ,
 	ND_GT,
 	ND_LT,
 	ND_ADD,
@@ -159,6 +160,7 @@ Node              *parse(List *tokens);
 */
 
 Node              *parse_expr(Token **current);
+static Node       *parse_equality(Token **current);
 static Node       *parse_relational(Token **current);
 static Node       *parse_add_sub(Token **current);
 static Node       *parse_mul_div(Token **current);
@@ -173,6 +175,7 @@ typedef enum {
 	OP_LOAD_VAR,
 	OP_STORE_VAR,
 	OP_POP,
+	OP_CMPEQ,
 	OP_CMPGT,
 	OP_CMPLT,
 	OP_ADD,
@@ -204,13 +207,11 @@ typedef struct _Class {
 	List method;
 } Class;
 
-typedef struct _Object *(*native_t)(struct _Object *instance);
 
 typedef struct _Method {
 	ListNode node;
 	char *name;
 	List op;
-	native_t native;
 } Method;
 
 typedef struct _Op {
@@ -281,11 +282,12 @@ typedef struct _Object {
 
 typedef struct _Var {
 	ListNode node;
-	char *name;
+	char name[256];
 	Object *object;
 } Var;
 
 #define GET_CONST(i) (constants[(int)i])
+#define SET_CONST(i, v) (constants[(int)i] = v)
 
 #define DECREF(o) (decref_object(o))
 #define INCREF(o) (incref_object(o))

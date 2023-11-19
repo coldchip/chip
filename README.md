@@ -1,4 +1,3 @@
-
 # Chip Programming Language
 
 Chip is a compiled and interpreted programming language. The syntax was designed relatively close to JavaScript and Java but with some extra features.

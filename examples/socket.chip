@@ -8,6 +8,12 @@ class String {
 	}
 }
 
+class Array {
+	function constructor() {
+
+	}
+}
+
 class Number {
 	function constructor() {
 
@@ -94,8 +100,54 @@ class List {
 	}
 }
 
+class Math {
+	function min(a, b) {
+		if(a < b) {
+			return a;
+		}
+		return b;
+	}
+	function max(a, b) {
+		if(a > b) {
+			return a;
+		}
+		return b;
+	}
+	function sqrt(n) {
+		lo = this.min(1, n); 
+		hi = this.max(1, n);
+
+		while(100 * lo * lo < n) {
+			lo = lo * 10;
+		}
+		while(0.01 * hi * hi > n) {
+			hi = hi * 0.1;
+		}
+
+		i = 0;
+		while(i < 100) {
+			mid = (lo + hi)/2;
+
+			if(mid * mid $ n) {
+				return mid;
+			}
+			if(mid * mid > n) {
+				hi = mid;
+			} else {
+				lo = mid;
+			}
+
+			i = i + 1;
+		}
+
+		return mid;
+	}
+}
+
 class Main {
 	function main() {
+		a = new Math();
+
 		s = new Socket("0.0.0.0", 19132);
 		s.bind();
 
@@ -116,13 +168,13 @@ class Main {
 
 			input = c.read();
 
-			output = "<h1>Simple Web Server created in Chip</h1><br>";
+			output = "<h1>Simple Web Server created in Chip Language</h1><br>";
 
 			z = 0;
 			start = list.head;
 			while(start.hasNext > 0) {
 				start = start.getNext();
-				output = output + z + ":" + start.item + "<br>";
+				output = output + z + ":" + start.item + ":" + a.sqrt(start.item) + "<br>";
 				z = z + 1;
 			}
 
@@ -138,6 +190,7 @@ class Main {
 
 			c.write(output);
 			c.close();
+
 		}
 
 		return 0;

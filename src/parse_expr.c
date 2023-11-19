@@ -3,7 +3,19 @@
 #include "chip.h"
 
 Node *parse_expr(Token **current) {
-	return parse_relational(current);
+	return parse_equality(current);
+}
+
+static Node *parse_equality(Token **current) {
+	Node *node = parse_relational(current);
+	for(;;) {
+		Token *token = *current;
+		if(consume_string(current, "$")) {
+			node = new_node_binary(ND_EQ, token, node, parse_relational(current));
+			continue;
+		}
+		return node;
+	}
 }
 
 static Node *parse_relational(Token **current) {

@@ -1,3 +1,8 @@
+/*
+	The Chip Language Intepreter
+	@Copyright Ryan Loh 2023
+*/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,6 +15,7 @@
 
 static char *constants[8192] = {};
 static List program;
+Object *cache[8192] = {};
 
 void load_file(const char *name) {
 	FILE *fp = fopen(name, "rb");
@@ -17,6 +23,9 @@ void load_file(const char *name) {
 		printf("unable to load file %s\n", name);
 		exit(1);
 	}
+
+	char magic[8];
+	fread(magic, sizeof(char), 8, fp);
 
 	int pgm_size = 0;
 	fread(&pgm_size, sizeof(pgm_size), 1, fp);
@@ -34,10 +43,10 @@ void load_file(const char *name) {
 
 		fread(&constant_data, sizeof(char), constant_length, fp);
 
-		constants[z] = strdup(constant_data);
+		SET_CONST(z, strdup(constant_data));
 	}
 
-	fseek(fp, 4, SEEK_SET);
+	fseek(fp, sizeof(magic) + 4, SEEK_SET);
 
 	int class_count = 0;
 	fread(&class_count, sizeof(class_count), 1, fp);
@@ -60,7 +69,6 @@ void load_file(const char *name) {
 
 			Method *method = malloc(sizeof(Method));
 			method->name = GET_CONST(method_id);
-			method->native = NULL;
 			list_clear(&method->op);
 
 			for(int y = 0; y < op_count; y++) {
@@ -113,6 +121,10 @@ void emit_print() {
 						printf("\t%i\tPOP\t\n", line);
 					}
 					break;
+					case OP_CMPEQ: {
+						printf("\t%i\tCMPEQ\n", line);
+					}
+					break;
 					case OP_CMPGT: {
 						printf("\t%i\tCMPGT\n", line);
 					}
@@ -146,7 +158,7 @@ void emit_print() {
 					}
 					break;
 					case OP_LOAD_CONST: {
-						printf("\t%i\tLOAD_CONST\t%s\n", line, GET_CONST(ins->left));
+						printf("\t%i\tLOAD_CONST\t%i\t//%s\n", line, (int)ins->left, GET_CONST(ins->left));
 					}
 					break;
 					case OP_LOAD_MEMBER: {
@@ -210,7 +222,7 @@ void store_var(List *vars, char *name, Object *object) {
 	}
 
 	Var *var = malloc(sizeof(Var));
-	var->name = strdup(name);
+	strcpy(var->name, name);
 	var->object = object;
 	INCREF(object);
 	list_insert(list_end(vars), var);
@@ -229,7 +241,6 @@ Var *load_var(List *vars, char *name) {
 void free_var(Var *var) {
 	DECREF(var->object);
 	list_remove(&var->node);
-	free(var->name);
 	free(var);
 }
 
@@ -313,12 +324,8 @@ void free_object(Object *object) {
 	free(object->name);
 	free(object);
 
-	allocs--;
-
 	// printf("OBJECTS STILL REFRENCED: %i\n\n", allocs);
 }
-
-Object *cache[8192] = {};
 
 Object *empty_return = NULL;
 
@@ -426,6 +433,20 @@ Object *eval(Object *instance, Method *method, List *args) {
 				DECREF(POP_STACK());
 			}
 			break;
+			case OP_CMPEQ: {
+				Object *v1 = POP_STACK();
+				Object *v2 = POP_STACK();
+
+				Object *v3 = new_object(TY_VARIABLE, "Number");
+				v3->data_number = v2->data_number == v1->data_number;
+
+				PUSH_STACK(v3);
+
+				DECREF(v1);
+				DECREF(v2);
+				INCREF(v3);
+			}
+			break;
 			case OP_CMPGT: {
 				Object *v1 = POP_STACK();
 				Object *v2 = POP_STACK();
@@ -497,13 +518,18 @@ Object *eval(Object *instance, Method *method, List *args) {
 
 					INCREF(v3);
 				} else if(strcmp(v1->name, "String") == 0 && strcmp(v2->name, "String") == 0) {
-					Object *v3 = new_object(TY_VARIABLE, "String");
+					int sl1 = strlen(v1->data_string);
+					int sl2 = strlen(v2->data_string);
 
-					char *s = malloc(strlen(v1->data_string) + strlen(v2->data_string) + 1);
-					strcpy(s, v2->data_string);
-					strcat(s, v1->data_string);
+					char *s = malloc(sl1 + sl2 + 1);
+					memcpy(s, v2->data_string, sl2);
+					memcpy(s + sl2, v1->data_string, sl1);
+
+					s[sl1 + sl2] = '\0';
+
+					Object *v3 = new_object(TY_VARIABLE, "String");
 					v3->data_string = s;
-					
+
 					PUSH_STACK(v3);
 
 					INCREF(v3);
@@ -608,12 +634,10 @@ Object *eval(Object *instance, Method *method, List *args) {
 						printf("%s@%p", arg->name, arg);
 					}
 
-					Object *r = new_object(TY_VARIABLE, "Number");
-					r->data_number = 0;
-					PUSH_STACK(r);
+					PUSH_STACK(empty_return);
 
 					DECREF(arg);
-					INCREF(r);
+					INCREF(empty_return);
 				} else if(strcmp(name->data_string, "socket") == 0) {
 					int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -638,14 +662,12 @@ Object *eval(Object *instance, Method *method, List *args) {
 					bind((int)fd->data_number, (struct sockaddr*)&servaddr, sizeof(servaddr));
 					listen((int)fd->data_number, 5);
 
-					Object *r = new_object(TY_VARIABLE, "Number");
-					r->data_number = 0;
-					PUSH_STACK(r);
+					PUSH_STACK(empty_return);
 
 					DECREF(fd);
 					DECREF(ip);
 					DECREF(port);
-					INCREF(r);
+					INCREF(empty_return);
 				} else if(strcmp(name->data_string, "accept") == 0) {
 					Object *fd = POP_STACK();
 
@@ -691,12 +713,10 @@ Object *eval(Object *instance, Method *method, List *args) {
 
 					close((int)fd->data_number);
 
-					Object *r = new_object(TY_VARIABLE, "Number");
-					r->data_number = 0;
-					PUSH_STACK(r);
+					PUSH_STACK(empty_return);
 
 					DECREF(fd);
-					INCREF(r);
+					INCREF(empty_return);
 				} else if(strcmp(name->data_string, "rand") == 0) {
 					Object *r1 = new_object(TY_VARIABLE, "Number");
 					r1->data_number = rand();
@@ -709,13 +729,10 @@ Object *eval(Object *instance, Method *method, List *args) {
 
 					sleep((int)sec->data_number);
 
-					Object *r = new_object(TY_VARIABLE, "Number");
-					r->data_number = 0;
-
-					PUSH_STACK(r);
+					PUSH_STACK(empty_return);
 
 					DECREF(sec);
-					INCREF(r);
+					INCREF(empty_return);
 				} else if(strcmp(name->data_string, "string_length") == 0) {
 					Object *i = POP_STACK();
 

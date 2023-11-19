@@ -115,10 +115,15 @@ static void emit_file(List *constants, List *program) {
 		printf("%s %i\n", constant->data, constant-> obfuscated);
 
 		if(
-			false
+			constant->obfuscated && 
+			!strcasecmp(constant->data, "main") == 0 && 
+			!strcasecmp(constant->data, "this") == 0 && 
+			!strcasecmp(constant->data, "constructor") == 0 &&
+			!strcasecmp(constant->data, "string") == 0 &&
+			!strcasecmp(constant->data, "number") == 0
 		) {
 			char obfuscated[512];
-			rand_string(obfuscated, 16);
+			rand_string(obfuscated, 8);
 
 			char obfuscated2[1024];
 			strcpy(obfuscated2, obfuscated);
@@ -137,6 +142,9 @@ static void emit_file(List *constants, List *program) {
 	fclose(cst);
 
 	FILE *fp = fopen("a.out", "wb");
+
+	char magic[8] = "CHIP";
+	fwrite(magic, sizeof(char), 8, fp);
 
 	prg = fopen("~prg.out", "rb");
 	fseek(prg, 0, SEEK_END);
@@ -230,7 +238,15 @@ static void gen_if(Node *node) {
 	emit_op_left(method, OP_LOAD_NUMBER, 0);
 	Op *jmp = emit_op_left(method, OP_JMPIFT, 0);
 	visitor(node->body);
+
+	Op *jmp2 = emit_op_left(method, OP_JMP, 0);
+
 	jmp->left = emit_op_get_counter(method);
+	if(node->alternate) {
+		visitor(node->alternate);
+	}
+
+	jmp2->left = emit_op_get_counter(method);
 }
 
 static void gen_while(Node *node) {
@@ -306,6 +322,10 @@ static void gen_binary(Node *node) {
 	}
 
 	switch(node->type) {
+		case ND_EQ: {
+			emit_op(method, OP_CMPEQ);
+		}
+		break;
 		case ND_GT: {
 			emit_op(method, OP_CMPGT);
 		}
@@ -417,6 +437,7 @@ static void visitor(Node *node) {
 			gen_assign(node);
 		}
 		break;
+		case ND_EQ:
 		case ND_GT:
 		case ND_LT:
 		case ND_ADD:
