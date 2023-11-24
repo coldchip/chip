@@ -13,6 +13,7 @@
 #include <signal.h>
 #include "chip.h"
 
+List globals; // generate instances of all classes to allow static invoking
 static char *constants[8192] = {};
 static List program;
 Object *cache[8192] = {};
@@ -229,6 +230,13 @@ void store_var(List *vars, char *name, Object *object) {
 }
 
 Var *load_var(List *vars, char *name) {
+	for(ListNode *i = list_begin(&globals); i != list_end(&globals); i = list_next(i)) {
+		Var *var = (Var*)i;
+		if(strcmp(name, var->name) == 0) {
+			return var;
+		}
+	}
+
 	for(ListNode *i = list_begin(vars); i != list_end(vars); i = list_next(i)) {
 		Var *var = (Var*)i;
 		if(strcmp(name, var->name) == 0) {
@@ -323,6 +331,8 @@ void free_object(Object *object) {
 	}
 	free(object->name);
 	free(object);
+
+	allocs--;
 
 	// printf("OBJECTS STILL REFRENCED: %i\n\n", allocs);
 }
@@ -487,36 +497,6 @@ Object *eval(Object *instance, Method *method, List *args) {
 					PUSH_STACK(v3);
 
 					INCREF(v3);
-				} else if(strcmp(v1->name, "Number") == 0 && strcmp(v2->name, "String") == 0) {
-					Object *v3 = new_object(TY_VARIABLE, "String");
-
-					char str[512];
-					sprintf(str, "%i", (int)v1->data_number);
-
-					char *s = malloc(strlen(str) + strlen(v2->data_string) + 1);
-					strcpy(s, v2->data_string);
-					strcat(s, str);
-					v3->data_string = s;
-					
-					
-					PUSH_STACK(v3);
-
-					INCREF(v3);
-				} else if(strcmp(v1->name, "String") == 0 && strcmp(v2->name, "Number") == 0) {
-					Object *v3 = new_object(TY_VARIABLE, "String");
-
-					char str[512];
-					sprintf(str, "%i", (int)v2->data_number);
-
-					char *s = malloc(strlen(v1->data_string) + strlen(str) + 1);
-					strcpy(s, str);
-					strcat(s, v1->data_string);
-					v3->data_string = s;
-					
-					
-					PUSH_STACK(v3);
-
-					INCREF(v3);
 				} else if(strcmp(v1->name, "String") == 0 && strcmp(v2->name, "String") == 0) {
 					int sl1 = strlen(v1->data_string);
 					int sl2 = strlen(v2->data_string);
@@ -534,7 +514,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 
 					INCREF(v3);
 				} else {
-					printf("Unable to binary add unknown types\n");
+					printf("Unable to binary add unknown types [%s and %s]\n", v1->name, v2->name);
 					exit(1);
 				}
 
@@ -745,6 +725,45 @@ Object *eval(Object *instance, Method *method, List *args) {
 
 					DECREF(i);
 					INCREF(r);
+				} else if(strcmp(name->data_string, "string_at") == 0) {
+					Object *i = POP_STACK();
+					Object *index = POP_STACK();
+
+					Object *r = new_object(TY_VARIABLE, "Number");
+					r->data_number = (int)i->data_string[(int)index->data_number];
+
+					PUSH_STACK(r);
+
+					DECREF(i);
+					DECREF(index);
+					INCREF(r);
+				} else if(strcmp(name->data_string, "convert.number") == 0) {
+					Object *i = POP_STACK();
+					Object *data = POP_STACK();
+
+					Object *r = new_object(TY_VARIABLE, "Number");
+					r->data_number = atoi(data->data_string);
+
+					PUSH_STACK(r);
+
+					DECREF(i);
+					DECREF(data);
+					INCREF(r);
+				} else if(strcmp(name->data_string, "convert.string") == 0) {
+					Object *i = POP_STACK();
+					Object *data = POP_STACK();
+
+					char data_string[256];
+					sprintf(data_string, "%i", (int)data->data_number);
+
+					Object *r = new_object(TY_VARIABLE, "String");
+					r->data_string = strdup(data_string);
+
+					PUSH_STACK(r);
+
+					DECREF(i);
+					DECREF(data);
+					INCREF(r);
 				} else {
 					printf("VM:: unknown syscall %s\n", name->data_string);
 					exit(1);
@@ -846,11 +865,20 @@ void intepreter(const char *input) {
 	/* code */
 	signal(SIGPIPE, SIG_IGN);
 
+	list_clear(&globals);
+
 	list_clear(&program);
 
 	load_file(input);
 
 	emit_print();
+
+	for(ListNode *cn = list_begin(&program); cn != list_end(&program); cn = list_next(cn)) {
+		Class *c = (Class*)cn;
+
+		Object *var = new_object(TY_VARIABLE, c->name);
+		store_var(&globals, c->name, var);
+	}
 
 	empty_return = new_object(TY_VARIABLE, "Number");
 	empty_return->data_number = 0;

@@ -6,6 +6,11 @@ class String {
 	function length() {
 		return syscall("string_length", this);
 	}
+
+	function at(i) {
+		return syscall("string_at", this, i);
+	}
+
 }
 
 class Array {
@@ -17,6 +22,22 @@ class Array {
 class Number {
 	function constructor() {
 
+	}
+}
+
+class Convert {
+	function string(data) : [static] {
+		return syscall("convert.string", this, data);
+	}
+
+	function number(data) : [static] {
+		return syscall("convert.number", this, data);
+	}
+}
+
+class Console {
+	function write(a) : [static] {
+		syscall("print", a);
 	}
 }
 
@@ -159,12 +180,13 @@ class Main {
 			i = i + 1;
 		}
 
-		syscall("print", "done\n");
+		Console.write("done");
+		Console.write("\n");
 
 		while(1) {
 			c = s.accept();
 
-			syscall("print", "new connection\n");
+			Console.write("new connection\n");
 
 			input = c.read();
 
@@ -174,7 +196,7 @@ class Main {
 			start = list.head;
 			while(start.hasNext > 0) {
 				start = start.getNext();
-				output = output + z + ":" + start.item + ":" + a.sqrt(start.item) + "<br>";
+				output = output + Convert.string(z) + ":" + Convert.string(start.item) + ":" + Convert.string(a.sqrt(start.item)) + "<br>";
 				z = z + 1;
 			}
 
@@ -183,10 +205,10 @@ class Main {
 			c.write("HTTP/1.0 200 OK\r\n");
 			c.write("Content-Type: text/html; charset=utf-8\r\n");
 			c.write("omg: LOL\r\n");
-			c.write("Content-Length: " + output.length() + "\r\n\r\n");
+			c.write("Content-Length: " + Convert.string(output.length()) + "\r\n\r\n");
 
-			syscall("print", s);
-			syscall("print", "\n");
+			Console.write(s);
+			Console.write("\n");
 
 			c.write(output);
 			c.close();

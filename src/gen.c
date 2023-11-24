@@ -221,6 +221,7 @@ static void gen_arg(Node *node) {
 
 static void gen_method(Node *node) {
 	method = emit_method(class, node->token->data);
+	method->modifier = node->modifier;
 
 	visitor(node->args);
 

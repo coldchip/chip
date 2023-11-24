@@ -90,6 +90,11 @@ void               tokenize(char *input, List *tokens);
 */
 
 typedef enum {
+	MOD_STATIC = (1 << 0),
+	MOD_PROTECTED = (1 << 1)
+} Modifier;
+
+typedef enum {
 	ND_PROGRAM,
 	ND_CLASS,
 	ND_PARAM,
@@ -132,6 +137,8 @@ typedef struct _Node {
 	int length;
 
 	List bodylist;
+
+	Modifier modifier;
 
 	Token *token;
 } Node;
@@ -212,6 +219,7 @@ typedef struct _Method {
 	ListNode node;
 	char *name;
 	List op;
+	Modifier modifier;
 } Method;
 
 typedef struct _Op {
