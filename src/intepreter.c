@@ -604,7 +604,22 @@ Object *eval(Object *instance, Method *method, List *args) {
 			case OP_SYSCALL: {
 				Object *name = POP_STACK();
 
-				if(strcmp(name->data_string, "print") == 0) {
+				if(strcmp(name->data_string, "console.read") == 0) {
+					Object *text = POP_STACK();
+
+
+					char buffer[8192];
+					printf("%s", text->data_string);
+					scanf("%s", buffer);
+
+					Object *r = new_object(TY_VARIABLE, "String");
+					r->data_string = strdup(buffer);
+
+					PUSH_STACK(r);
+
+					DECREF(text);
+					INCREF(r);
+				} else if(strcmp(name->data_string, "console.write") == 0) {
 					Object *arg = POP_STACK();
 					if(strcmp(arg->name, "String") == 0) {
 						printf("%s", arg->data_string);
@@ -639,15 +654,18 @@ Object *eval(Object *instance, Method *method, List *args) {
 					servaddr.sin_addr.s_addr = inet_addr(ip->data_string);
 					servaddr.sin_port = htons((int)port->data_number);
 
-					bind((int)fd->data_number, (struct sockaddr*)&servaddr, sizeof(servaddr));
+					int result = bind((int)fd->data_number, (struct sockaddr*)&servaddr, sizeof(servaddr));
 					listen((int)fd->data_number, 5);
 
-					PUSH_STACK(empty_return);
+					Object *r1 = new_object(TY_VARIABLE, "Number");
+					r1->data_number = result == 0;
+
+					PUSH_STACK(r1);
 
 					DECREF(fd);
 					DECREF(ip);
 					DECREF(port);
-					INCREF(empty_return);
+					INCREF(r1);
 				} else if(strcmp(name->data_string, "accept") == 0) {
 					Object *fd = POP_STACK();
 

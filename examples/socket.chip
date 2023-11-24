@@ -1,3 +1,4 @@
+
 class String {
 	function constructor() {
 		
@@ -37,7 +38,11 @@ class Convert {
 
 class Console {
 	function write(a) : [static] {
-		syscall("print", a);
+		syscall("console.write", a);
+	}
+
+	function read(text) : [static] {
+		return syscall("console.read", text);
 	}
 }
 
@@ -81,7 +86,7 @@ class Socket {
 	}
 
 	function bind() {
-		syscall("bind", this.socket, this.ip, this.port);
+		return syscall("bind", this.socket, this.ip, this.port);
 	}
 
 	function accept() {
@@ -122,21 +127,24 @@ class List {
 }
 
 class Math {
-	function min(a, b) {
+	function random() : [static] {
+		return syscall("rand");
+	}
+	function min(a, b) : [static] {
 		if(a < b) {
 			return a;
 		}
 		return b;
 	}
-	function max(a, b) {
+	function max(a, b) : [static] {
 		if(a > b) {
 			return a;
 		}
 		return b;
 	}
-	function sqrt(n) {
-		lo = this.min(1, n); 
-		hi = this.max(1, n);
+	function sqrt(n) : [static] {
+		lo = Math.min(1, n); 
+		hi = Math.max(1, n);
 
 		while(100 * lo * lo < n) {
 			lo = lo * 10;
@@ -167,52 +175,55 @@ class Math {
 
 class Main {
 	function main() {
-		a = new Math();
+		port = Convert.number(Console.read("Enter the port number: "));
 
-		s = new Socket("0.0.0.0", 19132);
-		s.bind();
+		s = new Socket("0.0.0.0", port);
+		if(s.bind() $ 1) {
+			Console.write("server started on 0.0.0.0:" + Convert.string(port) + "\n");
 
-		list = new List();
+			list = new List();
 
-		i = 0;
-		while(i < 10000) {
-			list.push(syscall("rand"));
-			i = i + 1;
-		}
-
-		Console.write("done");
-		Console.write("\n");
-
-		while(1) {
-			c = s.accept();
-
-			Console.write("new connection\n");
-
-			input = c.read();
-
-			output = "<h1>Simple Web Server created in Chip Language</h1><br>";
-
-			z = 0;
-			start = list.head;
-			while(start.hasNext > 0) {
-				start = start.getNext();
-				output = output + Convert.string(z) + ":" + Convert.string(start.item) + ":" + Convert.string(a.sqrt(start.item)) + "<br>";
-				z = z + 1;
+			i = 0;
+			while(i < 10000) {
+				list.push(Math.random());
+				i = i + 1;
 			}
 
-			output = output + input;
+			Console.write("array filled\n");
 
-			c.write("HTTP/1.0 200 OK\r\n");
-			c.write("Content-Type: text/html; charset=utf-8\r\n");
-			c.write("omg: LOL\r\n");
-			c.write("Content-Length: " + Convert.string(output.length()) + "\r\n\r\n");
+			while(1) {
+				c = s.accept();
 
-			Console.write(s);
-			Console.write("\n");
+				Console.write("new connection\n");
 
-			c.write(output);
-			c.close();
+				input = c.read();
 
+				output = "<h1>Simple Web Server created in Chip Language</h1><br>";
+
+				z = 0;
+				start = list.head;
+				while(start.hasNext > 0) {
+					start = start.getNext();
+					output = output + Convert.string(z) + ":" + Convert.string(start.item) + ":" + Convert.string(Math.sqrt(start.item)) + "<br>";
+					z = z + 1;
+				}
+
+				output = output + input;
+
+				c.write("HTTP/1.0 200 OK\r\n");
+				c.write("Content-Type: text/html; charset=utf-8\r\n");
+				c.write("omg: LOL\r\n");
+				c.write("Content-Length: " + Convert.string(output.length()) + "\r\n\r\n");
+
+				Console.write(s);
+				Console.write("\n");
+
+				c.write(output);
+				c.close();
+
+			}
+		} else {
+			Console.write("unable to bind to port " + Convert.string(port) + "\n");
 		}
 
 		return 0;
