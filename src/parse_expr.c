@@ -75,6 +75,17 @@ static Node *parse_postfix(Token **current) {
 	for(;;) {
 		Token *token = *current;
 
+		if(consume_string(current, "[")) {
+			Node *left = new_node(ND_ARRAYMEMBER, NULL);
+			left->index = parse_expr(current);
+			left->body = node;
+			node = left;
+
+			expect_string(current, "]");
+
+			continue;
+		}
+
 		if(consume_string(current, ".")) {
 			Node *left = new_node(ND_MEMBER, *current);
 
@@ -105,14 +116,23 @@ static Node *parse_postfix(Token **current) {
 Node *parse_primary(Token **current) {
 	Token *token = *current;
 	if(consume_string(current, "new")) {
-		Node *node = new_node(ND_NEW, *current);
+		Token *name = *current;
 
 		expect_type(current, TK_IDENTIFIER);
-		expect_string(current, "(");
-		node->args = parse_args(current);
-		expect_string(current, ")");
 
-		return node;
+		if(equals_string(current, "[")) {
+			Node *node = new_node(ND_NEWARRAY, name);
+			expect_string(current, "[");
+			node->args = parse_expr(current);
+			expect_string(current, "]");
+			return node;
+		} else {
+			Node *node = new_node(ND_NEW, name);
+			expect_string(current, "(");
+			node->args = parse_args(current);
+			expect_string(current, ")");
+			return node;
+		}
 	} else if(consume_string(current, "syscall")) {
 		Node *node = new_node(ND_SYSCALL, NULL);
 		expect_string(current, "(");

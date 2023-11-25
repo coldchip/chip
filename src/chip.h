@@ -101,6 +101,8 @@ typedef enum {
 	ND_ARG,
 	ND_METHOD,
 	ND_MEMBER,
+	ND_NEWARRAY,
+	ND_ARRAYMEMBER,
 	ND_NEW,
 	ND_BLOCK,
 	ND_IF,
@@ -131,6 +133,7 @@ typedef struct _Node {
 	struct _Node *right;
 	struct _Node *args;
 	struct _Node *condition;
+	struct _Node *index;
 	struct _Node *body;
 	struct _Node *alternate;
 
@@ -197,6 +200,9 @@ typedef enum {
 	OP_CALL,
 	OP_SYSCALL,
 	OP_NEW,
+	OP_NEWARRAY,
+	OP_LOAD_ARRAY,
+	OP_STORE_ARRAY,
 	OP_JMPIFT, // pops 2 items from stack and compare, jumps to x if true
 	OP_JMP,    // unconditional jump
 	OP_RET
@@ -248,6 +254,9 @@ static void       gen_while(Node *node);
 static void       gen_block(Node *node);
 static void       gen_variable(Node *node);
 static void       gen_member(Node *node);
+static void       gen_new(Node *node);
+static void       gen_new_array(Node *node);
+static void       gen_array_member(Node *node);
 static void       gen_expr(Node *node);
 static void       gen_assign(Node *node);
 static void       gen_store(Node *node);
@@ -266,7 +275,8 @@ void              gen(Node *node, List *p);
 
 typedef enum {
 	TY_FUNCTION,
-	TY_VARIABLE
+	TY_VARIABLE,
+	TY_ARRAY
 } Type;
 
 typedef struct _Object {
@@ -281,6 +291,7 @@ typedef struct _Object {
 
 	double data_number;
 	char *data_string;
+	struct _Object **array;
 
 	List varlist;
 

@@ -182,6 +182,18 @@ void emit_print() {
 						printf("\t%i\tNEW\t\tARGLEN: %i\n", line, (int)ins->left);
 					}
 					break;
+					case OP_NEWARRAY: {
+						printf("\t%i\tNEWARRAY\n", line);
+					}
+					break;
+					case OP_LOAD_ARRAY: {
+						printf("\t%i\tLOAD_ARRAY\n", line);
+					}
+					break;
+					case OP_STORE_ARRAY: {
+						printf("\t%i\tSTORE_ARRAY\n", line);
+					}
+					break;
 					case OP_JMPIFT: {
 						printf("\t%i\tJMPIFT\t%i\n", line, (int)ins->left);
 					}
@@ -281,6 +293,7 @@ Object *new_object(Type type, char *name) {
 	Object *o = malloc(sizeof(Object));
 	o->data_string = NULL;
 	o->data_number = 0;
+	o->array = NULL;
 	o->bound = NULL;
 	o->type = type;
 	o->name = strdup(name);
@@ -328,6 +341,9 @@ void free_object(Object *object) {
 
 	if(object->data_string) {
 		free(object->data_string);
+	}
+	if(object->array) {
+		free(object->array);
 	}
 	free(object->name);
 	free(object);
@@ -448,7 +464,12 @@ Object *eval(Object *instance, Method *method, List *args) {
 				Object *v2 = POP_STACK();
 
 				Object *v3 = new_object(TY_VARIABLE, "Number");
-				v3->data_number = v2->data_number == v1->data_number;
+
+				if(strcmp(v1->name, "Number") == 0 && strcmp(v2->name, "Number") == 0) {
+					v3->data_number = v2->data_number == v1->data_number;
+				} else {
+					v3->data_number = v2 == v1;
+				}
 
 				PUSH_STACK(v3);
 
@@ -462,7 +483,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 				Object *v2 = POP_STACK();
 
 				Object *v3 = new_object(TY_VARIABLE, "Number");
-				v3->data_number = v2->data_number > v1->data_number;
+				v3->data_number = (int)v2->data_number > (int)v1->data_number;
 
 				PUSH_STACK(v3);
 
@@ -476,7 +497,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 				Object *v2 = POP_STACK();
 
 				Object *v3 = new_object(TY_VARIABLE, "Number");
-				v3->data_number = v2->data_number < v1->data_number;
+				v3->data_number = (int)v2->data_number < (int)v1->data_number;
 
 				PUSH_STACK(v3);
 
@@ -755,33 +776,6 @@ Object *eval(Object *instance, Method *method, List *args) {
 					DECREF(i);
 					DECREF(index);
 					INCREF(r);
-				} else if(strcmp(name->data_string, "convert.number") == 0) {
-					Object *i = POP_STACK();
-					Object *data = POP_STACK();
-
-					Object *r = new_object(TY_VARIABLE, "Number");
-					r->data_number = atoi(data->data_string);
-
-					PUSH_STACK(r);
-
-					DECREF(i);
-					DECREF(data);
-					INCREF(r);
-				} else if(strcmp(name->data_string, "convert.string") == 0) {
-					Object *i = POP_STACK();
-					Object *data = POP_STACK();
-
-					char data_string[256];
-					sprintf(data_string, "%i", (int)data->data_number);
-
-					Object *r = new_object(TY_VARIABLE, "String");
-					r->data_string = strdup(data_string);
-
-					PUSH_STACK(r);
-
-					DECREF(i);
-					DECREF(data);
-					INCREF(r);
 				} else {
 					printf("VM:: unknown syscall %s\n", name->data_string);
 					exit(1);
@@ -819,6 +813,52 @@ Object *eval(Object *instance, Method *method, List *args) {
 				PUSH_STACK(instance);
 
 				DECREF(name);
+			}
+			break;
+			case OP_NEWARRAY: {
+				Object *size = POP_STACK();
+				Object *name = POP_STACK();
+
+				Object *instance = new_object(TY_ARRAY, name->data_string);
+				instance->array = malloc(sizeof(Object *) * (int)size->data_number);
+
+				for(int i = 0; i < (int)size->data_number; i++) {
+					instance->array[i] = empty_return;
+					INCREF(empty_return);
+				}
+
+				PUSH_STACK(instance);
+
+				DECREF(size);
+				DECREF(name);
+				INCREF(instance);
+			}
+			break;
+			case OP_LOAD_ARRAY: {
+				Object *index = POP_STACK();
+				Object *instance = POP_STACK();
+
+				Object *item = instance->array[(int)index->data_number];
+
+				PUSH_STACK(item);
+
+				DECREF(index);
+				DECREF(instance);
+				INCREF(item);
+			}
+			break;
+			case OP_STORE_ARRAY: {
+				Object *index = POP_STACK();
+				Object *instance = POP_STACK();
+				Object *value = POP_STACK();
+
+				DECREF(instance->array[(int)index->data_number]);
+				instance->array[(int)index->data_number] = value;
+				INCREF(value);
+
+				DECREF(index);
+				DECREF(instance);
+				DECREF(value);
 			}
 			break;
 			case OP_JMPIFT: {
@@ -860,6 +900,11 @@ Object *eval(Object *instance, Method *method, List *args) {
 				ret = POP_STACK();
 
 				goto cleanup;
+			}
+			break;
+			default: {
+				printf("illegal instruction %i\n", current->op);
+				exit(1);
 			}
 			break;
 		}

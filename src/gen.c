@@ -115,6 +115,7 @@ static void emit_file(List *constants, List *program) {
 		printf("%s %i\n", constant->data, constant-> obfuscated);
 
 		if(
+			false &&
 			constant->obfuscated && 
 			!strcasecmp(constant->data, "main") == 0 && 
 			!strcasecmp(constant->data, "this") == 0 && 
@@ -289,6 +290,22 @@ static void gen_new(Node *node) {
 	emit_op_left(method, OP_NEW, node->args->length);
 }
 
+static void gen_new_array(Node *node) {
+	emit_op_left(method, OP_LOAD_CONST, emit_constant(&constants, node->token->data, true));
+
+	visitor(node->args);
+
+	emit_op(method, OP_NEWARRAY);
+}
+
+static void gen_array_member(Node *node) {
+	if(node->body) {
+		visitor(node->body);
+		visitor(node->index);
+		emit_op(method, OP_LOAD_ARRAY);
+	}
+}
+
 static void gen_expr(Node *node) {
 	visitor(node->body);
 
@@ -303,9 +320,16 @@ static void gen_assign(Node *node) {
 
 static void gen_store(Node *node) {
 	if(node->body) {
-		/* x.y = z */
+		
 		visitor(node->body);
-		emit_op_left(method, OP_STORE_MEMBER, emit_constant(&constants, node->token->data, true));
+		if(node->index) {
+			/* x[y] = z */
+			visitor(node->index);
+			emit_op(method, OP_STORE_ARRAY);
+		} else {
+			/* x.y = z */
+			emit_op_left(method, OP_STORE_MEMBER, emit_constant(&constants, node->token->data, true));
+		}
 	} else {
 		/* x = y */
 		emit_op_left(method, OP_STORE_VAR, emit_constant(&constants, node->token->data, true));
@@ -428,6 +452,14 @@ static void visitor(Node *node) {
 		break;
 		case ND_NEW: {
 			gen_new(node);
+		}
+		break;
+		case ND_NEWARRAY: {
+			gen_new_array(node);
+		}
+		break;
+		case ND_ARRAYMEMBER: {
+			gen_array_member(node);
 		}
 		break;
 		case ND_EXPR: {
