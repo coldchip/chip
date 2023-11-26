@@ -480,7 +480,7 @@ Object *eval(Object *instance, Method *method, Object **args, int args_length) {
 				Object *v3 = new_object(TY_VARIABLE, "Number");
 
 				if(strcmp(v1->name, "Number") == 0 && strcmp(v2->name, "Number") == 0) {
-					v3->data_number = (int)v2->data_number == (int)v1->data_number;
+					v3->data_number = v2->data_number == v1->data_number;
 				} else {
 					v3->data_number = v2 == v1;
 				}

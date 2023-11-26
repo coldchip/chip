@@ -216,6 +216,32 @@ class Math {
 	}
 }
 
+class Art {
+	function triangle(n) : [static] {
+		output = "";
+
+		c1 = (n - 1) / 2;
+		c2 = 3 * n / 2 - 1;
+
+		i = 0;
+		while(i < n) {
+			j = 0;
+			while(j < n) {
+				if(i + j $ c1 or i - j $ c1 or j - i $ c1 or i + j $ c2 or i $ c1 or j $ c1) {
+					output = output + "*";
+				} else {
+					output = output + " ";
+				}
+				j = j + 1;
+			}
+			output = output + "\n";
+			i = i + 1;
+		}
+
+		return output;
+	}
+}
+
 class Main {
 	function main() : [static] {
 		test = new String[8192];
@@ -254,6 +280,8 @@ class Main {
 				}
 
 				output = output + input;
+
+				output = output + "<pre>" + Art.triangle(13) + "</pre>";
 
 				c.write("HTTP/1.0 200 OK\r\n");
 				c.write("Content-Type: text/html; charset=utf-8\r\n");
