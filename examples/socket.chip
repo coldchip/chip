@@ -1,6 +1,6 @@
 class String {
-	function constructor() {
-		
+	function constructor(value) {
+		this.value = value;
 	}
 
 	function length() {
@@ -134,12 +134,6 @@ class Client {
 	}
 }
 
-class Cicular {
-	function setNext(next) {
-		this.next = next;
-	}
-}
-
 class Socket {
 	function constructor(ip, port) {
 		this.ip = ip;
@@ -172,19 +166,6 @@ class ListNode {
 
 	function getNext() {
 		return this.next;
-	}
-}
-
-class List {
-	function constructor() {
-		this.head = new ListNode(0);
-		this.current = this.head;
-	}
-
-	function push(item) {
-		a = new ListNode(item);
-		this.current.setNext(a);
-		this.current = a;
 	}
 }
 
@@ -240,13 +221,13 @@ class Main {
 		test = new String[8192];
 
 		o = 0;
-		while(o < 6024) {
+		while(o < 6000) {
 			test[o] = Convert.string(Math.random());
 			o = o + 1;
 		}
 
 		o = 0;
-		while(o < 6024) {
+		while(o < 6000) {
 			Console.write(test[o] + "\n");
 			o = o + 1;
 		}
@@ -256,16 +237,6 @@ class Main {
 		s = new Socket("0.0.0.0", port);
 		if(s.bind() $ 1) {
 			Console.write("server started on 0.0.0.0:" + Convert.string(port) + "\n");
-
-			list = new List();
-
-			i = 0;
-			while(i < 100) {
-				list.push(Math.random());
-				i = i + 1;
-			}
-
-			Console.write("array filled\n");
 
 			while(1) {
 				c = s.accept();
@@ -277,10 +248,8 @@ class Main {
 				output = "<h1>Simple Web Server created in Chip Language</h1><br>";
 
 				z = 0;
-				start = list.head;
-				while(start.hasNext > 0) {
-					start = start.getNext();
-					output = output + Convert.string(z) + ":" + Convert.string(start.item) + ":" + Convert.string(Math.sqrt(144)) + "<br>";
+				while(z < 6000) {
+					output = output + Convert.string(z) + ":" + test[z] + ":" + "<br>";
 					z = z + 1;
 				}
 
@@ -288,7 +257,7 @@ class Main {
 
 				c.write("HTTP/1.0 200 OK\r\n");
 				c.write("Content-Type: text/html; charset=utf-8\r\n");
-				c.write("omg: LOL\r\n");
+				c.write("Server: Chip\r\n");
 				c.write("Content-Length: " + Convert.string(output.length()) + "\r\n\r\n");
 
 				Console.write(s);

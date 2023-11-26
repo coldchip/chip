@@ -3,7 +3,19 @@
 #include "chip.h"
 
 Node *parse_expr(Token **current) {
-	return parse_equality(current);
+	return parse_or(current);
+}
+
+static Node *parse_or(Token **current) {
+	Node *node = parse_equality(current);
+	for(;;) {
+		Token *token = *current;
+		if(consume_string(current, "or")) {
+			node = new_node_binary(ND_OR, token, node, parse_equality(current));
+			continue;
+		}
+		return node;
+	}
 }
 
 static Node *parse_equality(Token **current) {

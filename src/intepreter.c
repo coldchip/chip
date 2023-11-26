@@ -70,7 +70,9 @@ void load_file(const char *name) {
 
 			Method *method = malloc(sizeof(Method));
 			method->name = GET_CONST(method_id);
-			list_clear(&method->op);
+			method->code_count = op_count;
+			
+			method->codes = malloc(sizeof(Op *) * op_count);
 
 			for(int y = 0; y < op_count; y++) {
 				char   op = 0;
@@ -82,7 +84,7 @@ void load_file(const char *name) {
 				ins->op = op;
 				ins->left = op_left;
 
-				list_insert(list_end(&method->op), ins);
+				method->codes[y] = ins;
 			}
 
 			list_insert(list_end(&class->method), method);
@@ -107,8 +109,8 @@ void emit_print() {
 			printf("\t@method %s\n", m->name);
 			printf("\tLINE\tOP\tVALUE\n\t--------------------------\n");
 
-			for(ListNode *op = list_begin(&m->op); op != list_end(&m->op); op = list_next(op)) {
-				Op *ins = (Op*)op;
+			for(int pc = 0; pc < m->code_count; pc++) {
+				Op *ins = m->codes[pc];
 				switch(ins->op) {
 					case OP_LOAD_VAR: {
 						printf("\t%i\tLOAD_VAR\t%s\n", line, GET_CONST(ins->left));
@@ -154,6 +156,10 @@ void emit_print() {
 						printf("\t%i\tMOD\n", line);
 					}
 					break;
+					case OP_OR: {
+						printf("\t%i\tOR\n", line);
+					}
+					break;
 					case OP_LOAD_NUMBER: {
 						printf("\t%i\tLOAD_NUMBER\t%f\n", line, ins->left);
 					}
@@ -171,7 +177,7 @@ void emit_print() {
 					}
 					break;
 					case OP_CALL: {
-						printf("\t%i\tCALL\tARGLEN: %i\n", line, (int)ins->left);
+						printf("\t%i\tCALL\t\tARGLEN: %i\n", line, (int)ins->left);
 					}
 					break;
 					case OP_SYSCALL: {
@@ -231,7 +237,10 @@ Op *op_at(List *program, int line) {
 void store_var(List *vars, char *name, Object *object) {
 	Var *previous = load_var(vars, name);
 	if(previous) {
-		free_var(previous);
+		DECREF(previous->object);
+		previous->object = object;
+		INCREF(object);
+		return;
 	}
 
 	Var *var = malloc(sizeof(Var));
@@ -355,7 +364,7 @@ void free_object(Object *object) {
 
 Object *empty_return = NULL;
 
-Object *eval(Object *instance, Method *method, List *args) {
+Object *eval(Object *instance, Method *method, Object **args, int args_length) {
 	/*
 		assume if instance == NULL then method is static
 	*/
@@ -365,8 +374,6 @@ Object *eval(Object *instance, Method *method, List *args) {
 	if(instance != NULL) {
 		store_var(&varlist, "this", instance);
 	}
-	
-	Op *current = (Op*)list_begin(&method->op);
 
 	Object *stack[512];
 	int sp = 0;
@@ -375,13 +382,15 @@ Object *eval(Object *instance, Method *method, List *args) {
 	INCREF(ret);
 
 	if(args) {
-		while(!list_empty(args)) {
-			Object *arg = (Object*)list_remove(list_begin(args));
+		for(int i = 0; i < args_length; i++) {
+			Object *arg = args[i];
 			PUSH_STACK(arg);
 		}
 	}
 
-	while(current != (Op*)list_end(&method->op)) {
+	int pc = 0;
+	while(pc < method->code_count) {
+		Op *current = method->codes[pc];
 		switch(current->op) {
 			case OP_LOAD_VAR: {
 				Var *var = load_var(&varlist, GET_CONST(current->left));
@@ -420,6 +429,11 @@ Object *eval(Object *instance, Method *method, List *args) {
 				} else {
 					Object *o = new_object(TY_VARIABLE, "String");
 					o->data_string = strdup(GET_CONST(current->left));
+
+					Object *count = new_object(TY_VARIABLE, "Number");
+					count->data_number = strlen(o->data_string);
+					store_var(&o->varlist, "count", count);
+
 					cache[(int)current->left] = o;
 					INCREF(o);
 					
@@ -466,7 +480,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 				Object *v3 = new_object(TY_VARIABLE, "Number");
 
 				if(strcmp(v1->name, "Number") == 0 && strcmp(v2->name, "Number") == 0) {
-					v3->data_number = v2->data_number == v1->data_number;
+					v3->data_number = (int)v2->data_number == (int)v1->data_number;
 				} else {
 					v3->data_number = v2 == v1;
 				}
@@ -519,8 +533,14 @@ Object *eval(Object *instance, Method *method, List *args) {
 
 					INCREF(v3);
 				} else if(strcmp(v1->name, "String") == 0 && strcmp(v2->name, "String") == 0) {
-					int sl1 = strlen(v1->data_string);
-					int sl2 = strlen(v2->data_string);
+					Var *vl1 = load_var(&v1->varlist, "count");
+					Var *vl2 = load_var(&v2->varlist, "count");
+
+					Object *ol1 = vl1->object;
+					Object *ol2 = vl2->object;
+
+					int sl1 = (int)ol1->data_number;
+					int sl2 = (int)ol2->data_number;
 
 					char *s = malloc(sl1 + sl2 + 1);
 					memcpy(s, v2->data_string, sl2);
@@ -530,6 +550,10 @@ Object *eval(Object *instance, Method *method, List *args) {
 
 					Object *v3 = new_object(TY_VARIABLE, "String");
 					v3->data_string = s;
+
+					Object *count = new_object(TY_VARIABLE, "Number");
+					count->data_number = sl1 + sl2;
+					store_var(&v3->varlist, "count", count);
 
 					PUSH_STACK(v3);
 
@@ -599,16 +623,28 @@ Object *eval(Object *instance, Method *method, List *args) {
 				INCREF(v3);
 			}
 			break;
+			case OP_OR: {
+				Object *v1 = POP_STACK();
+				Object *v2 = POP_STACK();
+
+				Object *v3 = new_object(TY_VARIABLE, "Number");
+				v3->data_number = ((int)v2->data_number) || ((int)v1->data_number);
+				
+				PUSH_STACK(v3);
+
+				DECREF(v1);
+				DECREF(v2);
+				INCREF(v3);
+			}
+			break;
 			case OP_CALL: {
 				Object *instance = POP_STACK();
 
-				List args;
-				list_clear(&args);
+				Object *args[(int)current->left];
 
 				for(int i = 0; i < current->left; i++) {
 					Object *arg = POP_STACK();
-
-					list_insert(list_end(&args), arg);
+					args[i] = arg;
 				}
 
 				if(instance->type != TY_FUNCTION) {
@@ -616,7 +652,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 					exit(1);
 				}
 
-				Object *r = eval(instance->bound, instance->method, &args);
+				Object *r = eval(instance->bound, instance->method, args, (int)current->left);
 				PUSH_STACK(r);
 
 				DECREF(instance);
@@ -628,13 +664,16 @@ Object *eval(Object *instance, Method *method, List *args) {
 				if(strcmp(name->data_string, "console.read") == 0) {
 					Object *text = POP_STACK();
 
-
 					char buffer[8192];
 					printf("%s", text->data_string);
 					scanf("%s", buffer);
 
 					Object *r = new_object(TY_VARIABLE, "String");
 					r->data_string = strdup(buffer);
+
+					Object *count = new_object(TY_VARIABLE, "Number");
+					count->data_number = strlen(r->data_string);
+					store_var(&r->varlist, "count", count);
 
 					PUSH_STACK(r);
 
@@ -707,6 +746,10 @@ Object *eval(Object *instance, Method *method, List *args) {
 
 					Object *r = new_object(TY_VARIABLE, "String");
 					r->data_string = strdup(data);
+
+					Object *count = new_object(TY_VARIABLE, "Number");
+					count->data_number = strlen(r->data_string);
+					store_var(&r->varlist, "count", count);
 
 					PUSH_STACK(r);
 
@@ -785,19 +828,18 @@ Object *eval(Object *instance, Method *method, List *args) {
 			}
 			break;
 			case OP_NEW: {
-				List args;
-				list_clear(&args);
+				Object *args[(int)current->left];
 
 				for(int i = 0; i < current->left; i++) {
 					Object *arg = POP_STACK();
-					list_insert(list_end(&args), arg);
+					args[i] = arg;
 				}
 
 				Object *name = POP_STACK();
 
 				Class *class = get_class(name->data_string);
 				if(!class) {
-					printf("VM:: cannot clone class %s\n", name->data_string);
+					printf("cannot clone class %s\n", name->data_string);
 					exit(1);
 				}
 
@@ -807,7 +849,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 				
 				Method *constructor = get_method(name->data_string, "constructor");
 				if(constructor) {
-					DECREF(eval(instance, constructor, &args));
+					DECREF(eval(instance, constructor, args, (int)current->left));
 				}
 				
 				PUSH_STACK(instance);
@@ -866,14 +908,8 @@ Object *eval(Object *instance, Method *method, List *args) {
 				Object *v2 = POP_STACK();
 
 				if(v2->data_number == v1->data_number) {
-					Op *jmp_to = op_at(&method->op, current->left);
-					if(!jmp_to) {
-						printf("VM:: Unable to jump to op %i\n", (int)current->left);
-						exit(1);
-					}
+					pc = (int)current->left - 1;
 
-					current = jmp_to;
-					
 					DECREF(v1);
 					DECREF(v2);
 
@@ -885,13 +921,8 @@ Object *eval(Object *instance, Method *method, List *args) {
 			}
 			break;
 			case OP_JMP: {
-				Op *jmp_to = op_at(&method->op, current->left);
-				if(!jmp_to) {
-					printf("VM:: Unable to jump to op %i\n", (int)current->left);
-					exit(1);
-				}
+				pc = (int)current->left - 1;
 
-				current = jmp_to;
 				continue;
 			}
 			break;
@@ -909,7 +940,7 @@ Object *eval(Object *instance, Method *method, List *args) {
 			break;
 		}
 
-		current = (Op*)list_next((ListNode*)current);
+		pc++;
 	}
 
 	cleanup:;
@@ -953,5 +984,5 @@ void intepreter(const char *input) {
 		exit(1);
 	}
 
-	eval(NULL, method_main, NULL);
+	eval(NULL, method_main, NULL, 0);
 }

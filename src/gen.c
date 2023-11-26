@@ -112,7 +112,7 @@ static void emit_file(List *constants, List *program) {
 	for(ListNode *c = list_begin(constants); c != list_end(constants); c = list_next(c)) {
 		Constant *constant = (Constant*)c;
 
-		printf("%s %i\n", constant->data, constant-> obfuscated);
+		// printf("%s %i\n", constant->data, constant-> obfuscated);
 
 		if(
 			false &&
@@ -379,6 +379,10 @@ static void gen_binary(Node *node) {
 			emit_op(method, OP_MOD);
 		}
 		break;
+		case ND_OR: {
+			emit_op(method, OP_OR);
+		}
+		break;
 	}
 }
 
@@ -477,7 +481,8 @@ static void visitor(Node *node) {
 		case ND_SUB:
 		case ND_MUL:
 		case ND_DIV:
-		case ND_MOD: {
+		case ND_MOD:
+		case ND_OR: {
 			gen_binary(node);
 		}
 		break;

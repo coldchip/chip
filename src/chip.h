@@ -118,6 +118,7 @@ typedef enum {
 	ND_MUL,
 	ND_DIV,
 	ND_MOD,
+	ND_OR,
 	ND_NUMBER,
 	ND_STRING,
 	ND_RETURN,
@@ -170,6 +171,7 @@ Node              *parse(List *tokens);
 */
 
 Node              *parse_expr(Token **current);
+static Node       *parse_or(Token **current);
 static Node       *parse_equality(Token **current);
 static Node       *parse_relational(Token **current);
 static Node       *parse_add_sub(Token **current);
@@ -193,6 +195,7 @@ typedef enum {
 	OP_MUL,
 	OP_DIV,
 	OP_MOD,
+	OP_OR,
 	OP_LOAD_NUMBER,
 	OP_LOAD_CONST,
 	OP_LOAD_MEMBER,
@@ -225,6 +228,10 @@ typedef struct _Method {
 	ListNode node;
 	char *name;
 	List op;
+
+	struct _Op **codes;
+	int code_count;
+
 	Modifier modifier;
 } Method;
 
@@ -321,7 +328,7 @@ Var              *load_var(List *vars, char *name);
 Class            *get_class(char *name);
 Method           *get_method(char *name1, char *name);
 Object           *new_object(Type type, char *name);
-Object           *eval(Object *instance, Method *method, List *args);
+Object           *eval(Object *instance, Method *method, Object **args, int args_length);
 void              intepreter(const char *input);
 
 #endif
