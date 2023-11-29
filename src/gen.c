@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "chip.h"
+#include "gen.h"
 
 static char *rand_string(char *str, size_t size) {
     const char charset[] = "abcdefghijklmnopqrstuvwxyz";
@@ -313,6 +314,13 @@ static void gen_expr(Node *node) {
 	emit_op(method, OP_POP);
 }
 
+static void gen_declaration(Node *node) {
+	if(node->body) {
+		visitor(node->body);
+		emit_op_left(method, OP_STORE_VAR, emit_constant(&constants, node->token->data, true));
+	}
+}
+
 static void gen_assign(Node *node) {
 	visitor(node->right);
 	gen_store(node->left);
@@ -320,7 +328,6 @@ static void gen_assign(Node *node) {
 
 static void gen_store(Node *node) {
 	if(node->body) {
-		
 		visitor(node->body);
 		if(node->index) {
 			/* x[y] = z */
@@ -468,6 +475,10 @@ static void visitor(Node *node) {
 		break;
 		case ND_EXPR: {
 			gen_expr(node);
+		}
+		break;
+		case ND_DECLARATION: {
+			gen_declaration(node);
 		}
 		break;
 		case ND_ASSIGN: {

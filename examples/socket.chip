@@ -1,31 +1,29 @@
-class String {
-	function constructor(value) {
-		this.value = value;
-	}
-
-	function length() {
-		return syscall("string_length", this);
-	}
-
-	function at(i) {
-		return syscall("string_at", this, i);
-	}
-}
-
-class Array {
-	function constructor() {
-
-	}
-}
-
 class Number {
 	function constructor() {
 
 	}
 }
 
+class String {
+	function constructor() {
+		
+	}
+
+	function length() {
+		return syscall("string_length", this);
+	}
+
+	function at(Number i) {
+		return syscall("string_at", this, i);
+	}
+
+	function operator+() {
+		
+	}
+}
+
 class Convert {
-	function lol(number) : [static] {
+	function lol(Number number) : [static] {
 		if(number $ 0) {
 			return "0";
 		}
@@ -60,23 +58,23 @@ class Convert {
 		return "";
 	}
 
-	function string(number) : [static] {
+	function string(Number number) : [static] {
 		if(number $ 0) {
 			return "0";
 		}
 
-		result = "";
+		String result = "";
 
-		i = number;
+		Number i = number;
 
 		while(i > 0) {
 			result = result + Convert.lol(i % 10);
 			i = i / 10;
 		}
 
-		reverse = "";
+		String reverse = "";
 
-		i = result.length();
+		Number i = result.length();
 		while(i > 0-1) {
 			reverse = reverse + Convert.lol(result.at(i) - 48);
 			i = i - 1;
@@ -85,10 +83,10 @@ class Convert {
 		return reverse;
 	}
 
-	function number(str) : [static] {
-		result = 0;
+	function number(String str) : [static] {
+		Number result = 0;
 
-		i = 0;
+		Number i = 0;
 		while(i < str.length()) {
 			result = (result * 10) + (str.at(i) - 48);
 			i = i + 1;
@@ -99,17 +97,17 @@ class Convert {
 }
 
 class Console {
-	function write(a) : [static] {
+	function write(String a) : [static] {
 		syscall("console.write", a);
 	}
 
-	function read(text) : [static] {
+	function read(String text) : [static] {
 		return syscall("console.read", text);
 	}
 }
 
 class Client {
-	function constructor(fd) {
+	function constructor(Number fd) {
 		this.fd = fd;
 	}
 
@@ -117,16 +115,8 @@ class Client {
 		return syscall("read", this.fd);
 	}
 
-	function write(data) {
+	function write(String data) {
 		return syscall("write", this.fd, data, data.length());
-	}
-
-	function test2(data, l) {
-		return 1;
-	}
-
-	function test(data) {
-		return this.test2(data, data.length());
 	}
 
 	function close() {
@@ -135,7 +125,7 @@ class Client {
 }
 
 class Socket {
-	function constructor(ip, port) {
+	function constructor(String ip, Number port) {
 		this.ip = ip;
 		this.port = port;
 		this.socket = syscall("socket");
@@ -146,26 +136,9 @@ class Socket {
 	}
 
 	function accept() {
-		fd = syscall("accept", this.socket);
+		Number fd = syscall("accept", this.socket);
 
 		return new Client(fd);
-	}
-}
-
-class ListNode {
-	function constructor(item) {
-		this.item = item;
-		this.next = "";	
-		this.hasNext = 0;	
-	}
-
-	function setNext(next) {
-		this.next = next;
-		this.hasNext = 1;
-	}
-
-	function getNext() {
-		return this.next;
 	}
 }
 
@@ -173,21 +146,21 @@ class Math {
 	function random() : [static] {
 		return syscall("rand");
 	}
-	function min(a, b) : [static] {
+	function min(Number a, Number b) : [static] {
 		if(a < b) {
 			return a;
 		}
 		return b;
 	}
-	function max(a, b) : [static] {
+	function max(Number a, Number b) : [static] {
 		if(a > b) {
 			return a;
 		}
 		return b;
 	}
-	function sqrt(n) : [static] {
-		lo = Math.min(1, n); 
-		hi = Math.max(1, n);
+	function sqrt(Number n) : [static] {
+		Number lo = Math.min(1, n); 
+		Number hi = Math.max(1, n);
 
 		while(100 * lo * lo < n) {
 			lo = lo * 10;
@@ -196,7 +169,8 @@ class Math {
 			hi = hi * 0.1;
 		}
 
-		i = 0;
+		Number i = 0;
+		Number mid = 0;
 		while(i < 100) {
 			mid = (lo + hi)/2;
 
@@ -217,15 +191,15 @@ class Math {
 }
 
 class Art {
-	function triangle(n) : [static] {
-		output = "";
+	function triangle(Number n) : [static] {
+		String output = "";
 
-		c1 = (n - 1) / 2;
-		c2 = 3 * n / 2 - 1;
+		Number c1 = (n - 1) / 2;
+		Number c2 = 3 * n / 2 - 1;
 
-		i = 0;
+		Number i = 0;
 		while(i < n) {
-			j = 0;
+			Number j = 0;
 			while(j < n) {
 				if(i + j $ c1 or i - j $ c1 or j - i $ c1 or i + j $ c2 or i $ c1 or j $ c1) {
 					output = output + "*";
@@ -244,36 +218,30 @@ class Art {
 
 class Main {
 	function main() : [static] {
-		test = new String[8192];
+		String[] test = new String[8192];
 
-		o = 0;
+		Number o = 0;
 		while(o < 6000) {
 			test[o] = Convert.string(Math.random());
 			o = o + 1;
 		}
 
-		o = 0;
-		while(o < 6000) {
-			Console.write(test[o] + "\n");
-			o = o + 1;
-		}
+		Number port = Convert.number(Console.read("Enter the port number: "));
 
-		port = Convert.number(Console.read("Enter the port number: "));
-
-		s = new Socket("0.0.0.0", port);
+		Socket s = new Socket("0.0.0.0", port);
 		if(s.bind() $ 1) {
 			Console.write("server started on 0.0.0.0:" + Convert.string(port) + "\n");
 
 			while(1) {
-				c = s.accept();
+				Client c = s.accept();
 
 				Console.write("new connection\n");
 
-				input = c.read();
+				String input = c.read();
 
-				output = "<h1>Simple Web Server created in Chip Language</h1><br>";
+				String output = "<h1>Simple Web Server created in Chip Language</h1><br>";
 
-				z = 0;
+				Number z = 0;
 				while(z < 6000) {
 					output = output + Convert.string(z) + ":" + test[z] + ":" + "<br>";
 					z = z + 1;

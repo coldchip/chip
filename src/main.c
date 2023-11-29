@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include "chip.h"
+#include "list.h"
+#include "parse.h"
 
 int main(int argc, char const *argv[]) {
 	/* code */

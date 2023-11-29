@@ -11,7 +11,10 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <signal.h>
+#include <unistd.h>
 #include "chip.h"
+#include "list.h"
+#include "intepreter.h"
 
 List globals; // generate instances of all classes to allow static invoking
 static char *constants[8192] = {};
@@ -965,7 +968,7 @@ void intepreter(const char *input) {
 
 	load_file(input);
 
-	emit_print();
+	// emit_print();
 
 	for(ListNode *cn = list_begin(&program); cn != list_end(&program); cn = list_next(cn)) {
 		Class *c = (Class*)cn;

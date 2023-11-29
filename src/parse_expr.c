@@ -1,9 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "chip.h"
+#include <string.h>
+#include "tokenize.h"
+#include "parse.h"
+#include "varscope.h"
+#include "type.h"
 
 Node *parse_expr(Token **current) {
-	return parse_or(current);
+	Node *node = parse_or(current);
+	normalize_type(node);
+	return node;
 }
 
 static Node *parse_or(Token **current) {
@@ -139,6 +145,11 @@ Node *parse_primary(Token **current) {
 			expect_string(current, "]");
 			return node;
 		} else {
+			if(!type_get_class(name->data)) {
+				printf("error, unknown type '%s'\n", name->data);
+				exit(1);
+			}
+
 			Node *node = new_node(ND_NEW, name);
 			expect_string(current, "(");
 			node->args = parse_args(current);
@@ -156,11 +167,23 @@ Node *parse_primary(Token **current) {
 		expect_string(current, ")");
 		return node;
 	} else if(consume_type(current, TK_IDENTIFIER)) {
+
+		if(!varscope_get(token->data) && !type_get_class(token->data)) {
+			printf("undefined variable %s\n", token->data);
+			exit(1);
+		}
+
 		Node *node = new_node(ND_VARIABLE, token);
 
 		return node;
 	} else if(consume_type(current, TK_NUMBER)) {
-		return new_node(ND_NUMBER, token);
+		Node *node = new_node(ND_NUMBER, token);
+		if(strstr(token->data, ".") != NULL) {
+			node->data_type = TYPE_FLOAT;
+		} else {
+			node->data_type = TYPE_INT;
+		}
+		return node;
 	} else if(consume_type(current, TK_STRING)) {
 		return new_node(ND_STRING, token);
 	} else {

@@ -1,8 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 #include "sb.h"
-#include "chip.h"
+#include "tokenize.h"
 
 static Token *new_token(TokenType type, char *data, int length, int line) {
 	Token *token = malloc(sizeof(Token));
