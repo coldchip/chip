@@ -47,7 +47,7 @@ typedef struct _Node {
 	ListNode node;
 
 	NodeType type;
-	int data_type;
+	Ty *data_type;
 	struct _Node *left;
 	struct _Node *right;
 	struct _Node *args;
@@ -68,7 +68,6 @@ typedef struct _Node {
 Node              *new_node(NodeType type, Token *token);
 Node              *new_node_binary(NodeType type, Token *token, Node *left, Node *right);
 
-bool               is_type(Token **current);
 bool               is_class(Token **current);
 bool               is_method(Token **current);
 bool               is_declaration(Token **current);
@@ -78,6 +77,7 @@ static Node       *parse_program(Token **current);
 static Ty         *parse_type(Token **current);
 static Node       *parse_class(Token **current);
 static Node       *parse_method(Token **current);
+Node              *parse_class_declaration(Token **current);
 Node              *parse_param(Token **current);
 Node              *parse_params(Token **current);
 Node              *parse_arg(Token **current);

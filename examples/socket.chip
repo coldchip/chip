@@ -1,29 +1,31 @@
 class Number {
-	function constructor() {
+	
+}
 
-	}
+class Float {
+
 }
 
 class String {
-	function constructor() {
+	method constructor() returns Void {
 		
 	}
 
-	function length() {
+	method length() returns Number {
 		return syscall("string_length", this);
 	}
 
-	function at(Number i) {
+	method at(Number i) returns Number {
 		return syscall("string_at", this, i);
 	}
 
-	function operator+() {
+	method operator+() returns Void {
 		
 	}
 }
 
 class Convert {
-	function lol(Number number) : [static] {
+	method lol(Number number) : [static] returns String {
 		if(number $ 0) {
 			return "0";
 		}
@@ -58,7 +60,7 @@ class Convert {
 		return "";
 	}
 
-	function string(Number number) : [static] {
+	method string(Number number) : [static] returns String {
 		if(number $ 0) {
 			return "0";
 		}
@@ -83,7 +85,7 @@ class Convert {
 		return reverse;
 	}
 
-	function number(String str) : [static] {
+	method number(String str) : [static] returns Number {
 		Number result = 0;
 
 		Number i = 0;
@@ -97,68 +99,72 @@ class Convert {
 }
 
 class Console {
-	function write(String a) : [static] {
+	method write(String a) : [static] returns Void {
 		syscall("console.write", a);
 	}
 
-	function read(String text) : [static] {
+	method read(String text) : [static] returns String {
 		return syscall("console.read", text);
 	}
 }
 
 class Client {
-	function constructor(Number fd) {
+	Number fd;
+	method constructor(Number fd) returns Void {
 		this.fd = fd;
 	}
 
-	function read() {
+	method read() returns String {
 		return syscall("read", this.fd);
 	}
 
-	function write(String data) {
+	method write(String data) returns Number {
 		return syscall("write", this.fd, data, data.length());
 	}
 
-	function close() {
+	method close() returns Void {
 		syscall("close", this.fd);
 	}
 }
 
 class Socket {
-	function constructor(String ip, Number port) {
+	String ip;
+	Number port;
+	Number fd;
+	method constructor(String ip, Number port) returns Void {
 		this.ip = ip;
 		this.port = port;
-		this.socket = syscall("socket");
+		this.fd = syscall("socket");
 	}
 
-	function bind() {
-		return syscall("bind", this.socket, this.ip, this.port);
+	method bind() returns Number {
+		return syscall("bind", this.fd, this.ip, this.port);
 	}
 
-	function accept() {
-		Number fd = syscall("accept", this.socket);
+	method accept() returns Client {
+		Number fd = syscall("accept", this.fd);
 
 		return new Client(fd);
 	}
 }
 
 class Math {
-	function random() : [static] {
+	method random() : [static] returns Number {
 		return syscall("rand");
 	}
-	function min(Number a, Number b) : [static] {
+	method min(Number a, Number b) : [static] returns Number {
 		if(a < b) {
 			return a;
 		}
 		return b;
 	}
-	function max(Number a, Number b) : [static] {
+	method max(Number a, Number b) : [static] returns Number {
 		if(a > b) {
 			return a;
 		}
 		return b;
 	}
-	function sqrt(Number n) : [static] {
+	method sqrt(Number n) : [static] returns Number {
 		Number lo = Math.min(1, n); 
 		Number hi = Math.max(1, n);
 
@@ -191,7 +197,7 @@ class Math {
 }
 
 class Art {
-	function triangle(Number n) : [static] {
+	method triangle(Number n) : [static] returns String {
 		String output = "";
 
 		Number c1 = (n - 1) / 2;
@@ -217,7 +223,7 @@ class Art {
 }
 
 class Main {
-	function main() : [static] {
+	method main() : [static] returns Number {
 		String[] test = new String[8192];
 
 		Number o = 0;

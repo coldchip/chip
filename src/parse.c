@@ -38,13 +38,6 @@ Node *new_node_binary(NodeType type, Token *token, Node *left, Node *right) {
 	return node;
 }
 
-bool is_type(Token **current) {
-	if(equals_string(current, "Number")) {
-		return true;
-	}
-	return false;
-}
-
 bool is_class(Token **current) {
 	if(equals_string(current, "class")) {
 		return true;
@@ -53,7 +46,7 @@ bool is_class(Token **current) {
 }
 
 bool is_method(Token **current) {
-	if(equals_string(current, "function")) {
+	if(equals_string(current, "method")) {
 		return true;
 	}
 	return false;
@@ -114,18 +107,16 @@ static Node *parse_program(Token **current) {
 
 static Ty *parse_type(Token **current) {
 	Ty *type = type_get_class((*current)->data);
-	if(type) {
-		consume_type(current, TK_IDENTIFIER);
-		if(consume_string(current, "[")) {
-			expect_string(current, "]");
-		}
-		return type;
-	} else {
+	if(!type) {
 		printf("error, unknown type '%s'\n", (*current)->data);
 		exit(1);
 	}
 
-	return NULL;
+	consume_type(current, TK_IDENTIFIER);
+	if(consume_string(current, "[")) {
+		expect_string(current, "]");
+	}
+	return type;
 }
 
 static Node *parse_class(Token **current) {
@@ -142,8 +133,12 @@ static Node *parse_class(Token **current) {
 
 	expect_string(current, "{");
 
-	while(is_method(current)) {
-		list_insert(list_end(&node->bodylist), parse_method(current));
+	while(!equals_string(current, "}")) {
+		if(is_method(current)) {
+			list_insert(list_end(&node->bodylist), parse_method(current));
+		} else {
+			parse_class_declaration(current);
+		}
 	}
 
 	expect_string(current, "}");
@@ -152,11 +147,11 @@ static Node *parse_class(Token **current) {
 }
 
 /*
-	function <identifier>(<args>) {
+	method <identifier>(<args>) {
 		
 	}
 
-	function operator<op>() {
+	method operator<op>() {
 		
 	}
 */
@@ -169,10 +164,8 @@ static Node *parse_method(Token **current) {
 	node->token = *current;
 
 	if(consume_string(current, "operator")) {
-		insert_method((*current)->data);
 		expect_type(current, TK_PUNCTUATION);
 	} else {
-		insert_method((*current)->data);
 		expect_type(current, TK_IDENTIFIER);
 	}
 
@@ -192,6 +185,12 @@ static Node *parse_method(Token **current) {
 		expect_string(current, "]");
 	}
 
+	expect_string(current, "returns");
+
+	insert_method(node->token->data);
+
+	expect_type(current, TK_IDENTIFIER);
+
 	expect_string(current, "{");
 
 	varscope_add("this", type_current_class());
@@ -207,11 +206,26 @@ static Node *parse_method(Token **current) {
 	return node;
 }
 
+Node *parse_class_declaration(Token **current) {
+	Ty *type = parse_type(current);
+	if(!type) {
+		printf("error, unknown type '%s'\n", (*current)->data);
+		exit(1);
+	}
+
+	insert_method((*current)->data);
+
+	expect_type(current, TK_IDENTIFIER);
+	expect_string(current, ";");
+}
+
 Node *parse_param(Token **current) {
-	parse_type(current);
+	Ty *type = parse_type(current);
 	Node *node = new_node(ND_VARIABLE, *current);
 
-	varscope_add((*current)->data, NULL);
+	node->data_type = type;
+
+	varscope_add((*current)->data, type);
 	
 	expect_type(current, TK_IDENTIFIER);
 
@@ -347,46 +361,56 @@ Node *parse(List *tokens) {
 	return parse_program(&current);
 }
 
-DataType get_common_type(Node *left, Node *right) {
-	if(left->data_type == TYPE_FLOAT || right->data_type == TYPE_FLOAT) {
-		return TYPE_FLOAT;
-	}
-	if(left->data_type == TYPE_INT || right->data_type == TYPE_INT) {
-		return TYPE_INT;
-	}
+// DataType get_common_type(Node *left, Node *right) {
+// 	if(left->data_type == TYPE_FLOAT || right->data_type == TYPE_FLOAT) {
+// 		return TYPE_FLOAT;
+// 	}
+// 	if(left->data_type == TYPE_INT || right->data_type == TYPE_INT) {
+// 		return TYPE_INT;
+// 	}
 
-	return left->data_type;
-}
+// 	return left->data_type;
+// }
 
 Ty *unfold_member_type(Node *node) {
 	if(!node) {
-		return;
+		return NULL;
 	}
 	Ty *var = unfold_member_type(node->body);
 
 	if(!node->body) {
 		VarScope *var = varscope_get(node->token->data);
-		return var->type;
+		if(var) {
+			return var->type;
+		}
 	} else {
-		printf("hehehe %p %s\n", type_get_method(var, node->token->data), node->token->data);
+		if(var) {
+			printf("member %p %s\n", type_get_method(var, node->token->data), node->token->data);
+		}
 	}
 
 	printf("Mem: %s\n", node->token->data);
+
+	return NULL;
 }
 
 void normalize_type(Node *node) {
-	if(node->left) {
-		normalize_type(node->left);
-	}
-	if(node->right) {
-		normalize_type(node->right);
-	}
+	// if(node->left) {
+	// 	normalize_type(node->left);
+	// }
+	// if(node->right) {
+	// 	normalize_type(node->right);
+	// }
 
-	if(node->left && node->right) {
-		node->data_type = get_common_type(node->left, node->right);
-	}
+	// if(node->left && node->right) {
+	// 	node->data_type = get_common_type(node->left, node->right);
+	// }
 
-	if(node->type == ND_MEMBER) {
-		unfold_member_type(node);
-	}
+	// if(node->type == ND_MEMBER) {
+	// 	unfold_member_type(node);
+	// }
+
+	// if(node->type == ND_CALL) {
+	// 	unfold_member_type(node->body);
+	// }
 }

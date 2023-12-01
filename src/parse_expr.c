@@ -105,8 +105,13 @@ static Node *parse_postfix(Token **current) {
 		}
 
 		if(consume_string(current, ".")) {
-			Node *left = new_node(ND_MEMBER, *current);
+			Ty *mem_type = type_get_method(node->data_type, (*current)->data);
+			if(!mem_type) {
+				printf("error, unknown member '%s' in variable '%s' of class '%s'\n", (*current)->data, node->token->data, node->data_type->name);
+				exit(1);
+			}
 
+			Node *left = new_node(ND_MEMBER, *current);
 			left->body = node;
 			node = left;
 			expect_type(current, TK_IDENTIFIER);
@@ -168,20 +173,32 @@ Node *parse_primary(Token **current) {
 		return node;
 	} else if(consume_type(current, TK_IDENTIFIER)) {
 
-		if(!varscope_get(token->data) && !type_get_class(token->data)) {
+		VarScope *var = varscope_get(token->data);
+		Ty       *type = type_get_class(token->data);
+
+		if(!var && !type) {
 			printf("undefined variable %s\n", token->data);
 			exit(1);
 		}
 
 		Node *node = new_node(ND_VARIABLE, token);
+		node->data_type = var ? var->type : type;
 
 		return node;
 	} else if(consume_type(current, TK_NUMBER)) {
 		Node *node = new_node(ND_NUMBER, token);
 		if(strstr(token->data, ".") != NULL) {
-			node->data_type = TYPE_FLOAT;
+			node->data_type = type_get_class("Float");
+			if(!node->data_type) {
+				printf("builtin Float class not found\n");
+				exit(1);
+			}
 		} else {
-			node->data_type = TYPE_INT;
+			node->data_type = type_get_class("Number");
+			if(!node->data_type) {
+				printf("builtin Number class not found\n");
+				exit(1);
+			}
 		}
 		return node;
 	} else if(consume_type(current, TK_STRING)) {
