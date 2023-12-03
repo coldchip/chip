@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <signal.h>
 #include <unistd.h>
+#include <stdint.h>
 #include "chip.h"
 #include "list.h"
 #include "intepreter.h"
@@ -192,7 +193,7 @@ void emit_print() {
 					}
 					break;
 					case OP_NEWARRAY: {
-						printf("\t%i\tNEWARRAY\n", line);
+						printf("\t%i\tNEWARRAY\t%s\n", line, GET_CONST(ins->left));
 					}
 					break;
 					case OP_LOAD_ARRAY: {
@@ -240,16 +241,32 @@ Op *op_at(List *program, int line) {
 void store_var(List *vars, char *name, Object *object) {
 	Var *previous = load_var(vars, name);
 	if(previous) {
-		DECREF(previous->object);
+		// DECREF(previous->object);
 		previous->object = object;
-		INCREF(object);
+		// INCREF(object);
 		return;
 	}
 
 	Var *var = malloc(sizeof(Var));
 	strcpy(var->name, name);
 	var->object = object;
-	INCREF(object);
+	// INCREF(object);
+	list_insert(list_end(vars), var);
+}
+
+void store_var_double(List *vars, char *name, double data) {
+	Var *previous = load_var(vars, name);
+	if(previous) {
+		// DECREF(previous->object);
+		*(double*)&previous->object = data;
+		// INCREF(object);
+		return;
+	}
+
+	Var *var = malloc(sizeof(Var));
+	strcpy(var->name, name);
+	*(double*)&var->object = data;
+	// INCREF(object);
 	list_insert(list_end(vars), var);
 }
 
@@ -314,7 +331,7 @@ Object *new_object(Type type, char *name) {
 
 	allocs++;
 
-	if(type != TY_FUNCTION) {
+	if(type == TY_VARIABLE) {
 		Class *skeleton = get_class(name);
 		if(!skeleton) {
 			printf("Error, class %s not defined\n", name);
@@ -381,13 +398,16 @@ Object *eval(Object *instance, Method *method, Object **args, int args_length) {
 	Object *stack[512];
 	int sp = 0;
 
+	double stack2[512];
+	int sp2 = 0;
+
 	Object *ret = empty_return;
 	INCREF(ret);
 
 	if(args) {
 		for(int i = 0; i < args_length; i++) {
 			Object *arg = args[i];
-			PUSH_STACK(arg);
+			PUSH_STACK_OBJECT_2(arg);
 		}
 	}
 
@@ -404,49 +424,57 @@ Object *eval(Object *instance, Method *method, Object **args, int args_length) {
 
 				Object *v1 = var->object;
 				
-				PUSH_STACK(v1);
-				INCREF(v1);
+				PUSH_STACK_OBJECT_2(v1);
 			}
 			break;
 			case OP_STORE_VAR: {
-				Object *v1 = POP_STACK();
+				Object *v1 = POP_STACK_OBJECT_2();
 				store_var(&varlist, GET_CONST(current->left), v1);
-
-				DECREF(v1);
 			}
 			break;
 			case OP_LOAD_NUMBER: {
-				Object *o = new_object(TY_VARIABLE, "Number");
-				o->data_number = current->left;
-				
-				PUSH_STACK(o);
-				INCREF(o);
+				PUSH_STACK_2((double)current->left);
+
+
+				// char *a = (char*)&stack2[0];
+
+				// for(int i = 0; i < 128; i++) {
+				// 	if(i % 8 == 0) {
+				// 		printf("\n");
+				// 	}
+				// 	printf("%02x", a[i] & 0xff);
+				// }
+				// printf("\n");
+
 			}
 			break;
 			case OP_LOAD_CONST: {
 				if(cache[(int)current->left]) {
 					Object *o = cache[(int)current->left];
 					
-					PUSH_STACK(o);
-					INCREF(o);
+					PUSH_STACK_OBJECT_2(o);
 				} else {
-					Object *o = new_object(TY_VARIABLE, "String");
-					o->data_string = strdup(GET_CONST(current->left));
+					Object *o = new_object(TY_ARRAY, "char");
+					
+					char *str = GET_CONST(current->left);
+					int   size = strlen(str);
 
-					Object *count = new_object(TY_VARIABLE, "Number");
-					count->data_number = strlen(o->data_string);
-					store_var(&o->varlist, "count", count);
+					o->array = malloc(sizeof(double) * size);
+
+					for(int i = 0; i < size; i++) {
+						*(double*)(&o->array[i]) = str[i];
+					}
+
+					store_var_double(&o->varlist, "count", size);
 
 					cache[(int)current->left] = o;
-					INCREF(o);
 					
-					PUSH_STACK(o);
-					INCREF(o);
+					PUSH_STACK_OBJECT_2(o);
 				}
 			}
 			break;
 			case OP_LOAD_MEMBER: {
-				Object *instance = POP_STACK();
+				Object *instance = POP_STACK_OBJECT_2();
 
 				Var *var = load_var(&instance->varlist, GET_CONST(current->left));
 				if(!var) {
@@ -456,197 +484,89 @@ Object *eval(Object *instance, Method *method, Object **args, int args_length) {
 
 				Object *v1 = var->object;
 				
-				PUSH_STACK(v1);
-
-				DECREF(instance);
-				INCREF(v1);
+				PUSH_STACK_OBJECT_2(v1);
 			}
 			break;
 			case OP_STORE_MEMBER: {
-				Object *instance = POP_STACK();
-				Object *v2 = POP_STACK();
-
+				Object *instance = POP_STACK_OBJECT_2();
+				Object *v2 = POP_STACK_OBJECT_2();
 				store_var(&instance->varlist, GET_CONST(current->left), v2);
-
-				DECREF(instance);
-				DECREF(v2);
 			}
 			break;
 			case OP_POP: {
-				DECREF(POP_STACK());
+				POP_STACK_2();
 			}
 			break;
 			case OP_CMPEQ: {
-				Object *v1 = POP_STACK();
-				Object *v2 = POP_STACK();
-
-				Object *v3 = new_object(TY_VARIABLE, "Number");
-
-				if(strcmp(v1->name, "Number") == 0 && strcmp(v2->name, "Number") == 0) {
-					v3->data_number = v2->data_number == v1->data_number;
-				} else {
-					v3->data_number = v2 == v1;
-				}
-
-				PUSH_STACK(v3);
-
-				DECREF(v1);
-				DECREF(v2);
-				INCREF(v3);
+				double a = POP_STACK_2();
+				double b = POP_STACK_2();
+				double c = b == a;
+				PUSH_STACK_2(c);
 			}
 			break;
 			case OP_CMPGT: {
-				Object *v1 = POP_STACK();
-				Object *v2 = POP_STACK();
-
-				Object *v3 = new_object(TY_VARIABLE, "Number");
-				v3->data_number = (int)v2->data_number > (int)v1->data_number;
-
-				PUSH_STACK(v3);
-
-				DECREF(v1);
-				DECREF(v2);
-				INCREF(v3);
+				double a = POP_STACK_2();
+				double b = POP_STACK_2();
+				double c = (int)b > (int)a;
+				PUSH_STACK_2(c);
 			}
 			break;
 			case OP_CMPLT: {
-				Object *v1 = POP_STACK();
-				Object *v2 = POP_STACK();
-
-				Object *v3 = new_object(TY_VARIABLE, "Number");
-				v3->data_number = (int)v2->data_number < (int)v1->data_number;
-
-				PUSH_STACK(v3);
-
-				DECREF(v1);
-				DECREF(v2);
-				INCREF(v3);
+				double a = POP_STACK_2();
+				double b = POP_STACK_2();
+				double c = (int)b < (int)a;
+				PUSH_STACK_2(c);
 			}
 			break;
 			case OP_ADD: {
-				Object *v1 = POP_STACK();
-				Object *v2 = POP_STACK();
-
-				if(strcmp(v1->name, "Number") == 0 && strcmp(v2->name, "Number") == 0) {
-					Object *v3 = new_object(TY_VARIABLE, "Number");
-					v3->data_number = v2->data_number + v1->data_number;
-					
-					
-					PUSH_STACK(v3);
-
-					INCREF(v3);
-				} else if(strcmp(v1->name, "String") == 0 && strcmp(v2->name, "String") == 0) {
-					Var *vl1 = load_var(&v1->varlist, "count");
-					Var *vl2 = load_var(&v2->varlist, "count");
-
-					Object *ol1 = vl1->object;
-					Object *ol2 = vl2->object;
-
-					int sl1 = (int)ol1->data_number;
-					int sl2 = (int)ol2->data_number;
-
-					char *s = malloc(sl1 + sl2 + 1);
-					memcpy(s, v2->data_string, sl2);
-					memcpy(s + sl2, v1->data_string, sl1);
-
-					s[sl1 + sl2] = '\0';
-
-					Object *v3 = new_object(TY_VARIABLE, "String");
-					v3->data_string = s;
-
-					Object *count = new_object(TY_VARIABLE, "Number");
-					count->data_number = sl1 + sl2;
-					store_var(&v3->varlist, "count", count);
-
-					PUSH_STACK(v3);
-
-					INCREF(v3);
-				} else {
-					printf("Unable to binary add unknown types [%s and %s]\n", v1->name, v2->name);
-					exit(1);
-				}
-
-				DECREF(v1);
-				DECREF(v2);
+				double a = POP_STACK_2();
+				double b = POP_STACK_2();
+				double c = b + a;
+				PUSH_STACK_2(c);
 			}
 			break;
 			case OP_SUB: {
-				Object *v1 = POP_STACK();
-				Object *v2 = POP_STACK();
-
-				Object *v3 = new_object(TY_VARIABLE, "Number");
-				v3->data_number = v2->data_number - v1->data_number;
-				
-				PUSH_STACK(v3);
-
-				DECREF(v1);
-				DECREF(v2);
-				INCREF(v3);
+				double a = POP_STACK_2();
+				double b = POP_STACK_2();
+				double c = b - a;
+				PUSH_STACK_2(c);
 			}
 			break;
 			case OP_MUL: {
-				Object *v1 = POP_STACK();
-				Object *v2 = POP_STACK();
-
-				Object *v3 = new_object(TY_VARIABLE, "Number");
-				v3->data_number = v2->data_number * v1->data_number;
-				
-				PUSH_STACK(v3);
-
-				DECREF(v1);
-				DECREF(v2);
-				INCREF(v3);
+				double a = POP_STACK_2();
+				double b = POP_STACK_2();
+				double c = b * a;
+				PUSH_STACK_2(c);
 			}
 			break;
 			case OP_DIV: {
-				Object *v1 = POP_STACK();
-				Object *v2 = POP_STACK();
-
-				Object *v3 = new_object(TY_VARIABLE, "Number");
-				v3->data_number = v2->data_number / v1->data_number;
-				
-				PUSH_STACK(v3);
-
-				DECREF(v1);
-				DECREF(v2);
-				INCREF(v3);
+				double a = POP_STACK_2();
+				double b = POP_STACK_2();
+				double c = b / a;
+				PUSH_STACK_2(c);
 			}
 			break;
 			case OP_MOD: {
-				Object *v1 = POP_STACK();
-				Object *v2 = POP_STACK();
-
-				Object *v3 = new_object(TY_VARIABLE, "Number");
-				v3->data_number = ((int)v2->data_number) % ((int)v1->data_number);
-				
-				PUSH_STACK(v3);
-
-				DECREF(v1);
-				DECREF(v2);
-				INCREF(v3);
+				double a = (int)POP_STACK_2();
+				double b = POP_STACK_2();
+				double c = (int)b % (int)a;
+				PUSH_STACK_2(c);
 			}
 			break;
 			case OP_OR: {
-				Object *v1 = POP_STACK();
-				Object *v2 = POP_STACK();
-
-				Object *v3 = new_object(TY_VARIABLE, "Number");
-				v3->data_number = ((int)v2->data_number) || ((int)v1->data_number);
-				
-				PUSH_STACK(v3);
-
-				DECREF(v1);
-				DECREF(v2);
-				INCREF(v3);
+				double a = POP_STACK_2();
+				double b = POP_STACK_2();
+				double c = (int)b || (int)a;
+				PUSH_STACK_2(c);
 			}
 			break;
 			case OP_CALL: {
-				Object *instance = POP_STACK();
+				Object *instance = POP_STACK_OBJECT_2();
 
 				Object *args[(int)current->left];
 
 				for(int i = 0; i < current->left; i++) {
-					Object *arg = POP_STACK();
+					Object *arg = POP_STACK_OBJECT_2();
 					args[i] = arg;
 				}
 
@@ -656,15 +576,13 @@ Object *eval(Object *instance, Method *method, Object **args, int args_length) {
 				}
 
 				Object *r = eval(instance->bound, instance->method, args, (int)current->left);
-				PUSH_STACK(r);
-
-				DECREF(instance);
+				PUSH_STACK_OBJECT_2(r);
 			}
 			break;
 			case OP_SYSCALL: {
-				Object *name = POP_STACK();
+				int name = (int)POP_STACK_2();
 
-				if(strcmp(name->data_string, "console.read") == 0) {
+				if(name == 0) {
 					Object *text = POP_STACK();
 
 					char buffer[8192];
@@ -682,21 +600,17 @@ Object *eval(Object *instance, Method *method, Object **args, int args_length) {
 
 					DECREF(text);
 					INCREF(r);
-				} else if(strcmp(name->data_string, "console.write") == 0) {
-					Object *arg = POP_STACK();
-					if(strcmp(arg->name, "String") == 0) {
-						printf("%s", arg->data_string);
-					} else if(strcmp(arg->name, "Number") == 0) {
-						printf("%f", arg->data_number);
-					} else {
-						printf("%s@%p", arg->name, arg);
-					}
+				} else if(name == 1) {
+					double arg = POP_STACK_2();
+					printf("%f\n", arg);
 
-					PUSH_STACK(empty_return);
+					PUSH_STACK_2(0);
+				} else if(name == 2) {
+					double arg = POP_STACK_2();
+					printf("%c", (char)arg);
 
-					DECREF(arg);
-					INCREF(empty_return);
-				} else if(strcmp(name->data_string, "socket") == 0) {
+					PUSH_STACK_2(0);
+				} else if(name == 3) {
 					int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
 					setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
@@ -707,7 +621,7 @@ Object *eval(Object *instance, Method *method, Object **args, int args_length) {
 					PUSH_STACK(r);
 
 					INCREF(r);
-				} else if(strcmp(name->data_string, "bind") == 0) {
+				} else if(name == 4) {
 					Object *fd   = POP_STACK();
 					Object *ip   = POP_STACK();
 					Object *port = POP_STACK();
@@ -729,7 +643,7 @@ Object *eval(Object *instance, Method *method, Object **args, int args_length) {
 					DECREF(ip);
 					DECREF(port);
 					INCREF(r1);
-				} else if(strcmp(name->data_string, "accept") == 0) {
+				} else if(name == 5) {
 					Object *fd = POP_STACK();
 
 					int newfd = accept((int)fd->data_number, NULL, 0);
@@ -741,7 +655,7 @@ Object *eval(Object *instance, Method *method, Object **args, int args_length) {
 
 					DECREF(fd);
 					INCREF(r);
-				} else if(strcmp(name->data_string, "read") == 0) {
+				} else if(name == 6) {
 					Object *fd = POP_STACK();
 
 					char data[8192];
@@ -758,7 +672,7 @@ Object *eval(Object *instance, Method *method, Object **args, int args_length) {
 
 					DECREF(fd);
 					INCREF(r);
-				} else if(strcmp(name->data_string, "write") == 0) {
+				} else if(name == 7) {
 					Object *fd = POP_STACK();
 					Object *data = POP_STACK();
 					Object *length = POP_STACK();
@@ -773,7 +687,7 @@ Object *eval(Object *instance, Method *method, Object **args, int args_length) {
 					DECREF(data);
 					DECREF(length);
 					INCREF(r1);
-				} else if(strcmp(name->data_string, "close") == 0) {
+				} else if(name == 8) {
 					Object *fd = POP_STACK();
 
 					close((int)fd->data_number);
@@ -782,14 +696,14 @@ Object *eval(Object *instance, Method *method, Object **args, int args_length) {
 
 					DECREF(fd);
 					INCREF(empty_return);
-				} else if(strcmp(name->data_string, "rand") == 0) {
+				} else if(name == 9) {
 					Object *r1 = new_object(TY_VARIABLE, "Number");
 					r1->data_number = rand();
 
 					PUSH_STACK(r1);
 
 					INCREF(r1);
-				} else if(strcmp(name->data_string, "delay") == 0) {
+				} else if(name == 10) {
 					Object *sec = POP_STACK();
 
 					sleep((int)sec->data_number);
@@ -798,7 +712,7 @@ Object *eval(Object *instance, Method *method, Object **args, int args_length) {
 
 					DECREF(sec);
 					INCREF(empty_return);
-				} else if(strcmp(name->data_string, "string_length") == 0) {
+				} else if(name == 11) {
 					Object *i = POP_STACK();
 
 					int length = strlen(i->data_string);
@@ -810,7 +724,7 @@ Object *eval(Object *instance, Method *method, Object **args, int args_length) {
 
 					DECREF(i);
 					INCREF(r);
-				} else if(strcmp(name->data_string, "string_at") == 0) {
+				} else if(name == 12) {
 					Object *i = POP_STACK();
 					Object *index = POP_STACK();
 
@@ -823,104 +737,89 @@ Object *eval(Object *instance, Method *method, Object **args, int args_length) {
 					DECREF(index);
 					INCREF(r);
 				} else {
-					printf("VM:: unknown syscall %s\n", name->data_string);
+					printf("unknown syscall %i\n", name);
 					exit(1);
 				}
-
-				DECREF(name);
 			}
 			break;
 			case OP_NEW: {
-				Object *args[(int)current->left];
-
-				for(int i = 0; i < current->left; i++) {
-					Object *arg = POP_STACK();
-					args[i] = arg;
-				}
-
-				Object *name = POP_STACK();
-
-				Class *class = get_class(name->data_string);
-				if(!class) {
-					printf("cannot clone class %s\n", name->data_string);
+				char *name = GET_CONST((int)current->left);
+				if(!name) {
+					printf("constant %s not found\n", name);
 					exit(1);
 				}
+				Object *o = new_object(TY_VARIABLE, name);
+				PUSH_STACK_OBJECT_2(o);
 
-				Object *instance = new_object(TY_VARIABLE, name->data_string);
+				// Object *args[(int)current->left];
 
-				INCREF(instance);
+				// for(int i = 0; i < current->left; i++) {
+				// 	Object *arg = POP_STACK();
+				// 	args[i] = arg;
+				// }
+
+				// Object *name = POP_STACK();
+
+				// Class *class = get_class(name->data_string);
+				// if(!class) {
+				// 	printf("cannot clone class %s\n", name->data_string);
+				// 	exit(1);
+				// }
+
+				// Object *instance = new_object(TY_VARIABLE, name->data_string);
+
+				// INCREF(instance);
 				
-				Method *constructor = get_method(name->data_string, "constructor");
-				if(constructor) {
-					DECREF(eval(instance, constructor, args, (int)current->left));
-				}
+				// Method *constructor = get_method(name->data_string, "constructor");
+				// if(constructor) {
+				// 	DECREF(eval(instance, constructor, args, (int)current->left));
+				// }
 				
-				PUSH_STACK(instance);
+				// PUSH_STACK(instance);
 
-				DECREF(name);
+				// DECREF(name);
 			}
 			break;
 			case OP_NEWARRAY: {
-				Object *size = POP_STACK();
-				Object *name = POP_STACK();
+				double size = POP_STACK_2();
 
-				Object *instance = new_object(TY_ARRAY, name->data_string);
-				instance->array = malloc(sizeof(Object *) * (int)size->data_number);
+				Object *instance = new_object(TY_ARRAY, GET_CONST((int)current->left));
+				instance->array = malloc(sizeof(double) * (int)size);
 
-				for(int i = 0; i < (int)size->data_number; i++) {
+				for(int i = 0; i < (int)size; i++) {
 					instance->array[i] = empty_return;
-					INCREF(empty_return);
 				}
 
-				PUSH_STACK(instance);
+				store_var_double(&instance->varlist, "count", size);
 
-				DECREF(size);
-				DECREF(name);
-				INCREF(instance);
+				PUSH_STACK_OBJECT_2(instance);
 			}
 			break;
 			case OP_LOAD_ARRAY: {
-				Object *index = POP_STACK();
-				Object *instance = POP_STACK();
+				double index = POP_STACK_2();
+				Object *instance = POP_STACK_OBJECT_2();
 
-				Object *item = instance->array[(int)index->data_number];
+				Object *item = instance->array[(int)index];
 
-				PUSH_STACK(item);
-
-				DECREF(index);
-				DECREF(instance);
-				INCREF(item);
+				PUSH_STACK_OBJECT_2(item);
 			}
 			break;
 			case OP_STORE_ARRAY: {
-				Object *index = POP_STACK();
-				Object *instance = POP_STACK();
-				Object *value = POP_STACK();
+				double index = POP_STACK_2();
+				Object *instance = POP_STACK_OBJECT_2();
+				Object *value = POP_STACK_OBJECT_2();
 
-				DECREF(instance->array[(int)index->data_number]);
-				instance->array[(int)index->data_number] = value;
-				INCREF(value);
-
-				DECREF(index);
-				DECREF(instance);
-				DECREF(value);
+				instance->array[(int)index] = value;
 			}
 			break;
 			case OP_JMPIFT: {
-				Object *v1 = POP_STACK();
-				Object *v2 = POP_STACK();
+				double a = POP_STACK_2();
+				double b = POP_STACK_2();
 
-				if(v2->data_number == v1->data_number) {
+				if(a == b) {
 					pc = (int)current->left - 1;
-
-					DECREF(v1);
-					DECREF(v2);
-
 					continue;
 				}
-
-				DECREF(v1);
-				DECREF(v2);
 			}
 			break;
 			case OP_JMP: {
@@ -930,8 +829,7 @@ Object *eval(Object *instance, Method *method, Object **args, int args_length) {
 			}
 			break;
 			case OP_RET: {
-				DECREF(ret);
-				ret = POP_STACK();
+				ret = POP_STACK_OBJECT_2();
 
 				goto cleanup;
 			}
@@ -949,11 +847,11 @@ Object *eval(Object *instance, Method *method, Object **args, int args_length) {
 	cleanup:;
 
 	// remove vars
-	while(!list_empty(&varlist)) {
-		Var *var = (Var*)list_remove(list_begin(&varlist));
+	// while(!list_empty(&varlist)) {
+	// 	Var *var = (Var*)list_remove(list_begin(&varlist));
 		
-		free_var(var);
-	}
+	// 	free_var(var);
+	// }
 
 	return ret;
 }
@@ -968,7 +866,7 @@ void intepreter(const char *input) {
 
 	load_file(input);
 
-	// emit_print();
+	emit_print();
 
 	for(ListNode *cn = list_begin(&program); cn != list_end(&program); cn = list_next(cn)) {
 		Class *c = (Class*)cn;

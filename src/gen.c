@@ -284,19 +284,17 @@ static void gen_member(Node *node) {
 }
 
 static void gen_new(Node *node) {
-	emit_op_left(method, OP_LOAD_CONST, emit_constant(&constants, node->token->data, true));
+	// emit_op_left(method, OP_LOAD_CONST, emit_constant(&constants, node->token->data, true));
 
-	visitor(node->args);
+	// visitor(node->args);
 
-	emit_op_left(method, OP_NEW, node->args->length);
+	emit_op_left(method, OP_NEW, emit_constant(&constants, node->token->data, true));
 }
 
 static void gen_new_array(Node *node) {
-	emit_op_left(method, OP_LOAD_CONST, emit_constant(&constants, node->token->data, true));
-
 	visitor(node->args);
 
-	emit_op(method, OP_NEWARRAY);
+	emit_op_left(method, OP_NEWARRAY, emit_constant(&constants, node->token->data, true));
 }
 
 static void gen_array_member(Node *node) {
@@ -391,6 +389,12 @@ static void gen_binary(Node *node) {
 		}
 		break;
 	}
+}
+
+static void gen_char(Node *node) {
+	int t = (int)node->token->data[0];
+
+	emit_op_left(method, OP_LOAD_NUMBER, (float)node->token->data[0]);
 }
 
 static void gen_number(Node *node) {
@@ -495,6 +499,10 @@ static void visitor(Node *node) {
 		case ND_MOD:
 		case ND_OR: {
 			gen_binary(node);
+		}
+		break;
+		case ND_CHAR: {
+			gen_char(node);
 		}
 		break;
 		case ND_NUMBER: {

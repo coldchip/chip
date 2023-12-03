@@ -7,6 +7,7 @@
 typedef enum {
 	TK_IDENTIFIER,
 	TK_NUMBER,
+	TK_CHAR,
 	TK_STRING,
 	TK_PUNCTUATION,
 	TK_EOF

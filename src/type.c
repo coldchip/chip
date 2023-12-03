@@ -24,9 +24,9 @@ Ty *type_get_class(char *name) {
 	return NULL;
 }
 
-Ty *type_get_method(Ty *ty, char *name) {
+TyMethod *type_get_method(Ty *ty, char *name) {
 	for(ListNode *i = list_begin(&ty->methods); i != list_end(&ty->methods); i = list_next(i)) {
-		Ty *method = (Ty*)i;
+		TyMethod *method = (TyMethod*)i;
 
 		if(strcmp(method->name, name) == 0) {
 			return method;
@@ -35,20 +35,21 @@ Ty *type_get_method(Ty *ty, char *name) {
 	return NULL;
 }
 
-void type_insert(char *name) {
-	Ty *ty = malloc(sizeof(Ty));
-	ty->type = TYPE_CLASS;
-	ty->name = strdup(name);
-	list_clear(&ty->methods);
+Ty *type_insert(char *name) {
+	Ty *type = malloc(sizeof(Ty));
+	type->name = strdup(name);
+	list_clear(&type->methods);
 
-	list_insert(list_end(&types), ty);
+	list_insert(list_end(&types), type);
+
+	return type;
 }
 
-void insert_method(char *name) {
+void insert_method(char *name, Ty *type) {
 	Ty *ty = (Ty*)list_back(&types);
 
-	Ty *method = malloc(sizeof(Ty));
-	method->type = 0;
+	TyMethod *method = malloc(sizeof(TyMethod));
+	method->type = type;
 	method->name = strdup(name);
 
 	list_insert(list_end(&ty->methods), method);

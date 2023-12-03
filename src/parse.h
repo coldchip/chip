@@ -37,6 +37,7 @@ typedef enum {
 	ND_MOD,
 	ND_OR,
 	ND_NUMBER,
+	ND_CHAR,
 	ND_STRING,
 	ND_RETURN,
 	ND_CALL,
@@ -74,7 +75,7 @@ bool               is_declaration(Token **current);
 bool               is_assign(Token **current);
 
 static Node       *parse_program(Token **current);
-static Ty         *parse_type(Token **current);
+Ty                *parse_type(Token **current);
 static Node       *parse_class(Token **current);
 static Node       *parse_method(Token **current);
 Node              *parse_class_declaration(Token **current);

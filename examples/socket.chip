@@ -1,172 +1,23 @@
 class Number {
-	
-}
-
-class Float {
-
-}
-
-class String {
-	method constructor() returns Void {
-		
-	}
-
-	method length() returns Number {
-		return syscall("string_length", this);
-	}
-
-	method at(Number i) returns Number {
-		return syscall("string_at", this, i);
-	}
-
-	method operator+() returns Void {
-		
-	}
-}
-
-class Convert {
-	method lol(Number number) : [static] returns String {
-		if(number $ 0) {
-			return "0";
-		}
-		if(number $ 1) {
-			return "1";
-		}
-		if(number $ 2) {
-			return "2";
-		}
-		if(number $ 3) {
-			return "3";
-		}
-		if(number $ 4) {
-			return "4";
-		}
-		if(number $ 5) {
-			return "5";
-		}
-		if(number $ 6) {
-			return "6";
-		}
-		if(number $ 7) {
-			return "7";
-		}
-		if(number $ 8) {
-			return "8";
-		}
-		if(number $ 9) {
-			return "9";
-		}
-
-		return "";
-	}
-
-	method string(Number number) : [static] returns String {
-		if(number $ 0) {
-			return "0";
-		}
-
-		String result = "";
-
-		Number i = number;
-
-		while(i > 0) {
-			result = result + Convert.lol(i % 10);
-			i = i / 10;
-		}
-
-		String reverse = "";
-
-		Number i = result.length();
-		while(i > 0-1) {
-			reverse = reverse + Convert.lol(result.at(i) - 48);
-			i = i - 1;
-		}
-
-		return reverse;
-	}
-
-	method number(String str) : [static] returns Number {
-		Number result = 0;
-
-		Number i = 0;
-		while(i < str.length()) {
-			result = (result * 10) + (str.at(i) - 48);
-			i = i + 1;
-		}
-
-		return result;
-	}
-}
-
-class Console {
-	method write(String a) : [static] returns Void {
-		syscall("console.write", a);
-	}
-
-	method read(String text) : [static] returns String {
-		return syscall("console.read", text);
-	}
-}
-
-class Client {
-	Number fd;
-	method constructor(Number fd) returns Void {
-		this.fd = fd;
-	}
-
-	method read() returns String {
-		return syscall("read", this.fd);
-	}
-
-	method write(String data) returns Number {
-		return syscall("write", this.fd, data, data.length());
-	}
-
-	method close() returns Void {
-		syscall("close", this.fd);
-	}
-}
-
-class Socket {
-	String ip;
-	Number port;
-	Number fd;
-	method constructor(String ip, Number port) returns Void {
-		this.ip = ip;
-		this.port = port;
-		this.fd = syscall("socket");
-	}
-
-	method bind() returns Number {
-		return syscall("bind", this.fd, this.ip, this.port);
-	}
-
-	method accept() returns Client {
-		Number fd = syscall("accept", this.fd);
-
-		return new Client(fd);
-	}
+	int a;
 }
 
 class Math {
-	method random() : [static] returns Number {
-		return syscall("rand");
-	}
-	method min(Number a, Number b) : [static] returns Number {
+	method min(int a, int b) : [static] returns int {
 		if(a < b) {
 			return a;
 		}
 		return b;
 	}
-	method max(Number a, Number b) : [static] returns Number {
+	method max(int a, int b) : [static] returns int {
 		if(a > b) {
 			return a;
 		}
 		return b;
 	}
-	method sqrt(Number n) : [static] returns Number {
-		Number lo = Math.min(1, n); 
-		Number hi = Math.max(1, n);
+	method sqrt(int n) : [static] returns int {
+		int lo = Math.min(1, n); 
+		int hi = Math.max(1, n);
 
 		while(100 * lo * lo < n) {
 			lo = lo * 10;
@@ -175,12 +26,12 @@ class Math {
 			hi = hi * 0.1;
 		}
 
-		Number i = 0;
-		Number mid = 0;
+		int i = 0;
+		int mid = 0;
 		while(i < 100) {
 			mid = (lo + hi)/2;
 
-			if(mid * mid $ n) {
+			if(mid * mid eq n) {
 				return mid;
 			}
 			if(mid * mid > n) {
@@ -196,83 +47,49 @@ class Math {
 	}
 }
 
-class Art {
-	method triangle(Number n) : [static] returns String {
-		String output = "";
+class StringTest {
+	char[] data;
+	method constructor() returns void {
+		this.data = new char[1];
+	}
+	method append(char[] b) returns void {
+		char[] result = new char[this.data.count + b.count];
 
-		Number c1 = (n - 1) / 2;
-		Number c2 = 3 * n / 2 - 1;
-
-		Number i = 0;
-		while(i < n) {
-			Number j = 0;
-			while(j < n) {
-				if(i + j $ c1 or i - j $ c1 or j - i $ c1 or i + j $ c2 or i $ c1 or j $ c1) {
-					output = output + "*";
-				} else {
-					output = output + " ";
-				}
-				j = j + 1;
-			}
-			output = output + "\n";
-			i = i + 1;
+		int x = 0;
+		while(x < this.data.count) {
+			result[x] = this.data[x];
+			x = x + 1;
 		}
 
-		return output;
+		int y = 0;
+		while(y < b.count) {
+			result[y + this.data.count] = b[y];
+			y = y + 1;
+		}
+
+		this.data = result;
 	}
 }
 
 class Main {
-	method main() : [static] returns Number {
-		String[] test = new String[8192];
+	method main() : [static] returns void {
 
-		Number o = 0;
-		while(o < 6000) {
-			test[o] = Convert.string(Math.random());
-			o = o + 1;
+		char[] z = new char[8192];
+
+		StringTest j = new StringTest();
+		j.constructor();
+
+		int i = 0;
+		while(i < 2048) {
+			j.append("w");
+			i = i + 1;
 		}
 
-		Number port = Convert.number(Console.read("Enter the port number: "));
-
-		Socket s = new Socket("0.0.0.0", port);
-		if(s.bind() $ 1) {
-			Console.write("server started on 0.0.0.0:" + Convert.string(port) + "\n");
-
-			while(1) {
-				Client c = s.accept();
-
-				Console.write("new connection\n");
-
-				String input = c.read();
-
-				String output = "<h1>Simple Web Server created in Chip Language</h1><br>";
-
-				Number z = 0;
-				while(z < 6000) {
-					output = output + Convert.string(z) + ":" + test[z] + ":" + "<br>";
-					z = z + 1;
-				}
-
-				output = output + input;
-
-				output = output + "<pre>" + Art.triangle(13) + "</pre>";
-
-				c.write("HTTP/1.0 200 OK\r\n");
-				c.write("Content-Type: text/html; charset=utf-8\r\n");
-				c.write("Server: Chip\r\n");
-				c.write("Content-Length: " + Convert.string(output.length()) + "\r\n\r\n");
-
-				Console.write(s);
-				Console.write("\n");
-
-				c.write(output);
-				c.close();
-
-			}
-		} else {
-			Console.write("unable to bind to port " + Convert.string(port) + "\n");
+		int y = 0;
+		while(y < j.data.count) {
+			syscall(2, j.data[y]) : void;
+			y = y + 1;
 		}
-
-		return 0;
+		char[] h = "sex";
 	}
 }

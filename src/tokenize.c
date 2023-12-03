@@ -132,7 +132,6 @@ static bool is_punctuation(char bit) {
 		bit == '>' ||
 		bit == '<' ||
 		bit == ',' ||
-		bit == '$' ||
 		bit == ':' ||
 		bit == '[' ||
 		bit == ']' ||
@@ -175,6 +174,17 @@ void tokenize(char *input, List *tokens) {
 			input++;
 
 			Token *token = new_token(TK_STRING, start, (input - start) - 1, line);
+			list_insert(list_end(tokens), token);
+			continue;
+		} else if(*input == '\'') {
+			input++;
+
+			char *start = input;
+			input++;
+
+			input++;
+
+			Token *token = new_token(TK_CHAR, start, (input - start) - 1, line);
 			list_insert(list_end(tokens), token);
 			continue;
 		} else if(is_space(*input)) {

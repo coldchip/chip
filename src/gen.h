@@ -89,6 +89,7 @@ static void       gen_declaration(Node *node);
 static void       gen_assign(Node *node);
 static void       gen_store(Node *node);
 static void       gen_binary(Node *node);
+static void       gen_char(Node *node);
 static void       gen_number(Node *node);
 static void       gen_string(Node *node);
 static void       gen_return(Node *node);

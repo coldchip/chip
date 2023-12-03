@@ -43,6 +43,12 @@ typedef struct _Var {
 #define POP_STACK() (sp--, stack[sp])
 #define PUSH_STACK(d) (stack[sp++] = d)
 
+#define POP_STACK_2() (sp2--, stack2[sp2])
+#define PUSH_STACK_2(d) (stack2[sp2++] = d)
+#define POP_STACK_OBJECT_2() (sp2--, *(Object **)&stack2[sp2])
+#define PUSH_STACK_OBJECT_2(d) (*(Object **)&stack2[sp2++] = d)
+
+
 void              load_file(const char *name);
 void              emit_print();
 Op               *op_at(List *program, int line);

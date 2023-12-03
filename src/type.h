@@ -3,25 +3,23 @@
 
 #include "list.h"
 
-typedef enum DataType {
-	TYPE_UNKNOWN,
-	TYPE_CLASS,
-	TYPE_INT,
-	TYPE_FLOAT
-} DataType;
-
 typedef struct {
 	ListNode node;
-	DataType type;
 	char *name;
 	List methods;
 } Ty;
 
+typedef struct {
+	ListNode node;
+	Ty *type;
+	char *name;
+} TyMethod;
+
 void                 type_clear();
 Ty                  *type_current_class();
 Ty                  *type_get_class(char *name);
-Ty                  *type_get_method(Ty *ty, char *name);
-void                 type_insert(char *name);
-void                 insert_method(char *name);
+TyMethod            *type_get_method(Ty *ty, char *name);
+Ty *                 type_insert(char *name);
+void                 insert_method(char *name, Ty *type);
 
 #endif
