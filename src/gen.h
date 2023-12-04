@@ -2,6 +2,7 @@
 #define GEN_H
 
 #include "parse.h"
+#include <stdint.h>
 
 typedef enum {
 	OP_LOAD_VAR,
@@ -40,6 +41,7 @@ typedef struct _Constant {
 typedef struct _Class {
 	ListNode node;
 	char *name;
+	int index;
 	List method;
 } Class;
 
@@ -47,6 +49,7 @@ typedef struct _Class {
 typedef struct _Method {
 	ListNode node;
 	char *name;
+	int index;
 	List op;
 
 	struct _Op **codes;
@@ -58,7 +61,7 @@ typedef struct _Method {
 typedef struct _Op {
 	ListNode node;
 	OpType op;
-	double left;
+	uint64_t left;
 } Op;
 
 static char      *rand_string(char *str, size_t size);
@@ -66,7 +69,7 @@ static char      *rand_string(char *str, size_t size);
 static Class     *emit_class(List *program, char *name);
 static Method    *emit_method(Class *class, char *name);
 static Op *       emit_op(Method *method, OpType op);
-static Op *       emit_op_left(Method *method, OpType op, float left);
+static Op *       emit_op_left(Method *method, OpType op, uint64_t left);
 static int        emit_constant(List *list, char *data, bool obfuscated);
 static int        emit_op_get_counter(Method *method);
 static void       emit_file(List *constants, List *program);

@@ -1,5 +1,7 @@
-class Number {
-	int a;
+class Convert {
+	method string(int number) : [static] returns char[] {
+		return "sssssssssssss";
+	}
 }
 
 class Math {
@@ -47,10 +49,20 @@ class Math {
 	}
 }
 
+class Console {
+	method write(char[] a) : [static] returns void {
+		int i = 0;
+		while(i < a.count) {
+			syscall(2, a[i]) : void;
+			i = i + 1;
+		}
+	}
+}
+
 class StringTest {
 	char[] data;
 	method constructor() returns void {
-		this.data = new char[1];
+		this.data = new char[0];
 	}
 	method append(char[] b) returns void {
 		char[] result = new char[this.data.count + b.count];
@@ -68,28 +80,102 @@ class StringTest {
 		}
 
 		this.data = result;
+
+		return 0;
+	}
+
+	method test() returns void {
+
+	}
+}
+
+class Client {
+	int fd;
+	method constructor(int fd) returns void {
+		this.fd = fd;
+	}
+
+	method read(int size) returns char[] {
+		return syscall(63, this.fd, size) : char[];
+	}
+
+	method write(char[] data) returns int {
+		return syscall(64, this.fd, data) : int;
+	}
+
+	method close() returns void {
+		syscall(65, this.fd) : void;
+	}
+}
+
+class Socket {
+	char[] ip;
+	int port;
+	int fd;
+	method constructor(char[] ip, int port) returns void {
+		this.ip = ip;
+		this.port = port;
+		this.fd = syscall(60) : int;
+	}
+
+	method bind() returns int {
+		return syscall(61, this.fd, this.ip, this.port) : int;
+	}
+
+	method accept() returns Client {
+		int fd = syscall(62, this.fd) : int;
+		Client c = new Client();
+		c.constructor(fd);
+		return c;
 	}
 }
 
 class Main {
 	method main() : [static] returns void {
+		Console f = new Console();
+		Convert convert = new Convert();
 
-		char[] z = new char[8192];
+		Socket s = new Socket();
+		s.constructor("0.0.0.0", 19132);
 
-		StringTest j = new StringTest();
-		j.constructor();
+		if(s.bind() eq 1) {
+			while(1) {
+				Client c = s.accept();
+				f.write("hello client\n");
 
-		int i = 0;
-		while(i < 2048) {
-			j.append("w");
-			i = i + 1;
+				char[] input = c.read(8192);
+				f.write(input);
+
+
+				StringTest j = new StringTest();
+				j.constructor();
+				int y = 0;
+				while(y < 128) {
+					j.append("hello");
+					y = y + 1;
+				}
+
+				StringTest r = new StringTest();
+				r.constructor();
+				r.append("HTTP/1.0 200 OK\r\n");
+				r.append("Content-Length: ");
+				r.append("5");
+				r.append("\r\n\r\n");
+				r.append("hello");
+
+				char[] lol = convert.string(9999);
+
+				syscall(1, lol.count) : void;
+
+				f.write(lol);
+				f.write("\n");
+
+				c.write(r.data);
+
+				c.close();
+			}
+		} else {
+			f.write("unable to bind\n");
 		}
-
-		int y = 0;
-		while(y < j.data.count) {
-			syscall(2, j.data[y]) : void;
-			y = y + 1;
-		}
-		char[] h = "sex";
 	}
 }

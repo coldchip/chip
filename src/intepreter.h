@@ -17,13 +17,13 @@ typedef struct _Object {
 	Method *method;
 	struct _Object *bound;
 
-	char *name;
+	int index;
 
 	double data_number;
 	char *data_string;
-	struct _Object **array;
+	char *array;
 
-	List varlist;
+	uint64_t varlist[2048];
 
 	int refs;
 	int gc_refs;
@@ -31,12 +31,20 @@ typedef struct _Object {
 
 typedef struct _Var {
 	ListNode node;
-	char name[256];
+	int index;
 	Object *object;
 } Var;
 
 #define GET_CONST(i) (constants[(int)i])
 #define SET_CONST(i, v) (constants[(int)i] = v)
+int FIND_OR_INSERT_CONST(char **constants, char *data) {
+	for(int i = 0; i < 8192; i++) {
+		char *current = GET_CONST(i);
+		if(current && strcmp(current, data) == 0) {
+			return i;
+		}
+	}
+}
 
 #define DECREF(o) (decref_object(o))
 #define INCREF(o) (incref_object(o))
@@ -52,12 +60,12 @@ typedef struct _Var {
 void              load_file(const char *name);
 void              emit_print();
 Op               *op_at(List *program, int line);
-void              store_var(List *vars, char *name, Object *object);
-Var              *load_var(List *vars, char *name);
-Class            *get_class(char *name);
-Method           *get_method(char *name1, char *name);
-Object           *new_object(Type type, char *name);
-Object           *eval(Object *instance, Method *method, Object **args, int args_length);
+void              store_var(double *vars, int index, Object *object);
+double            load_var(double *vars, int index);
+Class            *get_class(int index);
+Method           *get_method(int name1, int name2);
+Object           *new_object(Type type, int index);
+uint64_t          eval(Object *instance, Method *method, uint64_t *args, int args_length);
 void              intepreter(const char *input);
 
 #endif

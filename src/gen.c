@@ -43,7 +43,7 @@ static Op *emit_op(Method *method, OpType op) {
 	return ins;
 }
 
-static Op *emit_op_left(Method *method, OpType op, float left) {
+static Op *emit_op_left(Method *method, OpType op, uint64_t left) {
 	Op *ins = malloc(sizeof(Op));
 	ins->op = op;
 	ins->left = left;
@@ -98,7 +98,7 @@ static void emit_file(List *constants, List *program) {
 				Op *ins = (Op*)op;
 				
 				fwrite(&ins->op, sizeof(char), 1, prg);
-				fwrite(&ins->left, sizeof(double), 1, prg);
+				fwrite(&ins->left, sizeof(uint64_t), 1, prg);
 			}
 		}
 	}

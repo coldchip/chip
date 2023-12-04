@@ -10,6 +10,7 @@ Node *new_node(NodeType type, Token *token) {
 	Node *node  = malloc(sizeof(Node));
 	node->type  = type;
 	node->data_type = 0;
+	node->length = 0;
 	node->token = token;
 	node->left  = NULL;
 	node->right = NULL;
@@ -192,7 +193,7 @@ static Node *parse_method(Token **current) {
 
 	expect_string(current, "returns");
 
-	Ty *type = type_get_class((*current)->data);
+	Ty *type = parse_type(current);
 	if(!type) {
 		printf("unknown return type %s\n", (*current)->data);
 		exit(1);
@@ -200,7 +201,6 @@ static Node *parse_method(Token **current) {
 
 	insert_method(node->token->data, type);
 
-	expect_type(current, TK_IDENTIFIER);
 
 	expect_string(current, "{");
 
@@ -273,13 +273,14 @@ Node *parse_arg(Token **current) {
 
 Node *parse_args(Token **current) {
 	Node *node = new_node(ND_ARG, NULL);
+	node->length = 0;
 	if(equals_string(current, ")")) {
 		return node;
 	}
 
-	node->length = 1;
-
 	list_insert(list_end(&node->bodylist), parse_arg(current));
+
+	node->length++;
 
 	while(!equals_string(current, ")")) {
 		expect_string(current, ",");
@@ -389,6 +390,7 @@ Node *parse(List *tokens) {
 	varscope_clear();
 
 	Ty *int_type = type_insert("int");
+	insert_method("count", int_type);
 	type_insert("char");
 	insert_method("count", int_type);
 	type_insert("float");
