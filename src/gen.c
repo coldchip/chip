@@ -273,7 +273,7 @@ static void gen_block(Node *node) {
 }
 
 static void gen_variable(Node *node) {
-	emit_op_left(method, OP_LOAD_VAR, emit_constant(&constants, node->token->data, true));
+	emit_op_left(method, OP_LOAD, emit_constant(&constants, node->token->data, true));
 }
 
 static void gen_member(Node *node) {
@@ -315,7 +315,7 @@ static void gen_expr(Node *node) {
 static void gen_declaration(Node *node) {
 	if(node->body) {
 		visitor(node->body);
-		emit_op_left(method, OP_STORE_VAR, emit_constant(&constants, node->token->data, true));
+		emit_op_left(method, OP_STORE, emit_constant(&constants, node->token->data, true));
 	}
 }
 
@@ -337,7 +337,7 @@ static void gen_store(Node *node) {
 		}
 	} else {
 		/* x = y */
-		emit_op_left(method, OP_STORE_VAR, emit_constant(&constants, node->token->data, true));
+		emit_op_left(method, OP_STORE, emit_constant(&constants, node->token->data, true));
 	}
 
 }
@@ -398,6 +398,10 @@ static void gen_char(Node *node) {
 }
 
 static void gen_number(Node *node) {
+	emit_op_left(method, OP_LOAD_NUMBER, atof(node->token->data));
+}
+
+static void gen_float(Node *node) {
 	emit_op_left(method, OP_LOAD_NUMBER, atof(node->token->data));
 }
 
@@ -507,6 +511,10 @@ static void visitor(Node *node) {
 		break;
 		case ND_NUMBER: {
 			gen_number(node);
+		}
+		break;
+		case ND_FLOAT: {
+			gen_float(node);
 		}
 		break;
 		case ND_STRING: {

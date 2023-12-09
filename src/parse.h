@@ -37,6 +37,7 @@ typedef enum {
 	ND_MOD,
 	ND_OR,
 	ND_NUMBER,
+	ND_FLOAT,
 	ND_CHAR,
 	ND_STRING,
 	ND_RETURN,

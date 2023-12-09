@@ -1,6 +1,33 @@
 class Convert {
 	method string(int number) : [static] returns char[] {
-		return "sssssssssssss";
+		if(number eq 0) {
+			return "0";
+		}
+
+		int[] result = new int[32];
+
+		int i = number;
+		int k = 0;
+
+		while(i > 0) {
+			result[k] = 48 + (i % 10);
+			i = i / 10;
+			k = k + 1;
+		}
+
+		int[] reverse = new int[k];
+
+		i = k;
+		k = 0;
+		while(i > 0) {
+			reverse[k] = result[i - 1];
+			i = i - 1;
+			k = k + 1;
+		}
+
+		syscall(5, result) : void;
+
+		return reverse;
 	}
 }
 
@@ -31,7 +58,7 @@ class Math {
 		int i = 0;
 		int mid = 0;
 		while(i < 100) {
-			mid = (lo + hi)/2;
+			mid = (lo + hi) / 2;
 
 			if(mid * mid eq n) {
 				return mid;
@@ -59,33 +86,73 @@ class Console {
 	}
 }
 
-class StringTest {
+class String {
 	char[] data;
+	int count;
 	method constructor() returns void {
 		this.data = new char[0];
+		this.count = 0;
 	}
+
+	method newCapacity(int minCapacity) returns int {
+		return minCapacity * 2;
+	}
+
+	method ensureCapacityInternal(int minimumCapacity) returns void {
+		int oldCapacity = this.data.count;
+        if(minimumCapacity - oldCapacity > 0) {
+            char[] newData = new char[this.newCapacity(minimumCapacity)];
+            syscall(8000, newData, 0, this.data, 0, this.data.count) : void;
+            syscall(5, this.data) : void;
+            this.data = newData;
+        }
+	}
+
 	method append(char[] b) returns void {
-		char[] result = new char[this.data.count + b.count];
+		this.ensureCapacityInternal(this.count + b.count);
+		syscall(8000, this.data, this.count, b, 0, b.count) : void;
 
-		int x = 0;
-		while(x < this.data.count) {
-			result[x] = this.data[x];
-			x = x + 1;
-		}
+		this.count = this.count + b.count;
 
-		int y = 0;
-		while(y < b.count) {
-			result[y + this.data.count] = b[y];
-			y = y + 1;
-		}
-
-		this.data = result;
 
 		return 0;
 	}
 
-	method test() returns void {
+	method getBytes() returns char[] {
+		char[] finals = new char[this.count];
+		syscall(8000, finals, 0, this.data, 0, this.count) : void;
+		return finals;
+	}
 
+	method length() returns int {
+		return this.count;
+	}
+}
+
+class Art {
+	method triangle(int n) : [static] returns String {
+		String output = new String();
+		output.constructor();
+
+		int c1 = (n - 1) / 2;
+		int c2 = 3 * n / 2 - 1;
+
+		int i = 0;
+		while(i < n) {
+			int j = 0;
+			while(j < n) {
+				if(i + j eq c1 or i - j eq c1 or j - i eq c1 or i + j eq c2 or i eq c1 or j eq c1) {
+					output.append("*");
+				} else {
+					output.append(" ");
+				}
+				j = j + 1;
+			}
+			output.append("\n");
+			i = i + 1;
+		}
+
+		return output;
 	}
 }
 
@@ -132,8 +199,6 @@ class Socket {
 
 class Main {
 	method main() : [static] returns void {
-		Console f = new Console();
-		Convert convert = new Convert();
 
 		Socket s = new Socket();
 		s.constructor("0.0.0.0", 19132);
@@ -141,41 +206,44 @@ class Main {
 		if(s.bind() eq 1) {
 			while(1) {
 				Client c = s.accept();
-				f.write("hello client\n");
+				Console.write("hello client\n");
 
 				char[] input = c.read(8192);
-				f.write(input);
+				Console.write(input);
 
 
-				StringTest j = new StringTest();
-				j.constructor();
+				String body = new String();
+				body.constructor();
 				int y = 0;
-				while(y < 128) {
-					j.append("hello");
+				while(y < 1024) {
+					int sqrt = Math.sqrt(y);
+					body.append(Convert.string(sqrt));
+					body.append(":");
+					body.append(Convert.string(sqrt * sqrt));
+					body.append("<pre>");
+					body.append(Art.triangle(13).getBytes());
+					body.append("</pre>");
+					body.append("\n");
 					y = y + 1;
 				}
 
-				StringTest r = new StringTest();
-				r.constructor();
-				r.append("HTTP/1.0 200 OK\r\n");
-				r.append("Content-Length: ");
-				r.append("5");
-				r.append("\r\n\r\n");
-				r.append("hello");
+				String header = new String();
+				header.constructor();
+				header.append("HTTP/1.0 200 OK\r\n");
+				header.append("Content-Type: text/html\r\n");
+				header.append("Content-Length: ");
+				header.append(Convert.string(body.length()));
+				header.append("\r\n\r\n");
 
-				char[] lol = convert.string(9999);
-
-				syscall(1, lol.count) : void;
-
-				f.write(lol);
-				f.write("\n");
-
-				c.write(r.data);
+				c.write(header.getBytes());
+				c.write(body.getBytes());
 
 				c.close();
+
+				Console.write(Art.triangle(13).getBytes());
 			}
 		} else {
-			f.write("unable to bind\n");
+			Console.write("unable to bind\n");
 		}
 	}
 }

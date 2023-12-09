@@ -5,16 +5,22 @@
 #include <stdint.h>
 
 typedef enum {
-	OP_LOAD_VAR,
-	OP_STORE_VAR,
+	OP_LOAD,
+	OP_STORE,
 	OP_POP,
 	OP_CMPEQ,
 	OP_CMPGT,
 	OP_CMPLT,
+	/* integer arithmetric operations */
 	OP_ADD,
 	OP_SUB,
 	OP_MUL,
 	OP_DIV,
+	/* floating point arithmetric operations */
+	OP_FADD,
+	OP_FSUB,
+	OP_FMUL,
+	OP_FDIV,
 	OP_MOD,
 	OP_OR,
 	OP_LOAD_NUMBER,
@@ -94,6 +100,7 @@ static void       gen_store(Node *node);
 static void       gen_binary(Node *node);
 static void       gen_char(Node *node);
 static void       gen_number(Node *node);
+static void       gen_float(Node *node);
 static void       gen_string(Node *node);
 static void       gen_return(Node *node);
 static void       gen_call(Node *node);

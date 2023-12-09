@@ -206,21 +206,23 @@ Node *parse_primary(Token **current) {
 
 		return node;
 	} else if(consume_type(current, TK_NUMBER)) {
-		Node *node = new_node(ND_NUMBER, token);
 		if(strstr(token->data, ".") != NULL) {
+			Node *node = new_node(ND_FLOAT, token);;
 			node->data_type = type_get_class("float");
 			if(!node->data_type) {
 				printf("builtin float class not found\n");
 				exit(1);
 			}
+			return node;
 		} else {
+			Node *node = new_node(ND_NUMBER, token);
 			node->data_type = type_get_class("int");
 			if(!node->data_type) {
 				printf("builtin int class not found\n");
 				exit(1);
 			}
+			return node;
 		}
-		return node;
 	} else if(consume_type(current, TK_CHAR)) {
 		Node *node = new_node(ND_CHAR, token);
 		node->data_type = type_get_class("char");
