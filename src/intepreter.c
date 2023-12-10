@@ -425,7 +425,7 @@ int64_t eval(int pc) {
 					args[i] = arg;
 				}
 
-				PUSH_FRAME();
+				PUSH_FRAME(); 
 
 				stack[fp][FIND_OR_INSERT_CONST(constants, "this")] = instance;
 				PUSH_STACK(pc);
