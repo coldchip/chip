@@ -87,40 +87,44 @@ class Console {
 }
 
 class String {
-	char[] data;
+	char[] buffer;
 	int count;
 	method constructor() returns void {
-		this.data = new char[0];
+		this.buffer = new char[0];
 		this.count = 0;
 	}
 
-	method newCapacity(int minCapacity) returns int {
-		return minCapacity * 2;
+	method expandCapacity(int minimumCapacity) returns int {
+		int newCapacity = this.buffer.count * 2 + 2;
+        if(newCapacity - minimumCapacity < 0) {
+            newCapacity = minimumCapacity;
+        }
+
+		char[] newData = new char[newCapacity];
+        syscall(8000, newData, 0, this.buffer, 0, this.buffer.count) : void;
+        syscall(5, this.buffer) : void;
+        this.buffer = newData;
 	}
 
 	method ensureCapacityInternal(int minimumCapacity) returns void {
-		int oldCapacity = this.data.count;
+		int oldCapacity = this.buffer.count;
         if(minimumCapacity - oldCapacity > 0) {
-            char[] newData = new char[this.newCapacity(minimumCapacity)];
-            syscall(8000, newData, 0, this.data, 0, this.data.count) : void;
-            syscall(5, this.data) : void;
-            this.data = newData;
+            this.expandCapacity(minimumCapacity);
         }
 	}
 
 	method append(char[] b) returns void {
 		this.ensureCapacityInternal(this.count + b.count);
-		syscall(8000, this.data, this.count, b, 0, b.count) : void;
+		syscall(8000, this.buffer, this.count, b, 0, b.count) : void;
 
 		this.count = this.count + b.count;
-
 
 		return 0;
 	}
 
 	method getBytes() returns char[] {
 		char[] finals = new char[this.count];
-		syscall(8000, finals, 0, this.data, 0, this.count) : void;
+		syscall(8000, finals, 0, this.buffer, 0, this.count) : void;
 		return finals;
 	}
 
@@ -197,6 +201,27 @@ class Socket {
 	}
 }
 
+class Header {
+	String buffer;
+	method constructor() returns void {
+		this.buffer = new String();
+		this.buffer.constructor();
+		this.buffer.append("HTTP/1.0 200 OK\r\n");
+	}
+
+	method append(char[] k, char[] v) returns void {
+		this.buffer.append(k);
+		this.buffer.append(":");
+		this.buffer.append(v);
+		this.buffer.append("\r\n");
+	}
+
+	method getBytes() returns char[] {
+		this.buffer.append("\r\n\r\n");
+		return this.buffer.getBytes();
+	}
+}
+
 class Main {
 	method main() : [static] returns void {
 
@@ -215,32 +240,33 @@ class Main {
 				String body = new String();
 				body.constructor();
 				int y = 0;
-				while(y < 1024) {
+
+				body.append("<pre>");
+				body.append(Art.triangle(13).getBytes());
+				body.append("</pre>");
+
+				while(y < 128) {
 					int sqrt = Math.sqrt(y);
 					body.append(Convert.string(sqrt));
 					body.append(":");
 					body.append(Convert.string(sqrt * sqrt));
-					body.append("<pre>");
-					body.append(Art.triangle(13).getBytes());
-					body.append("</pre>");
-					body.append("\n");
+					body.append("<br>");
+					
 					y = y + 1;
 				}
 
-				String header = new String();
+				Header header = new Header();
 				header.constructor();
-				header.append("HTTP/1.0 200 OK\r\n");
-				header.append("Content-Type: text/html\r\n");
-				header.append("Content-Length: ");
-				header.append(Convert.string(body.length()));
-				header.append("\r\n\r\n");
+				header.append("Content-Type", "text/html");
+				header.append("Content-Length", Convert.string(body.length()));
+
 
 				c.write(header.getBytes());
 				c.write(body.getBytes());
 
 				c.close();
 
-				Console.write(Art.triangle(13).getBytes());
+				Console.write(Art.triangle(27).getBytes());
 			}
 		} else {
 			Console.write("unable to bind\n");

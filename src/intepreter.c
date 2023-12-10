@@ -21,9 +21,11 @@
 Object *cache[8192] = {}; // generate instances of all classes to allow static invoking
 Object *globals[8192] = {};
 static char *constants[8192] = {};
-static List program;
 
-void load_file(const char *name) {
+static Op *codes[32768] = {};
+int code_size = 0;
+
+int load_file(const char *name) {
 	FILE *fp = fopen(name, "rb");
 	if(!fp) {
 		printf("unable to load file %s\n", name);
@@ -35,6 +37,7 @@ void load_file(const char *name) {
 
 	int pgm_size = 0;
 	fread(&pgm_size, sizeof(pgm_size), 1, fp);
+
 	fseek(fp, pgm_size + 4, SEEK_CUR);
 
 	int constants_count = 0;
@@ -56,175 +59,138 @@ void load_file(const char *name) {
 
 	fseek(fp, sizeof(magic) + 4, SEEK_SET);
 
-	int class_count = 0;
-	fread(&class_count, sizeof(class_count), 1, fp);
+	int entry = 0;
+	fread(&entry, sizeof(entry), 1, fp);
 
-	for(int i = 0; i < class_count; i++) {
-		short method_count = 0;
-		short class_name = 0;
-		fread(&method_count, sizeof(method_count), 1, fp);
-		fread(&class_name, sizeof(class_name), 1, fp);
+	int code_count = 0;
+	fread(&code_count, sizeof(code_count), 1, fp);
 
-		Class *class = malloc(sizeof(Class));
-		class->name = GET_CONST(class_name);
-		class->index = class_name;
-		list_clear(&class->method);
-
-		for(int x = 0; x < method_count; x++) {
-			short op_count = 0;
-			short method_id = 0;
-			fread(&op_count, sizeof(op_count), 1, fp);
-			fread(&method_id, sizeof(method_id), 1, fp);
-
-			Method *method = malloc(sizeof(Method));
-			method->name = GET_CONST(method_id);
-			method->index = method_id;
-			method->code_count = op_count;
-			
-			method->codes = malloc(sizeof(Op *) * op_count);
-
-			for(int y = 0; y < op_count; y++) {
-				char     op = 0;
-				int64_t op_left = 0;
-				fread(&op, sizeof(op), 1, fp);
-				fread(&op_left, sizeof(op_left), 1, fp);
-
-				Op *ins = malloc(sizeof(Op));
-				ins->op = op;
-				ins->left = op_left;
-
-				method->codes[y] = ins;
-			}
-
-			list_insert(list_end(&class->method), method);
+	for(int i = 0; i < code_count; i++) {
+		char     op = 0;
+		int64_t op_left = 0;
+		fread(&op, sizeof(op), 1, fp);
+		if((op >> 7) & 0x01) {
+			fread(&op_left, sizeof(op_left), 1, fp);
 		}
 
-		list_insert(list_end(&program), class);
+		Op *ins = malloc(sizeof(Op));
+		ins->op = op & 0x7F;
+		ins->left = op_left;
+
+		codes[code_size++] = ins;
 	}
 
 	fclose(fp);
+
+	return entry;
 }
 
 void emit_print() {
-	for(ListNode *cn = list_begin(&program); cn != list_end(&program); cn = list_next(cn)) {
-		Class *c = (Class*)cn;
-
-		printf("@class %s\n", c->name);
-
-		for(ListNode *mn = list_begin(&c->method); mn != list_end(&c->method); mn = list_next(mn)) {
-			Method *m = (Method*)mn;
-
-			int line = 1;
-			printf("\t@method %s\n", m->name);
-			printf("\tLINE\tOP\tVALUE\n\t--------------------------\n");
-
-			for(int pc = 0; pc < m->code_count; pc++) {
-				Op *ins = m->codes[pc];
-				switch(ins->op) {
-					case OP_LOAD: {
-						printf("\t%i\tLOAD\t%s\n", line, GET_CONST(ins->left));
-					}
-					break;
-					case OP_STORE: {
-						printf("\t%i\tSTORE\t%s\n", line, GET_CONST(ins->left));
-					}
-					break;
-					case OP_POP: {
-						printf("\t%i\tPOP\t\n", line);
-					}
-					break;
-					case OP_CMPEQ: {
-						printf("\t%i\tCMPEQ\n", line);
-					}
-					break;
-					case OP_CMPGT: {
-						printf("\t%i\tCMPGT\n", line);
-					}
-					break;
-					case OP_CMPLT: {
-						printf("\t%i\tCMPLT\n", line);
-					}
-					break;
-					case OP_ADD: {
-						printf("\t%i\tADD\n", line);
-					}
-					break;
-					case OP_SUB: {
-						printf("\t%i\tSUB\n", line);
-					}
-					break;
-					case OP_MUL: {
-						printf("\t%i\tMUL\n", line);
-					}
-					break;
-					case OP_DIV: {
-						printf("\t%i\tDIV\n", line);
-					}
-					break;
-					case OP_MOD: {
-						printf("\t%i\tMOD\n", line);
-					}
-					break;
-					case OP_OR: {
-						printf("\t%i\tOR\n", line);
-					}
-					break;
-					case OP_LOAD_NUMBER: {
-						printf("\t%i\tLOAD_NUMBER\t%li\n", line, ins->left);
-					}
-					break;
-					case OP_LOAD_CONST: {
-						printf("\t%i\tLOAD_CONST\t%i\t//%s\n", line, (int)ins->left, GET_CONST(ins->left));
-					}
-					break;
-					case OP_LOAD_MEMBER: {
-						printf("\t%i\tLOAD_MEMBER\t%s\n", line, GET_CONST(ins->left));
-					}
-					break;
-					case OP_STORE_MEMBER: {
-						printf("\t%i\tSTORE_MEMBER\t%s\n", line, GET_CONST(ins->left));
-					}
-					break;
-					case OP_CALL: {
-						printf("\t%i\tCALL\t\tARGLEN: %i\n", line, (int)ins->left);
-					}
-					break;
-					case OP_SYSCALL: {
-						printf("\t%i\tSYSCALL\t\tARGLEN: %i\n", line, (int)ins->left);
-					}
-					break;
-					case OP_NEW: {
-						printf("\t%i\tNEW\t\tARGLEN: %i\n", line, (int)ins->left);
-					}
-					break;
-					case OP_NEWARRAY: {
-						printf("\t%i\tNEWARRAY\t%s\n", line, GET_CONST(ins->left));
-					}
-					break;
-					case OP_LOAD_ARRAY: {
-						printf("\t%i\tLOAD_ARRAY\n", line);
-					}
-					break;
-					case OP_STORE_ARRAY: {
-						printf("\t%i\tSTORE_ARRAY\n", line);
-					}
-					break;
-					case OP_JMPIFT: {
-						printf("\t%i\tJMPIFT\t%i\n", line, (int)ins->left);
-					}
-					break;
-					case OP_JMP: {
-						printf("\t%i\tJMP\t%i\n", line, (int)ins->left);
-					}
-					break;
-					case OP_RET: {
-						printf("\t%i\tRET\t\n", line);
-					}
-					break;
-				}
-
-				line++;
+	for(int pc = 0; pc < code_size; pc++) {
+		Op *ins = codes[pc];
+		switch(ins->op) {
+			case OP_LOAD: {
+				printf("\t%i\tload\t%s\n", pc + 1, GET_CONST(ins->left));
 			}
+			break;
+			case OP_STORE: {
+				printf("\t%i\tstore\t%s\n", pc + 1, GET_CONST(ins->left));
+			}
+			break;
+			case OP_POP: {
+				printf("\t%i\tpop\t\n", pc + 1);
+			}
+			break;
+			case OP_CMPEQ: {
+				printf("\t%i\tcmpeq\n", pc + 1);
+			}
+			break;
+			case OP_CMPGT: {
+				printf("\t%i\tcmpgt\n", pc + 1);
+			}
+			break;
+			case OP_CMPLT: {
+				printf("\t%i\tcmplt\n", pc + 1);
+			}
+			break;
+			case OP_ADD: {
+				printf("\t%i\tadd\n", pc + 1);
+			}
+			break;
+			case OP_SUB: {
+				printf("\t%i\tsub\n", pc + 1);
+			}
+			break;
+			case OP_MUL: {
+				printf("\t%i\tmul\n", pc + 1);
+			}
+			break;
+			case OP_DIV: {
+				printf("\t%i\tdiv\n", pc + 1);
+			}
+			break;
+			case OP_MOD: {
+				printf("\t%i\tmod\n", pc + 1);
+			}
+			break;
+			case OP_OR: {
+				printf("\t%i\tor\n", pc + 1);
+			}
+			break;
+			case OP_PUSH: {
+				printf("\t%i\tpush\t%li\n", pc + 1, ins->left);
+			}
+			break;
+			case OP_LOAD_CONST: {
+				printf("\t%i\tloadconst\t%i\t//%s\n", pc + 1, (int)ins->left, GET_CONST(ins->left));
+			}
+			break;
+			case OP_LOAD_MEMBER: {
+				printf("\t%i\tloadmember\t%s\n", pc + 1, GET_CONST(ins->left));
+			}
+			break;
+			case OP_STORE_MEMBER: {
+				printf("\t%i\tstoremember\t%s\n", pc + 1, GET_CONST(ins->left));
+			}
+			break;
+			case OP_CALL: {
+				uint32_t args = (((uint32_t)ins->left) >> 24) & 0xFF;
+				uint32_t jmp = ((uint32_t)ins->left) & 0x00FFFFFF;
+				printf("\t%i\tcall\t%i, %i\n", pc + 1, jmp, args);
+			}
+			break;
+			case OP_SYSCALL: {
+				printf("\t%i\tsyscall\t\tARGLEN: %i\n", pc + 1, (int)ins->left);
+			}
+			break;
+			case OP_NEWO: {
+				printf("\t%i\tnewo\t%s\n", pc + 1, GET_CONST(ins->left));
+			}
+			break;
+			case OP_NEWARRAY: {
+				printf("\t%i\tnew_array\t%s\n", pc + 1, GET_CONST(ins->left));
+			}
+			break;
+			case OP_LOAD_ARRAY: {
+				printf("\t%i\tload_array\n", pc + 1);
+			}
+			break;
+			case OP_STORE_ARRAY: {
+				printf("\t%i\tstore_array\n", pc + 1);
+			}
+			break;
+			case OP_JE: {
+				printf("\t%i\tje\t%i\n", pc + 1, (int)ins->left);
+			}
+			break;
+			case OP_JMP: {
+				printf("\t%i\tjmp\t%i\n", pc + 1, (int)ins->left);
+			}
+			break;
+			case OP_RET: {
+				printf("\t%i\tret\t\n", pc + 1);
+			}
+			break;
 		}
 	}
 }
@@ -250,56 +216,16 @@ double load_var(double *vars, int index) {
 	return vars[index];
 }
 
-Class *get_class(int index) {
-	for(ListNode *i = list_begin(&program); i != list_end(&program); i = list_next(i)) {
-		Class *class = (Class*)i;
-		if(index == class->index) {
-			return class;
-		}
-	}
-	return NULL;
-}
-
-Method *get_method(int name1, int name2) {
-	Class *class = get_class(name1);
-	if(class) {
-		for(ListNode *i = list_begin(&class->method); i != list_end(&class->method); i = list_next(i)) {
-			Method *method = (Method*)i;
-			if(name2 == method->index) {
-				return method;
-			}
-		}
-	}
-	return NULL;
-}
-
 int allocs = 0;
 
 Object *new_object(Type type, int index) {
 	Object *o = malloc(sizeof(Object));
 	o->array = NULL;
-	o->bound = NULL;
 	o->type = type;
 	o->index = index;
 	o->refs = 0;
 
 	allocs++;
-
-	if(type == TY_VARIABLE) {
-		Class *skeleton = get_class(index);
-		if(!skeleton) {
-			printf("Error, class %s not defined\n", GET_CONST(index));
-			exit(1);
-		}
-
-		for(ListNode *i = list_begin(&skeleton->method); i != list_end(&skeleton->method); i = list_next(i)) {
-			Method *method = (Method*)i;
-			Object *var = new_object(TY_FUNCTION, method->index);
-			var->bound = o;
-			var->method = method;
-			store_var(&o->varlist, method->index, var);
-		}
-	}
 
 	return o;
 }
@@ -315,50 +241,38 @@ void free_object(Object *object) {
 	// printf("OBJECTS STILL REFRENCED: %i\n\n", allocs);
 }
 
-int64_t eval(Object *instance, Method *method, int64_t *args, int args_length) {
+int64_t eval(int pc) {
 	/*
 		assume if instance == NULL then method is static
 	*/
-	int64_t ret = 0;
-
 	clock_t begin;
 
-	int64_t varlist[2048];
+	/* stack */
+	int64_t stack[16][1024];
+	/* frame pointer */
+	int64_t fp = 0;
+	/* stack pointer */
+	int64_t sp = 512;
 
-	if(instance != NULL) {
-		store_var(varlist, FIND_OR_INSERT_CONST(constants, "this"), instance);
-	}
-
-	int64_t stack[512];
-	int sp = 0;
-
-	if(args) {
-		for(int i = 0; i < args_length; i++) {
-			int64_t arg = args[i];
-			PUSH_STACK(arg);
-		}
-	}
-
-	int pc = 0;
-	while(pc < method->code_count) {
-		Op *current = method->codes[pc];
+	while(pc < code_size) {
+		Op *current = codes[pc];
 		switch(current->op) {
 			case OP_LOAD: {
 				if(globals[current->left]) {
 					Object *var = globals[current->left];
 					PUSH_STACK_OBJECT(var);
 				} else {
-					int64_t var = varlist[current->left];
+					int64_t var = stack[fp][current->left];
 					PUSH_STACK(var);
 				}
 			}
 			break;
 			case OP_STORE: {
 				int64_t v1 = POP_STACK();
-				varlist[current->left] = v1;
+				stack[fp][current->left] = v1;
 			}
 			break;
-			case OP_LOAD_NUMBER: {
+			case OP_PUSH: {
 				PUSH_STACK((int64_t)current->left);
 			}
 			break;
@@ -397,7 +311,6 @@ int64_t eval(Object *instance, Method *method, int64_t *args, int args_length) {
 			case OP_STORE_MEMBER: {
 				Object *instance = POP_STACK_OBJECT();
 				int64_t v2 = POP_STACK();
-
 				instance->varlist[current->left] = v2;
 			}
 			break;
@@ -503,21 +416,26 @@ int64_t eval(Object *instance, Method *method, int64_t *args, int args_length) {
 			case OP_CALL: {
 				Object *instance = POP_STACK_OBJECT();
 
-				int64_t args[(int)current->left];
+				uint32_t jmp    = (((uint32_t)current->left) & 0x00FFFFFF);
+				uint32_t length = (((uint32_t)current->left) >> 24) & 0xFF;
 
-				for(int i = 0; i < current->left; i++) {
+				int64_t args[length];
+				for(int i = 0; i < length; i++) {
 					int64_t arg = POP_STACK();
 					args[i] = arg;
 				}
 
-				if(instance->type != TY_FUNCTION) {
-					printf("unknown function call %s\n", GET_CONST(instance->index));
-					exit(1);
+				PUSH_FRAME();
+
+				stack[fp][FIND_OR_INSERT_CONST(constants, "this")] = instance;
+				PUSH_STACK(pc);
+				for(int i = 0; i < length; i++) {
+					PUSH_STACK(args[i]);
 				}
 
-				int64_t r = eval(instance->bound, instance->method, args, (int)current->left);
+				pc = jmp - 1;
 
-				PUSH_STACK(r);
+				continue;
 			}
 			break;
 			case OP_SYSCALL: {
@@ -623,7 +541,7 @@ int64_t eval(Object *instance, Method *method, int64_t *args, int args_length) {
 				}
 			}
 			break;
-			case OP_NEW: {
+			case OP_NEWO: {
 				Object *o = new_object(TY_VARIABLE, current->left);
 				PUSH_STACK_OBJECT(o);
 			}
@@ -634,9 +552,7 @@ int64_t eval(Object *instance, Method *method, int64_t *args, int args_length) {
 				Object *instance = new_object(TY_ARRAY, current->left);
 				instance->array = malloc(sizeof(char) * size);
 
-				for(int i = 0; i < size; i++) {
-					instance->array[i] = 0;
-				}
+				memset(instance->array, 0, sizeof(char) * size);
 
 				store_var_double(&instance->varlist, FIND_OR_INSERT_CONST(constants, "count"), size);
 
@@ -660,7 +576,7 @@ int64_t eval(Object *instance, Method *method, int64_t *args, int args_length) {
 				instance->array[index] = (char)value;
 			}
 			break;
-			case OP_JMPIFT: {
+			case OP_JE: {
 				int64_t a = POP_STACK();
 				int64_t b = POP_STACK();
 
@@ -677,9 +593,16 @@ int64_t eval(Object *instance, Method *method, int64_t *args, int args_length) {
 			}
 			break;
 			case OP_RET: {
-				ret = POP_STACK();
+				int64_t ret_data = POP_STACK();
+				int64_t ret_addr = POP_STACK();
 
-				goto cleanup;
+				POP_FRAME();
+
+				PUSH_STACK(ret_data);
+
+				pc = ret_addr + 1;
+
+				continue;
 			}
 			break;
 			default: {
@@ -691,34 +614,16 @@ int64_t eval(Object *instance, Method *method, int64_t *args, int args_length) {
 		pc++;
 	}
 
-	cleanup:;
-
-	return ret;
+	return 0;
 }
 
 void intepreter(const char *input) {
 	/* code */
 	signal(SIGPIPE, SIG_IGN);
 
-	list_clear(&program);
-
-	load_file(input);
+	int entry = load_file(input);
 
 	emit_print();
 
-	for(ListNode *cn = list_begin(&program); cn != list_end(&program); cn = list_next(cn)) {
-		Class *c = (Class*)cn;
-
-		Object *var = new_object(TY_VARIABLE, c->index);
-		// store_var(&globals, c->index, var);
-		globals[c->index] = var;
-	}
-
-	Method *method_main = get_method(FIND_OR_INSERT_CONST(constants, "Main"), FIND_OR_INSERT_CONST(constants, "main"));
-	if(!method_main) {
-		printf("entry point method main not found\n");
-		exit(1);
-	}
-
-	eval(NULL, method_main, NULL, 0);
+	eval(entry - 1);
 }

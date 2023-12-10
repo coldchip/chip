@@ -9,7 +9,8 @@
 Node *new_node(NodeType type, Token *token) {
 	Node *node  = malloc(sizeof(Node));
 	node->type  = type;
-	node->data_type = 0;
+	node->data_type = NULL;
+	node->method = NULL;
 	node->length = 0;
 	node->token = token;
 	node->left  = NULL;
@@ -55,6 +56,23 @@ bool is_method(Token **current) {
 	if(equals_string(current, "method")) {
 		return true;
 	}
+	return false;
+}
+
+/*
+	<identifier>()
+*/
+
+bool is_call(Token **current) {
+	Token *state = *current;
+
+	if(consume_type(current, TK_IDENTIFIER)) {
+		if(consume_string(current, "(")) {
+			*current = state;
+			return true;
+		}
+	}
+	*current = state;
 	return false;
 }
 
@@ -199,8 +217,8 @@ static Node *parse_method(Token **current) {
 		exit(1);
 	}
 
-	insert_method(node->token->data, type);
-
+	TyMethod *method = insert_method(node->token->data, type);
+	node->method = method;
 
 	expect_string(current, "{");
 

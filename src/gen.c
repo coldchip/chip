@@ -5,6 +5,23 @@
 #include "chip.h"
 #include "gen.h"
 
+typedef struct {
+	TyMethod *method;
+	int line;
+} LabelEntry;
+
+static LabelEntry labels[8192] = {};
+int label_counter = 0;
+
+static Op *codes[32768] = {};
+int code_counter = 0;
+
+static List constants;
+static List *program;
+static Class *class = NULL;
+static Method *method = NULL;
+
+
 static char *rand_string(char *str, size_t size) {
     const char charset[] = "abcdefghijklmnopqrstuvwxyz";
     if(size) {
@@ -39,15 +56,23 @@ static Method *emit_method(Class *class, char *name) {
 static Op *emit_op(Method *method, OpType op) {
 	Op *ins = malloc(sizeof(Op));
 	ins->op = op;
+	ins->has_left = false;
 	list_insert(list_end(&method->op), ins);
+
+	codes[code_counter++] = ins;
+
 	return ins;
 }
 
 static Op *emit_op_left(Method *method, OpType op, uint64_t left) {
 	Op *ins = malloc(sizeof(Op));
 	ins->op = op;
+	ins->has_left = true;
 	ins->left = left;
 	list_insert(list_end(&method->op), ins);
+
+	codes[code_counter++] = ins;
+
 	return ins;
 }
 
@@ -69,37 +94,47 @@ static int emit_constant(List *list, char *data, bool obfuscated) {
 }
 
 static int emit_op_get_counter(Method *program) {
-	return list_size(&program->op) + 1;
+	return code_counter + 1;
 }
 
 static void emit_file(List *constants, List *program) {
+	Ty *c = type_get_class("Main");
+	if(!c) {
+		printf("entry point class Main not found\n");
+		exit(1);
+	}
+
+	TyMethod *m = type_get_method(c, "main");
+	if(!m) {
+		printf("entry point method main not found\n");
+		exit(1);
+	}
+
+
 	FILE *prg = fopen("~prg.out", "wb");
 
-	int class_count = list_size(program);
-	fwrite(&class_count, sizeof(int), 1, prg);
+	for(int i = 0; i < label_counter; ++i) {
+		if(labels[i].method == m) {
+			uint32_t entry = labels[i].line;
+			fwrite(&entry, sizeof(int), 1, prg);
+			break;
+		}
+	}
 
-	for(ListNode *cn = list_begin(program); cn != list_end(program); cn = list_next(cn)) {
-		Class *c = (Class*)cn;
+	fwrite(&code_counter, sizeof(int), 1, prg);
 
-		short method_count = list_size(&c->method);
-		short class_name = emit_constant(constants, c->name, true);
-		fwrite(&method_count, sizeof(short), 1, prg);
-		fwrite(&class_name, sizeof(short), 1, prg);
+	for(int i = 0; i < code_counter; i++) {
+		Op *ins = codes[i];
 
-		for(ListNode *mn = list_begin(&c->method); mn != list_end(&c->method); mn = list_next(mn)) {
-			Method *m = (Method*)mn;
-			
-			short op_count = list_size(&m->op);
-			short method_name = emit_constant(constants, m->name, true);
-			fwrite(&op_count, sizeof(short), 1, prg);
-			fwrite(&method_name, sizeof(short), 1, prg);
+		char op = ins->op;
 
-			for(ListNode *op = list_begin(&m->op); op != list_end(&m->op); op = list_next(op)) {
-				Op *ins = (Op*)op;
+		if(ins->has_left) {
+			op = op | (1 << 7);
+		}
 				
-				fwrite(&ins->op, sizeof(char), 1, prg);
-				fwrite(&ins->left, sizeof(uint64_t), 1, prg);
-			}
+		fwrite(&op, sizeof(char), 1, prg);
+		if(ins->has_left) {
+			fwrite(&ins->left, sizeof(uint64_t), 1, prg);
 		}
 	}
 
@@ -113,22 +148,14 @@ static void emit_file(List *constants, List *program) {
 	for(ListNode *c = list_begin(constants); c != list_end(constants); c = list_next(c)) {
 		Constant *constant = (Constant*)c;
 
-		// printf("%s %i\n", constant->data, constant-> obfuscated);
-
 		if(
 			false &&
 			constant->obfuscated && 
-			!strcasecmp(constant->data, "main") == 0 && 
 			!strcasecmp(constant->data, "this") == 0 && 
-			!strcasecmp(constant->data, "constructor") == 0 &&
-			!strcasecmp(constant->data, "string") == 0 &&
-			!strcasecmp(constant->data, "number") == 0
+			!strcasecmp(constant->data, "count") == 0
 		) {
-			char obfuscated[512];
-			rand_string(obfuscated, 8);
 
-			char obfuscated2[1024];
-			strcpy(obfuscated2, obfuscated);
+			char obfuscated2[1024] = "";
 
 			int constant_size = strlen(obfuscated2);
 			fwrite(&constant_size, sizeof(constant_size), 1, cst);
@@ -136,6 +163,7 @@ static void emit_file(List *constants, List *program) {
 		} else {
 
 			int constant_size = strlen(constant->data);
+
 			fwrite(&constant_size, sizeof(constant_size), 1, cst);
 			fwrite(constant->data, sizeof(char), constant_size, cst);
 		}
@@ -155,14 +183,12 @@ static void emit_file(List *constants, List *program) {
 
 	fwrite(&prg_size, sizeof(prg_size), 1, fp);
 
-	char ch;
-	while((ch = fgetc(prg)) != EOF) {
+	for(int i = 0; i < prg_size; ++i) {
+		char ch = fgetc(prg);
 		fputc(ch, fp);
 	}
 
 	fclose(prg);
-
-
 
 	cst = fopen("~cst.out", "rb");
 	fseek(cst, 0, SEEK_END);
@@ -171,21 +197,17 @@ static void emit_file(List *constants, List *program) {
 
 	fwrite(&cst_size, sizeof(cst_size), 1, fp);
 
-	while((ch = fgetc(cst)) != EOF) {
+	for(int i = 0; i < cst_size; ++i) {
+		char ch = fgetc(cst);
 		fputc(ch, fp);
 	}
 
 	fclose(cst);
-
 	fclose(fp);
 
 	unlink("~prg.out");
 	unlink("~cst.out");
 }
-static List constants;
-static List *program;
-static Class *class = NULL;
-static Method *method = NULL;
 
 static void gen_program(Node *node) {
 	List *list = &node->bodylist;
@@ -225,6 +247,13 @@ static void gen_method(Node *node) {
 	method = emit_method(class, node->token->data);
 	method->modifier = node->modifier;
 
+	LabelEntry label = {
+		.method = node->method,
+		.line = emit_op_get_counter(method)
+	};
+
+	labels[label_counter++] = label;
+
 	visitor(node->args);
 
 	List *list = &node->bodylist;
@@ -232,14 +261,17 @@ static void gen_method(Node *node) {
 		Node *entry = (Node*)list_remove(list_begin(list));
 		visitor(entry);
 	}
+
+	emit_op_left(method, OP_PUSH, 0);
+	emit_op(method, OP_RET);
 }
 
 static void gen_if(Node *node) {
 	int start = emit_op_get_counter(method);
 
 	visitor(node->condition);
-	emit_op_left(method, OP_LOAD_NUMBER, 0);
-	Op *jmp = emit_op_left(method, OP_JMPIFT, 0);
+	emit_op_left(method, OP_PUSH, 0);
+	Op *jmp = emit_op_left(method, OP_JE, 0);
 	visitor(node->body);
 
 	Op *jmp2 = emit_op_left(method, OP_JMP, 0);
@@ -256,8 +288,8 @@ static void gen_while(Node *node) {
 	int start = emit_op_get_counter(method);
 
 	visitor(node->condition);
-	emit_op_left(method, OP_LOAD_NUMBER, 0);
-	Op *jmp = emit_op_left(method, OP_JMPIFT, 0);
+	emit_op_left(method, OP_PUSH, 0);
+	Op *jmp = emit_op_left(method, OP_JE, 0);
 	visitor(node->body);
 	emit_op_left(method, OP_JMP, start);
 
@@ -288,7 +320,7 @@ static void gen_new(Node *node) {
 
 	// visitor(node->args);
 
-	emit_op_left(method, OP_NEW, emit_constant(&constants, node->token->data, true));
+	emit_op_left(method, OP_NEWO, emit_constant(&constants, node->token->data, true));
 }
 
 static void gen_new_array(Node *node) {
@@ -394,15 +426,15 @@ static void gen_binary(Node *node) {
 static void gen_char(Node *node) {
 	int t = (int)node->token->data[0];
 
-	emit_op_left(method, OP_LOAD_NUMBER, (float)node->token->data[0]);
+	emit_op_left(method, OP_PUSH, (float)node->token->data[0]);
 }
 
 static void gen_number(Node *node) {
-	emit_op_left(method, OP_LOAD_NUMBER, atof(node->token->data));
+	emit_op_left(method, OP_PUSH, atof(node->token->data));
 }
 
 static void gen_float(Node *node) {
-	emit_op_left(method, OP_LOAD_NUMBER, atof(node->token->data));
+	emit_op_left(method, OP_PUSH, atof(node->token->data));
 }
 
 static void gen_string(Node *node) {
@@ -419,7 +451,13 @@ static void gen_call(Node *node) {
 	visitor(node->args);
 	visitor(node->body);
 
-	emit_op_left(method, OP_CALL, node->args->length);
+	for(int i = 0; i < label_counter; ++i) {
+		if(labels[i].method == node->method) {
+			uint32_t left = (node->args->length << 24) | (labels[i].line);
+			emit_op_left(method, OP_CALL, left);
+			break;
+		}
+	}
 }
 
 static void gen_syscall(Node *node) {
@@ -541,5 +579,7 @@ void gen(Node *node, List *p) {
 	list_clear(p);
 	program = p;
 	visitor(node);
+
+	// print_code();
 	emit_file(&constants, p);
 }

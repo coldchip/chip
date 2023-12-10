@@ -117,27 +117,27 @@ static Node *parse_postfix(Token **current) {
 				printf("error, unknown member '%s' in variable '%s' of class '%s'\n", (*current)->data, node->token->data, node->data_type->name);
 				exit(1);
 			}
+			if(is_call(current)) {
+				Node *left = new_node(ND_CALL, token);
+				left->data_type = method->type;
+				left->method = method;
 
-			Node *left = new_node(ND_MEMBER, *current);
-			left->data_type = method->type;
-			left->body = node;
-			node = left;
-			expect_type(current, TK_IDENTIFIER);
+				expect_type(current, TK_IDENTIFIER);
+				expect_string(current, "(");
+				left->args = parse_args(current);
+				expect_string(current, ")");
 
-			continue;
-		}
+				left->body = node;
+				node = left;
 
-		if(consume_string(current, "(")) {
-
-			Node *left = new_node(ND_CALL, token);
-			left->data_type = node->data_type;
-			left->args = parse_args(current);
-
-			left->body = node;
-			node = left;
-
-			expect_string(current, ")");
-
+			} else {
+				Node *left = new_node(ND_MEMBER, *current);
+				left->data_type = method->type;
+				left->method = method;
+				left->body = node;
+				node = left;
+				expect_type(current, TK_IDENTIFIER);
+			}
 
 			continue;
 		}

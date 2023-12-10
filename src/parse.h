@@ -50,6 +50,7 @@ typedef struct _Node {
 
 	NodeType type;
 	Ty *data_type;
+	TyMethod *method;
 	struct _Node *left;
 	struct _Node *right;
 	struct _Node *args;
@@ -72,6 +73,7 @@ Node              *new_node_binary(NodeType type, Token *token, Node *left, Node
 
 bool               is_class(Token **current);
 bool               is_method(Token **current);
+bool               is_call(Token **current);
 bool               is_declaration(Token **current);
 bool               is_assign(Token **current);
 

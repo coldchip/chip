@@ -20,6 +20,6 @@ Ty                  *type_current_class();
 Ty                  *type_get_class(char *name);
 TyMethod            *type_get_method(Ty *ty, char *name);
 Ty *                 type_insert(char *name);
-void                 insert_method(char *name, Ty *type);
+TyMethod *           insert_method(char *name, Ty *type);
 
 #endif

@@ -23,17 +23,17 @@ typedef enum {
 	OP_FDIV,
 	OP_MOD,
 	OP_OR,
-	OP_LOAD_NUMBER,
+	OP_PUSH,
 	OP_LOAD_CONST,
 	OP_LOAD_MEMBER,
 	OP_STORE_MEMBER,
 	OP_CALL,
 	OP_SYSCALL,
-	OP_NEW,
+	OP_NEWO,
 	OP_NEWARRAY,
 	OP_LOAD_ARRAY,
 	OP_STORE_ARRAY,
-	OP_JMPIFT, // pops 2 items from stack and compare, jumps to x if true
+	OP_JE, // pops 2 items from stack and compare, jumps to x if true
 	OP_JMP,    // unconditional jump
 	OP_RET
 } OpType;
@@ -68,6 +68,7 @@ typedef struct _Op {
 	ListNode node;
 	OpType op;
 	uint64_t left;
+	bool has_left;
 } Op;
 
 static char      *rand_string(char *str, size_t size);

@@ -45,7 +45,7 @@ Ty *type_insert(char *name) {
 	return type;
 }
 
-void insert_method(char *name, Ty *type) {
+TyMethod *insert_method(char *name, Ty *type) {
 	Ty *ty = (Ty*)list_back(&types);
 
 	TyMethod *method = malloc(sizeof(TyMethod));
@@ -53,4 +53,5 @@ void insert_method(char *name, Ty *type) {
 	method->name = strdup(name);
 
 	list_insert(list_end(&ty->methods), method);
+	return method;
 }

@@ -14,9 +14,6 @@ typedef struct _Object {
 
 	Type type;
 
-	Method *method;
-	struct _Object *bound;
-
 	int index;
 
 	char *array;
@@ -37,20 +34,20 @@ int FIND_OR_INSERT_CONST(char **constants, char *data) {
 	}
 }
 
-#define POP_STACK() (sp--, stack[sp])
-#define PUSH_STACK(d) (stack[sp++] = d)
-#define POP_STACK_OBJECT() (sp--, *(Object **)&stack[sp])
-#define PUSH_STACK_OBJECT(d) (*(Object **)&stack[sp++] = d)
+#define POP_STACK() (sp--, stack[fp][sp])
+#define PUSH_STACK(d) (stack[fp][sp++] = d)
+#define POP_FRAME() (fp--)
+#define PUSH_FRAME() (fp++)
+#define POP_STACK_OBJECT() (sp--, *(Object **)&stack[fp][sp])
+#define PUSH_STACK_OBJECT(d) (*(Object **)&stack[fp][sp++] = d)
 
 
-void              load_file(const char *name);
+int               load_file(const char *name);
 void              emit_print();
 void              store_var(double *vars, int index, Object *object);
 double            load_var(double *vars, int index);
-Class            *get_class(int index);
-Method           *get_method(int name1, int name2);
 Object           *new_object(Type type, int index);
-int64_t           eval(Object *instance, Method *method, int64_t *args, int args_length);
+int64_t           eval(int pc);
 void              intepreter(const char *input);
 
 #endif
