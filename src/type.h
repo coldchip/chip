@@ -17,9 +17,9 @@ typedef struct {
 
 void                 type_clear();
 Ty                  *type_current_class();
-Ty                  *type_get_class(char *name);
+Ty                  *type_get(char *name);
 TyMethod            *type_get_method(Ty *ty, char *name);
 Ty *                 type_insert(char *name);
-TyMethod *           insert_method(char *name, Ty *type);
+TyMethod            *insert_method(Ty *class, char *name, Ty **args, int args_count, Ty *type);
 
 #endif

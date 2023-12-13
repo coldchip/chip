@@ -98,7 +98,7 @@ static int emit_op_get_counter(Method *program) {
 }
 
 static void emit_file(List *constants, List *program) {
-	Ty *c = type_get_class("Main");
+	Ty *c = type_get("Main");
 	if(!c) {
 		printf("entry point class Main not found\n");
 		exit(1);
@@ -210,37 +210,41 @@ static void emit_file(List *constants, List *program) {
 }
 
 static void gen_program(Node *node) {
-	List *list = &node->bodylist;
-	while(!list_empty(list)) {
-		Node *entry = (Node*)list_remove(list_begin(list));
-		visitor(entry);
+	while(!list_empty(&node->bodylist)) {
+		Node *entry = (Node*)list_remove(list_begin(&node->bodylist));
+		gen_visitor(entry);
 	}
 }
 
 static void gen_class(Node *node) {
 	class = emit_class(program, node->token->data);
 
-	List *list = &node->bodylist;
-	while(!list_empty(list)) {
-		Node *entry = (Node*)list_remove(list_begin(list));
-		visitor(entry);
+	while(!list_empty(&node->bodylist)) {
+		Node *entry = (Node*)list_remove(list_begin(&node->bodylist));
+		gen_visitor(entry);
 	}
 }
 
-static void gen_param(Node *node) {
-	List *list = &node->bodylist;
-	while(!list_empty(list)) {
-		Node *entry = (Node*)list_remove(list_back(list));
+static int gen_param(Node *node) {
+	int i = 0;
+	while(!list_empty(&node->bodylist)) {
+		Node *entry = (Node*)list_remove(list_back(&node->bodylist));
 		gen_store(entry);
+		i++;
 	}
+
+	return i;
 }
 
-static void gen_arg(Node *node) {
-	List *list = &node->bodylist;
-	while(!list_empty(list)) {
-		Node *entry = (Node*)list_remove(list_back(list));
-		visitor(entry);
+static int gen_arg(Node *node) {
+	int i = 0;
+	while(!list_empty(&node->bodylist)) {
+		Node *entry = (Node*)list_remove(list_back(&node->bodylist));
+		gen_visitor(entry);
+		i++;
 	}
+
+	return i;
 }
 
 static void gen_method(Node *node) {
@@ -254,12 +258,11 @@ static void gen_method(Node *node) {
 
 	labels[label_counter++] = label;
 
-	visitor(node->args);
+	gen_visitor(node->args);
 
-	List *list = &node->bodylist;
-	while(!list_empty(list)) {
-		Node *entry = (Node*)list_remove(list_begin(list));
-		visitor(entry);
+	while(!list_empty(&node->bodylist)) {
+		Node *entry = (Node*)list_remove(list_begin(&node->bodylist));
+		gen_visitor(entry);
 	}
 
 	emit_op_left(method, OP_PUSH, 0);
@@ -269,16 +272,16 @@ static void gen_method(Node *node) {
 static void gen_if(Node *node) {
 	int start = emit_op_get_counter(method);
 
-	visitor(node->condition);
+	gen_visitor(node->condition);
 	emit_op_left(method, OP_PUSH, 0);
 	Op *jmp = emit_op_left(method, OP_JE, 0);
-	visitor(node->body);
+	gen_visitor(node->body);
 
 	Op *jmp2 = emit_op_left(method, OP_JMP, 0);
 
 	jmp->left = emit_op_get_counter(method);
 	if(node->alternate) {
-		visitor(node->alternate);
+		gen_visitor(node->alternate);
 	}
 
 	jmp2->left = emit_op_get_counter(method);
@@ -287,20 +290,19 @@ static void gen_if(Node *node) {
 static void gen_while(Node *node) {
 	int start = emit_op_get_counter(method);
 
-	visitor(node->condition);
+	gen_visitor(node->condition);
 	emit_op_left(method, OP_PUSH, 0);
 	Op *jmp = emit_op_left(method, OP_JE, 0);
-	visitor(node->body);
+	gen_visitor(node->body);
 	emit_op_left(method, OP_JMP, start);
 
 	jmp->left = emit_op_get_counter(method);
 }
 
 static void gen_block(Node *node) {
-	List *list = &node->bodylist;
-	while(!list_empty(list)) {
-		Node *entry = (Node*)list_remove(list_begin(list));
-		visitor(entry);
+	while(!list_empty(&node->bodylist)) {
+		Node *entry = (Node*)list_remove(list_begin(&node->bodylist));
+		gen_visitor(entry);
 	}
 }
 
@@ -310,7 +312,7 @@ static void gen_variable(Node *node) {
 
 static void gen_member(Node *node) {
 	if(node->body) {
-		visitor(node->body);
+		gen_visitor(node->body);
 		emit_op_left(method, OP_LOAD_MEMBER, emit_constant(&constants, node->token->data, true));
 	}
 }
@@ -318,50 +320,50 @@ static void gen_member(Node *node) {
 static void gen_new(Node *node) {
 	// emit_op_left(method, OP_LOAD_CONST, emit_constant(&constants, node->token->data, true));
 
-	// visitor(node->args);
+	// gen_visitor(node->args);
 
 	emit_op_left(method, OP_NEWO, emit_constant(&constants, node->token->data, true));
 }
 
 static void gen_new_array(Node *node) {
-	visitor(node->args);
+	gen_visitor(node->args);
 
 	emit_op_left(method, OP_NEWARRAY, emit_constant(&constants, node->token->data, true));
 }
 
 static void gen_array_member(Node *node) {
 	if(node->body) {
-		visitor(node->body);
-		visitor(node->index);
+		gen_visitor(node->body);
+		gen_visitor(node->index);
 		emit_op(method, OP_LOAD_ARRAY);
 	}
 }
 
 static void gen_expr(Node *node) {
-	visitor(node->body);
+	gen_visitor(node->body);
 
 	// assignless
 	emit_op(method, OP_POP);
 }
 
-static void gen_declaration(Node *node) {
+static void gen_decl(Node *node) {
 	if(node->body) {
-		visitor(node->body);
+		gen_visitor(node->body);
 		emit_op_left(method, OP_STORE, emit_constant(&constants, node->token->data, true));
 	}
 }
 
 static void gen_assign(Node *node) {
-	visitor(node->right);
+	gen_visitor(node->right);
 	gen_store(node->left);
 }
 
 static void gen_store(Node *node) {
 	if(node->body) {
-		visitor(node->body);
+		gen_visitor(node->body);
 		if(node->index) {
 			/* x[y] = z */
-			visitor(node->index);
+			gen_visitor(node->index);
 			emit_op(method, OP_STORE_ARRAY);
 		} else {
 			/* x.y = z */
@@ -376,11 +378,11 @@ static void gen_store(Node *node) {
 
 static void gen_binary(Node *node) {
 	if(node->left) {
-		visitor(node->left);
+		gen_visitor(node->left);
 	}
 
 	if(node->right) {
-		visitor(node->right);
+		gen_visitor(node->right);
 	}
 
 	switch(node->type) {
@@ -442,18 +444,19 @@ static void gen_string(Node *node) {
 }
 
 static void gen_return(Node *node) {
-	visitor(node->body);
-
+	gen_visitor(node->body);
 	emit_op(method, OP_RET);
 }
 
 static void gen_call(Node *node) {
-	visitor(node->args);
-	visitor(node->body);
+	int arg_count = gen_arg(node->args);
+	gen_visitor(node->body);
+
+	printf("neneneenenene %s() %p %li\n", node->token->data, node->method, list_size(&node->args->bodylist));
 
 	for(int i = 0; i < label_counter; ++i) {
 		if(labels[i].method == node->method) {
-			uint32_t left = (node->args->length << 24) | (labels[i].line);
+			uint32_t left = (arg_count << 24) | (labels[i].line);
 			emit_op_left(method, OP_CALL, left);
 			break;
 		}
@@ -461,11 +464,11 @@ static void gen_call(Node *node) {
 }
 
 static void gen_syscall(Node *node) {
-	visitor(node->args);
-	emit_op_left(method, OP_SYSCALL, node->args->length);
+	gen_visitor(node->args);
+	emit_op_left(method, OP_SYSCALL, list_size(&node->args->bodylist));
 }
 
-static void visitor(Node *node) {
+static void gen_visitor(Node *node) {
 	switch(node->type) {
 		case ND_PROGRAM: {
 			gen_program(node);
@@ -523,8 +526,8 @@ static void visitor(Node *node) {
 			gen_expr(node);
 		}
 		break;
-		case ND_DECLARATION: {
-			gen_declaration(node);
+		case ND_DECL: {
+			gen_decl(node);
 		}
 		break;
 		case ND_ASSIGN: {
@@ -578,7 +581,7 @@ void gen(Node *node, List *p) {
 	list_clear(&constants);
 	list_clear(p);
 	program = p;
-	visitor(node);
+	gen_visitor(node);
 
 	// print_code();
 	emit_file(&constants, p);

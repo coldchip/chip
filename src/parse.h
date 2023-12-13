@@ -13,6 +13,7 @@ typedef enum {
 typedef enum {
 	ND_PROGRAM,
 	ND_CLASS,
+	ND_TYPE,
 	ND_PARAM,
 	ND_ARG,
 	ND_METHOD,
@@ -25,7 +26,8 @@ typedef enum {
 	ND_WHILE,
 	ND_VARIABLE,
 	ND_EXPR,
-	ND_DECLARATION,
+	ND_CLASS_DECL,
+	ND_DECL,
 	ND_ASSIGN,
 	ND_EQ,
 	ND_GT,
@@ -49,8 +51,8 @@ typedef struct _Node {
 	ListNode node;
 
 	NodeType type;
-	Ty *data_type;
 	TyMethod *method;
+	struct _Node *data_type;
 	struct _Node *left;
 	struct _Node *right;
 	struct _Node *args;
@@ -59,7 +61,7 @@ typedef struct _Node {
 	struct _Node *body;
 	struct _Node *alternate;
 
-	int length;
+	bool is_array;
 
 	List bodylist;
 
@@ -78,7 +80,8 @@ bool               is_declaration(Token **current);
 bool               is_assign(Token **current);
 
 static Node       *parse_program(Token **current);
-Ty                *parse_type(Token **current);
+Node              *parse_basetype(Token **current);
+Node              *parse_type(Token **current);
 static Node       *parse_class(Token **current);
 static Node       *parse_method(Token **current);
 Node              *parse_class_declaration(Token **current);

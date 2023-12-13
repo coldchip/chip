@@ -83,8 +83,8 @@ static void       emit_file(List *constants, List *program);
 
 static void       gen_program(Node *node);
 static void       gen_class(Node *node);
-static void       gen_param(Node *node);
-static void       gen_arg(Node *node);
+static int        gen_param(Node *node);
+static int        gen_arg(Node *node);
 static void       gen_method(Node *node);
 static void       gen_if(Node *node);
 static void       gen_while(Node *node);
@@ -95,7 +95,7 @@ static void       gen_new(Node *node);
 static void       gen_new_array(Node *node);
 static void       gen_array_member(Node *node);
 static void       gen_expr(Node *node);
-static void       gen_declaration(Node *node);
+static void       gen_decl(Node *node);
 static void       gen_assign(Node *node);
 static void       gen_store(Node *node);
 static void       gen_binary(Node *node);
@@ -106,7 +106,7 @@ static void       gen_string(Node *node);
 static void       gen_return(Node *node);
 static void       gen_call(Node *node);
 static void       gen_syscall(Node *node);
-static void       visitor(Node *node);
+static void       gen_visitor(Node *node);
 void              gen(Node *node, List *p);
 
 #endif

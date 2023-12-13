@@ -229,6 +229,9 @@ class Main {
 		s.constructor("0.0.0.0", 19132);
 
 		if(s.bind() eq 1) {
+
+			Console.write("http://0.0.0.0:19132\n");
+
 			while(1) {
 				Client c = s.accept();
 				Console.write("hello client\n");
@@ -245,18 +248,18 @@ class Main {
 				body.append(Art.triangle(13).getBytes());
 				body.append("</pre>");
 
-				while(y < 128) {
+				while(y < 1024) {
 					int sqrt = Math.sqrt(y);
 					body.append(Convert.string(sqrt));
 					body.append(":");
 					body.append(Convert.string(sqrt * sqrt));
-					body.append("<br>");
-					
+					body.append("\n");
 					y = y + 1;
 				}
 
 				Header header = new Header();
 				header.constructor();
+				header.append("Server", Convert.string(Math.sqrt(68)));
 				header.append("Content-Type", "text/html");
 				header.append("Content-Length", Convert.string(body.length()));
 

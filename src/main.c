@@ -2,6 +2,7 @@
 #include "chip.h"
 #include "list.h"
 #include "parse.h"
+#include "parsetype.h"
 
 int main(int argc, char const *argv[]) {
 	/* code */
@@ -12,6 +13,8 @@ int main(int argc, char const *argv[]) {
 		tokenize(input, &tokens);
 		
 		Node *nodes = parse(&tokens);
+
+		parsetype(nodes);
 
 		List program;
 		gen(nodes, &program);

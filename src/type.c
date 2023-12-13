@@ -13,7 +13,7 @@ Ty *type_current_class() {
 	return (Ty*)list_back(&types);
 }
 
-Ty *type_get_class(char *name) {
+Ty *type_get(char *name) {
 	for(ListNode *i = list_begin(&types); i != list_end(&types); i = list_next(i)) {
 		Ty *ty = (Ty*)i;
 
@@ -45,13 +45,11 @@ Ty *type_insert(char *name) {
 	return type;
 }
 
-TyMethod *insert_method(char *name, Ty *type) {
-	Ty *ty = (Ty*)list_back(&types);
-
+TyMethod *insert_method(Ty *class, char *name, Ty **args, int args_count, Ty *type) {
 	TyMethod *method = malloc(sizeof(TyMethod));
 	method->type = type;
 	method->name = strdup(name);
 
-	list_insert(list_end(&ty->methods), method);
+	list_insert(list_end(&class->methods), method);
 	return method;
 }

@@ -4,15 +4,13 @@
 #include <stdio.h>
 #include "tokenize.h"
 #include "parse.h"
-#include "varscope.h"
 
 Node *new_node(NodeType type, Token *token) {
 	Node *node  = malloc(sizeof(Node));
 	node->type  = type;
-	node->data_type = NULL;
 	node->method = NULL;
-	node->length = 0;
 	node->token = token;
+	node->data_type = NULL;
 	node->left  = NULL;
 	node->right = NULL;
 	node->index = NULL;
@@ -20,6 +18,7 @@ Node *new_node(NodeType type, Token *token) {
 	node->alternate = NULL;
 	node->condition = NULL;
 	node->args = NULL;
+	node->is_array = false;
 
 	list_clear(&node->bodylist);
 
@@ -35,11 +34,6 @@ Node *new_node_binary(NodeType type, Token *token, Node *left, Node *right) {
 
 	if(right) {
 		node->right = right;
-	}
-
-	if(left && right && left->data_type && right->data_type) {
-		printf("type.left %s type.right %s\n", left->data_type->name, right->data_type->name);
-		node->data_type = left->data_type;
 	}
 
 	return node;
@@ -129,18 +123,29 @@ static Node *parse_program(Token **current) {
 	return node;
 }
 
-Ty *parse_type(Token **current) {
-	Ty *type = type_get_class((*current)->data);
-	if(!type) {
-		printf("error, unknown type '%s'\n", (*current)->data);
-		exit(1);
-	}
+/*
+	type
+*/
 
-	consume_type(current, TK_IDENTIFIER);
+Node *parse_basetype(Token **current) {
+	Node *node = new_node(ND_TYPE, *current);
+
+	expect_type(current, TK_IDENTIFIER);
+
+	return node;
+}
+
+/*
+	type?[]
+*/
+
+Node *parse_type(Token **current) {
+	Node *node = parse_basetype(current);
 	if(consume_string(current, "[")) {
+		node->is_array = true;
 		expect_string(current, "]");
 	}
-	return type;
+	return node;
 }
 
 static Node *parse_class(Token **current) {
@@ -150,9 +155,6 @@ static Node *parse_class(Token **current) {
 
 	node->token = *current;
 
-	/* inserts type */
-	type_insert((*current)->data);
-
 	expect_type(current, TK_IDENTIFIER);
 
 	expect_string(current, "{");
@@ -161,7 +163,7 @@ static Node *parse_class(Token **current) {
 		if(is_method(current)) {
 			list_insert(list_end(&node->bodylist), parse_method(current));
 		} else {
-			parse_class_declaration(current);
+			list_insert(list_end(&node->bodylist), parse_class_declaration(current));
 		}
 	}
 
@@ -193,8 +195,6 @@ static Node *parse_method(Token **current) {
 		expect_type(current, TK_IDENTIFIER);
 	}
 
-	varscope_push();
-
 	expect_string(current, "(");
 	node->args = parse_params(current);
 	expect_string(current, ")");
@@ -211,24 +211,13 @@ static Node *parse_method(Token **current) {
 
 	expect_string(current, "returns");
 
-	Ty *type = parse_type(current);
-	if(!type) {
-		printf("unknown return type %s\n", (*current)->data);
-		exit(1);
-	}
-
-	TyMethod *method = insert_method(node->token->data, type);
-	node->method = method;
+	node->data_type = parse_type(current);
 
 	expect_string(current, "{");
-
-	varscope_add("this", type_current_class());
 
 	while(!equals_string(current, "}")) {
 		list_insert(list_end(&node->bodylist), parse_stmt(current));
 	}
-
-	varscope_pop();
 
 	expect_string(current, "}");
 
@@ -236,31 +225,21 @@ static Node *parse_method(Token **current) {
 }
 
 Node *parse_class_declaration(Token **current) {
-	Ty *type = parse_type(current);
-	if(!type) {
-		printf("error, unknown type '%s'\n", (*current)->data);
-		exit(1);
-	}
+	Node *type = parse_type(current);
 
-	if(type_get_method(type_current_class(), (*current)->data)) {
-		printf("error, redefinition of class member %s\n", (*current)->data);
-		exit(1);
-	}
-
-	insert_method((*current)->data, type);
-
+	Node *node = new_node(ND_CLASS_DECL, *current);
+	node->data_type = type;
 	expect_type(current, TK_IDENTIFIER);
 	expect_string(current, ";");
+
+	return node;
 }
 
 Node *parse_param(Token **current) {
-	Ty *type = parse_type(current);
+	Node *type = parse_type(current);
+
 	Node *node = new_node(ND_VARIABLE, *current);
-
 	node->data_type = type;
-
-	varscope_add((*current)->data, type);
-	
 	expect_type(current, TK_IDENTIFIER);
 
 	return node;
@@ -272,14 +251,11 @@ Node *parse_params(Token **current) {
 		return node;
 	}
 
-	node->length = 1;
-
 	list_insert(list_end(&node->bodylist), parse_param(current));
 
 	while(!equals_string(current, ")")) {
 		expect_string(current, ",");
 		list_insert(list_end(&node->bodylist), parse_param(current));
-		node->length++;
 	}
 	return node;
 }
@@ -291,19 +267,15 @@ Node *parse_arg(Token **current) {
 
 Node *parse_args(Token **current) {
 	Node *node = new_node(ND_ARG, NULL);
-	node->length = 0;
 	if(equals_string(current, ")")) {
 		return node;
 	}
 
 	list_insert(list_end(&node->bodylist), parse_arg(current));
 
-	node->length++;
-
 	while(!equals_string(current, ")")) {
 		expect_string(current, ",");
 		list_insert(list_end(&node->bodylist), parse_arg(current));
-		node->length++;
 	}
 	return node;
 }
@@ -328,8 +300,6 @@ static Node *parse_stmt(Token **current) {
 		node->body = parse_stmt(current);
 		return node;
 	} else if(consume_string(current, "{")) {
-		varscope_push();
-
 		Node *node = new_node(ND_BLOCK, NULL);
 
 		while(!equals_string(current, "}")) {
@@ -337,8 +307,6 @@ static Node *parse_stmt(Token **current) {
 		}
 
 		expect_string(current, "}");
-
-		varscope_pop();
 
 		return node;
 	} else if(consume_string(current, "return")) {
@@ -357,26 +325,15 @@ static Node *parse_expr_stmt(Token **current) {
 	if(is_declaration(current)) {
 		/* <type> name = a; */
 
-		Ty *ty = parse_type(current);
+		Node *type = parse_type(current);
 
-		Node *node = new_node(ND_DECLARATION, *current);
-
-		if(varscope_get((*current)->data)) {
-			printf("error, redefinition of variable %s\n", (*current)->data);
-			exit(1);
-		}
-
-		varscope_add((*current)->data, ty);
+		Node *node = new_node(ND_DECL, *current);
+		node->data_type = type;
 
 		expect_type(current, TK_IDENTIFIER);
 
 		if(consume_string(current, "=")) {
 			node->body = parse_expr(current);
-		}
-
-		if(node->body->data_type != ty) {
-			printf("error: incompatible types: %s cannot be converted to %s\n", node->body->data_type->name, ty->name);
-			exit(1);
 		}
 
 		return node;
@@ -386,11 +343,6 @@ static Node *parse_expr_stmt(Token **current) {
 		node->left = parse_expr(current);
 		if(consume_string(current, "=")) {
 			node->right = parse_expr(current);
-		}
-
-		if(node->left->data_type != node->right->data_type) {
-			printf("error: incompatible types: %s cannot be converted to %s\n", node->right->data_type->name, node->left->data_type->name);
-			exit(1);
 		}
 
 		return node;
@@ -404,70 +356,6 @@ static Node *parse_expr_stmt(Token **current) {
 }
 
 Node *parse(List *tokens) {
-	type_clear();
-	varscope_clear();
-
-	Ty *int_type = type_insert("int");
-	insert_method("count", int_type);
-	type_insert("char");
-	insert_method("count", int_type);
-	type_insert("float");
-	type_insert("void");
-
 	Token *current = (Token*)list_begin(tokens);
 	return parse_program(&current);
-}
-
-// DataType get_common_type(Node *left, Node *right) {
-// 	if(left->data_type == TYPE_FLOAT || right->data_type == TYPE_FLOAT) {
-// 		return TYPE_FLOAT;
-// 	}
-// 	if(left->data_type == TYPE_INT || right->data_type == TYPE_INT) {
-// 		return TYPE_INT;
-// 	}
-
-// 	return left->data_type;
-// }
-
-Ty *unfold_member_type(Node *node) {
-	if(!node) {
-		return NULL;
-	}
-	Ty *var = unfold_member_type(node->body);
-
-	if(!node->body) {
-		VarScope *var = varscope_get(node->token->data);
-		if(var) {
-			return var->type;
-		}
-	} else {
-		if(var) {
-			printf("member %p %s\n", type_get_method(var, node->token->data), node->token->data);
-		}
-	}
-
-	printf("Mem: %s\n", node->token->data);
-
-	return NULL;
-}
-
-void normalize_type(Node *node) {
-	// if(node->left) {
-	// 	normalize_type(node->left);
-	// }
-	// if(node->right) {
-	// 	normalize_type(node->right);
-	// }
-
-	// if(node->left && node->right) {
-	// 	node->data_type = get_common_type(node->left, node->right);
-	// }
-
-	// if(node->type == ND_MEMBER) {
-	// 	unfold_member_type(node);
-	// }
-
-	// if(node->type == ND_CALL) {
-	// 	unfold_member_type(node->body);
-	// }
 }

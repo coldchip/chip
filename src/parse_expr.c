@@ -8,7 +8,6 @@
 
 Node *parse_expr(Token **current) {
 	Node *node = parse_or(current);
-	normalize_type(node);
 	return node;
 }
 
@@ -57,12 +56,6 @@ static Node *parse_add_sub(Token **current) {
 	for(;;) {
 		Token *token = *current;
 		if(consume_string(current, "+")) {
-			if(node->data_type) {
-				TyMethod *method = type_get_method(node->data_type, "+");
-				if(method) {
-					printf("yay\n");
-				}
-			}
 			node = new_node_binary(ND_ADD, token, node, parse_mul_div(current));
 			continue;
 		}
@@ -101,7 +94,6 @@ static Node *parse_postfix(Token **current) {
 
 		if(consume_string(current, "[")) {
 			Node *left = new_node(ND_ARRAYMEMBER, NULL);
-			left->data_type = node->data_type;
 			left->index = parse_expr(current);
 			left->body = node;
 			node = left;
@@ -112,16 +104,8 @@ static Node *parse_postfix(Token **current) {
 		}
 
 		if(consume_string(current, ".")) {
-			TyMethod *method = type_get_method(node->data_type, (*current)->data);
-			if(!method) {
-				printf("error, unknown member '%s' in variable '%s' of class '%s'\n", (*current)->data, node->token->data, node->data_type->name);
-				exit(1);
-			}
 			if(is_call(current)) {
-				Node *left = new_node(ND_CALL, token);
-				left->data_type = method->type;
-				left->method = method;
-
+				Node *left = new_node(ND_CALL, *current);
 				expect_type(current, TK_IDENTIFIER);
 				expect_string(current, "(");
 				left->args = parse_args(current);
@@ -132,8 +116,6 @@ static Node *parse_postfix(Token **current) {
 
 			} else {
 				Node *left = new_node(ND_MEMBER, *current);
-				left->data_type = method->type;
-				left->method = method;
 				left->body = node;
 				node = left;
 				expect_type(current, TK_IDENTIFIER);
@@ -151,13 +133,7 @@ Node *parse_primary(Token **current) {
 	if(consume_string(current, "new")) {
 		Token *name = *current;
 
-		Ty *type = type_get_class(name->data);
-		if(!type) {
-			printf("error, unknown type '%s'\n", name->data);
-			exit(1);
-		}
-
-		expect_type(current, TK_IDENTIFIER);
+		Node *type = parse_basetype(current);
 
 		if(equals_string(current, "[")) {
 			Node *node = new_node(ND_NEWARRAY, name);
@@ -180,66 +156,24 @@ Node *parse_primary(Token **current) {
 		node->args = parse_args(current);
 		expect_string(current, ")");
 		expect_string(current, ":");
-		Ty *type = parse_type(current);
-		if(!type) {
-			printf("class %s not found\n", (*current)->data);
-			exit(1);
-		}
-		node->data_type = type;
+		node->data_type = parse_type(current);
 		return node;
 	} else if(consume_string(current, "(")) {
 		Node *node = parse_expr(current);
 		expect_string(current, ")");
 		return node;
 	} else if(consume_type(current, TK_IDENTIFIER)) {
-
-		VarScope *var = varscope_get(token->data);
-		Ty       *type = type_get_class(token->data);
-
-		if(!var && !type) {
-			printf("undefined variable %s\n", token->data);
-			exit(1);
-		}
-
-		Node *node = new_node(ND_VARIABLE, token);
-		node->data_type = var ? var->type : type;
-
-		return node;
+		return new_node(ND_VARIABLE, token);
 	} else if(consume_type(current, TK_NUMBER)) {
 		if(strstr(token->data, ".") != NULL) {
-			Node *node = new_node(ND_FLOAT, token);;
-			node->data_type = type_get_class("float");
-			if(!node->data_type) {
-				printf("builtin float class not found\n");
-				exit(1);
-			}
-			return node;
+			return new_node(ND_FLOAT, token);;
 		} else {
-			Node *node = new_node(ND_NUMBER, token);
-			node->data_type = type_get_class("int");
-			if(!node->data_type) {
-				printf("builtin int class not found\n");
-				exit(1);
-			}
-			return node;
+			return new_node(ND_NUMBER, token);
 		}
 	} else if(consume_type(current, TK_CHAR)) {
-		Node *node = new_node(ND_CHAR, token);
-		node->data_type = type_get_class("char");
-		if(!node->data_type) {
-			printf("builtin char class not found\n");
-			exit(1);
-		}
-		
-		return node;
+		return new_node(ND_CHAR, token);
 	} else if(consume_type(current, TK_STRING)) {
-		Node *node = new_node(ND_STRING, token);
-		node->data_type = type_get_class("char");
-		if(!node->data_type) {
-			printf("builtin char class not found\n");
-			exit(1);
-		}
-		return node;
+		return new_node(ND_STRING, token);
 	} else {
 		printf("error, unexpected token '%s'\n", (*current)->data);
 		exit(1);
