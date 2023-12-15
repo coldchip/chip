@@ -13,17 +13,9 @@ int code_counter = 0;
 
 static List constants;
 
-static char *rand_string(char *str, size_t size) {
-    const char charset[] = "abcdefghijklmnopqrstuvwxyz";
-    if(size) {
-        --size;
-        for (size_t n = 0; n < size; n++) {
-            int key = rand() % (int) (sizeof charset - 1);
-            str[n] = charset[key];
-        }
-        str[size] = '\0';
-    }
-    return str;
+static int rand_string() {
+	static int result = 0;
+    return result++;
 }
 
 LabelEntry emit_get_label(const char *name) {
@@ -116,7 +108,7 @@ static void emit_file(List *constants) {
 	FILE *prg = fopen("~prg.out", "wb");
 
 	char entry_label[256];
-	sprintf(entry_label, "%s_%p", m->name, m);
+	sprintf(entry_label, "SUB_%p.%s", m, m->name);
 	LabelEntry entry = emit_get_label(entry_label);
 
 	fwrite(&entry.line, sizeof(int), 1, prg);
@@ -227,103 +219,103 @@ void emit_asm() {
 
 		switch(ins->op) {
 			case OP_LOAD: {
-				printf("\t%i\tload\t%i\n", pc + 1, (ins->left));
+				printf("\tload\t%i\n", (ins->left));
 			}
 			break;
 			case OP_STORE: {
-				printf("\t%i\tstore\t%i\n", pc + 1, (ins->left));
+				printf("\tstore\t%i\n", (ins->left));
 			}
 			break;
 			case OP_POP: {
-				printf("\t%i\tpop\t\n", pc + 1);
+				printf("\tpop\t\n");
 			}
 			break;
 			case OP_CMPEQ: {
-				printf("\t%i\tcmpeq\n", pc + 1);
+				printf("\tcmpeq\n");
 			}
 			break;
 			case OP_CMPGT: {
-				printf("\t%i\tcmpgt\n", pc + 1);
+				printf("\tcmpgt\n");
 			}
 			break;
 			case OP_CMPLT: {
-				printf("\t%i\tcmplt\n", pc + 1);
+				printf("\tcmplt\n");
 			}
 			break;
 			case OP_ADD: {
-				printf("\t%i\tadd\n", pc + 1);
+				printf("\tadd\n");
 			}
 			break;
 			case OP_SUB: {
-				printf("\t%i\tsub\n", pc + 1);
+				printf("\tsub\n");
 			}
 			break;
 			case OP_MUL: {
-				printf("\t%i\tmul\n", pc + 1);
+				printf("\tmul\n");
 			}
 			break;
 			case OP_DIV: {
-				printf("\t%i\tdiv\n", pc + 1);
+				printf("\tdiv\n");
 			}
 			break;
 			case OP_MOD: {
-				printf("\t%i\tmod\n", pc + 1);
+				printf("\tmod\n");
 			}
 			break;
 			case OP_OR: {
-				printf("\t%i\tor\n", pc + 1);
+				printf("\tor\n");
 			}
 			break;
 			case OP_PUSH: {
-				printf("\t%i\tpush\t%li\n", pc + 1, ins->left);
+				printf("\tpush\t%li\n", ins->left);
 			}
 			break;
 			case OP_LOAD_CONST: {
-				printf("\t%i\tloadconst\t%i\t//%i\n", pc + 1, (int)ins->left, (ins->left));
+				printf("\tloadconst\t%i\t//%i\n", (int)ins->left, (ins->left));
 			}
 			break;
-			case OP_LOAD_MEMBER: {
-				printf("\t%i\tloadmember\t%i\n", pc + 1, (ins->left));
+			case OP_LOAD_FIELD: {
+				printf("\tloadfield\t%i\n", ins->left);
 			}
 			break;
-			case OP_STORE_MEMBER: {
-				printf("\t%i\tstoremember\t%i\n", pc + 1, (ins->left));
+			case OP_STORE_FIELD: {
+				printf("\tstorefield\t%i\n", ins->left);
 			}
 			break;
 			case OP_CALL: {
-				printf("\t%i\tcall\t%s\n", pc + 1, ins->left_label);
+				printf("\tcall\t%s\n", ins->left_label);
 			}
 			break;
 			case OP_SYSCALL: {
-				printf("\t%i\tsyscall\t\tARGLEN: %i\n", pc + 1, (int)ins->left);
+				printf("\tsyscall\t\tARGLEN: %i\n", (int)ins->left);
 			}
 			break;
 			case OP_NEWO: {
-				printf("\t%i\tnewo\t%i\n", pc + 1, (ins->left));
+				printf("\tnewo\t%i\n", (ins->left));
 			}
 			break;
 			case OP_NEWARRAY: {
-				printf("\t%i\tnew_array\t%i\n", pc + 1, (ins->left));
+				printf("\tnew_array\t%i\n", (ins->left));
 			}
 			break;
 			case OP_LOAD_ARRAY: {
-				printf("\t%i\tload_array\n", pc + 1);
+				printf("\tload_array\n");
 			}
 			break;
 			case OP_STORE_ARRAY: {
-				printf("\t%i\tstore_array\n", pc + 1);
+				printf("\tstore_array\n");
 			}
 			break;
 			case OP_JE: {
-				printf("\t%i\tje\t%i\n", pc + 1, (int)ins->left);
+				printf("\tje\t%s\n", ins->left_label);
 			}
 			break;
 			case OP_JMP: {
-				printf("\t%i\tjmp\t%i\n", pc + 1, (int)ins->left);
+				printf("\tjmp\t%s\n", ins->left_label);
 			}
 			break;
 			case OP_RET: {
-				printf("\t%i\tret\t\n", pc + 1);
+				printf("\tret\t\n");
 			}
 			break;
 		}
@@ -368,7 +360,7 @@ static int gen_arg(Node *node) {
 
 static void gen_method(Node *node) {
 	char label[256];
-	sprintf(label, "%s_%p", node->token->data, node->method);
+	sprintf(label, "SUB_%p.%s", node->method, node->method->name);
 
 	emit_label(label);
 
@@ -384,33 +376,49 @@ static void gen_method(Node *node) {
 }
 
 static void gen_if(Node *node) {
-	int start = emit_op_get_counter();
+	char condition_label[256];
+	sprintf(condition_label, "IB.%i", rand_string());
+
+	char alternate_label[256];
+	sprintf(alternate_label, "IA.%i", rand_string());
+
+	char exit_label[256];
+	sprintf(exit_label, "IE.%i", rand_string());
 
 	gen_visitor(node->condition);
 	emit_op_left(OP_PUSH, 0);
-	Op *jmp = emit_op_left(OP_JE, 0);
+	emit_op_left_label(OP_JE, alternate_label);
+
 	gen_visitor(node->body);
 
-	Op *jmp2 = emit_op_left(OP_JMP, 0);
+	emit_op_left_label(OP_JMP, exit_label);
 
-	jmp->left = emit_op_get_counter();
+	emit_label(alternate_label);
+
 	if(node->alternate) {
 		gen_visitor(node->alternate);
 	}
 
-	jmp2->left = emit_op_get_counter();
+	emit_label(exit_label);
 }
 
 static void gen_while(Node *node) {
-	int start = emit_op_get_counter();
+	char body_label[256];
+	sprintf(body_label, "WB.%i", rand_string());
+
+	char exit_label[256];
+	sprintf(exit_label, "WE.%i", rand_string());
+
+	emit_label(body_label);
 
 	gen_visitor(node->condition);
 	emit_op_left(OP_PUSH, 0);
-	Op *jmp = emit_op_left(OP_JE, 0);
-	gen_visitor(node->body);
-	emit_op_left(OP_JMP, start);
+	emit_op_left_label(OP_JE, exit_label);
 
-	jmp->left = emit_op_get_counter();
+	gen_visitor(node->body);
+	emit_op_left_label(OP_JMP, body_label);
+
+	emit_label(exit_label);
 }
 
 static void gen_block(Node *node) {
@@ -427,7 +435,7 @@ static void gen_variable(Node *node) {
 static void gen_member(Node *node) {
 	if(node->body) {
 		gen_visitor(node->body);
-		emit_op_left(OP_LOAD_MEMBER, emit_constant(&constants, node->token->data, true));
+		emit_op_left(OP_LOAD_FIELD, emit_constant(&constants, node->token->data, true));
 	}
 }
 
@@ -437,6 +445,13 @@ static void gen_new(Node *node) {
 	// gen_visitor(node->args);
 
 	emit_op_left(OP_NEWO, emit_constant(&constants, node->token->data, true));
+
+	if(node->method) {
+		// emit_op_left_label(OP_CALL, label);
+		char label[256];
+		sprintf(label, "SUB_%p.%s", node->method, node->method->name);
+		printf("%s\n", label);
+	}
 }
 
 static void gen_new_array(Node *node) {
@@ -481,7 +496,7 @@ static void gen_store(Node *node) {
 			emit_op(OP_STORE_ARRAY);
 		} else {
 			/* x.y = z */
-			emit_op_left(OP_STORE_MEMBER, emit_constant(&constants, node->token->data, true));
+			emit_op_left(OP_STORE_FIELD, emit_constant(&constants, node->token->data, true));
 		}
 	} else {
 		/* x = y */
@@ -567,7 +582,7 @@ static void gen_call(Node *node) {
 	gen_visitor(node->body);
 
 	char label[256];
-	sprintf(label, "%s_%p", node->token->data, node->method);
+	sprintf(label, "SUB_%p.%s", node->method, node->method->name);
 
 	emit_op_left(OP_PUSH, arg_count);
 	emit_op_left_label(OP_CALL, label);

@@ -23,10 +23,13 @@ typedef enum {
 	OP_FDIV,
 	OP_MOD,
 	OP_OR,
+
+	OP_DUP,
+
 	OP_PUSH,
 	OP_LOAD_CONST,
-	OP_LOAD_MEMBER,
-	OP_STORE_MEMBER,
+	OP_LOAD_FIELD,
+	OP_STORE_FIELD,
 	OP_CALL,
 	OP_SYSCALL,
 	OP_NEWO,
@@ -77,7 +80,7 @@ typedef struct _Op {
 	bool has_left;
 } Op;
 
-static char      *rand_string(char *str, size_t size);
+static int        rand_string();
 
 LabelEntry        emit_get_label(const char *name);
 LabelEntry        emit_label(const char *name);

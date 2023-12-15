@@ -7,6 +7,7 @@ void semantic_peek_class(Node *node);
 
 void semantic_program(Node *node);
 void semantic_class(Node *node);
+void semantic_param(Node *node);
 void semantic_method(Ty *class_ty, Node *node);
 void semantic_stmt(Node *node);
 void semantic_if(Node *node);

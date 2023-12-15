@@ -6,6 +6,10 @@
 #include "type.h"
 
 /*
+	Chip semantic analyzer
+*/
+
+/*
 	process class & method types without statements 
 */
 
@@ -36,6 +40,11 @@ void semantic_peek_class(Node *node) {
 						exit(1);
 					}
 
+					if(type_get_method(class_ty, method->token->data)) {
+						printf("error, redefinition of class variable %s\n", method->token->data);
+						exit(1);
+					}
+
 					insert_method(class_ty, method->token->data, NULL, 0, ty);
 				}
 				break;
@@ -50,6 +59,11 @@ void semantic_peek_class(Node *node) {
 					Ty *ty = type_get(type->token->data);
 					if(!ty) {
 						printf("unknown return type: %s\n", type->token->data);
+						exit(1);
+					}
+
+					if(type_get_method(class_ty, method->token->data)) {
+						printf("error, redefinition of method %s\n", method->token->data);
 						exit(1);
 					}
 
@@ -100,27 +114,36 @@ void semantic_class_decl(Node *node) {
 	printf("\t - %s %s;\n", type->token->data, node->token->data);
 }
 
+void semantic_param(Node *node) {
+	for(ListNode *p = list_begin(&node->bodylist); p != list_end(&node->bodylist); p = list_next(p)) {
+		Node *param = (Node*)p;
+
+		Node *type = param->data_type;
+		Ty *ty = type_get(type->token->data);
+		if(!ty) {
+			printf("unknown type %s in parameter\n", type->token->data);
+			exit(1);
+		}
+
+		if(varscope_get(param->token->data)) {
+			printf("error, redefinition of parameter %s\n", param->token->data);
+			exit(1);
+		}
+
+		varscope_add(param->token->data, ty);
+	}
+}
+
 void semantic_method(Ty *class_ty, Node *node) {
 	printf("\t - method %s %p\n", node->token->data, node->method);
 
 	varscope_push();
-	if(node->args) {
-		Node *params = node->args;
-		for(ListNode *p = list_begin(&params->bodylist); p != list_end(&params->bodylist); p = list_next(p)) {
-			Node *param = (Node*)p;
-
-			Node *type = param->data_type;
-			Ty *ty = type_get(type->token->data);
-			if(!ty) {
-				printf("unknown type %s in declaration\n", type->token->data);
-				exit(1);
-			}
-
-			varscope_add(param->token->data, ty);
-		}
-	}
-
+	
 	varscope_add("this", class_ty);
+
+	if(node->args) {
+		semantic_param(node->args);
+	}
 
 	for(ListNode *s = list_begin(&node->bodylist); s != list_end(&node->bodylist); s = list_next(s)) {
 		Node *stmt = (Node*)s;
@@ -301,6 +324,8 @@ Ty *semantic_unfold_expr(Node *node) {
 				printf("unknown type %s\n", type->token->data);
 				exit(1);
 			}
+
+			node->method = type_get_method(ty, "constructor");
 
 			return ty;
 		}

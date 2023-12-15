@@ -145,11 +145,11 @@ void emit_print() {
 				printf("\t%i\tloadconst\t%i\t//%s\n", pc + 1, (int)ins->left, GET_CONST(ins->left));
 			}
 			break;
-			case OP_LOAD_MEMBER: {
+			case OP_LOAD_FIELD: {
 				printf("\t%i\tloadmember\t%s\n", pc + 1, GET_CONST(ins->left));
 			}
 			break;
-			case OP_STORE_MEMBER: {
+			case OP_STORE_FIELD: {
 				printf("\t%i\tstoremember\t%s\n", pc + 1, GET_CONST(ins->left));
 			}
 			break;
@@ -272,6 +272,12 @@ int64_t eval(int pc) {
 				stack[fp][current->left] = v1;
 			}
 			break;
+			case OP_DUP: {
+				int64_t a = POP_STACK();
+				PUSH_STACK(a);
+				PUSH_STACK(a);
+			}
+			break;
 			case OP_PUSH: {
 				PUSH_STACK((int64_t)current->left);
 			}
@@ -301,14 +307,14 @@ int64_t eval(int pc) {
 				}
 			}
 			break;
-			case OP_LOAD_MEMBER: {
+			case OP_LOAD_FIELD: {
 				Object *instance = POP_STACK_OBJECT();
 				int64_t var = instance->varlist[current->left];
 
 				PUSH_STACK(var);
 			}
 			break;
-			case OP_STORE_MEMBER: {
+			case OP_STORE_FIELD: {
 				Object *instance = POP_STACK_OBJECT();
 				int64_t v2 = POP_STACK();
 				instance->varlist[current->left] = v2;
@@ -455,9 +461,9 @@ int64_t eval(int pc) {
 
 					PUSH_STACK(0);
 				} else if(name == 8000) {
-					Object   *dst        = POP_STACK_OBJECT();
+					Object  *dst        = POP_STACK_OBJECT();
 					int64_t  dst_offset = POP_STACK();
-					Object   *src        = POP_STACK_OBJECT();
+					Object  *src        = POP_STACK_OBJECT();
 					int64_t  src_offset = POP_STACK();
 					int64_t  b          = POP_STACK();
 
