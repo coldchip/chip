@@ -2,7 +2,8 @@
 #include "chip.h"
 #include "list.h"
 #include "parse.h"
-#include "parsetype.h"
+#include "gen.h"
+#include "semantic.h"
 
 int main(int argc, char const *argv[]) {
 	/* code */
@@ -14,10 +15,9 @@ int main(int argc, char const *argv[]) {
 		
 		Node *nodes = parse(&tokens);
 
-		parsetype(nodes);
+		semantic(nodes);
 
-		List program;
-		gen(nodes, &program);
+		gen(nodes);
 
 		intepreter("a.out");
 	} else {

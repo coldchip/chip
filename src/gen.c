@@ -5,11 +5,6 @@
 #include "chip.h"
 #include "gen.h"
 
-typedef struct {
-	TyMethod *method;
-	int line;
-} LabelEntry;
-
 static LabelEntry labels[8192] = {};
 int label_counter = 0;
 
@@ -17,10 +12,6 @@ static Op *codes[32768] = {};
 int code_counter = 0;
 
 static List constants;
-static List *program;
-static Class *class = NULL;
-static Method *method = NULL;
-
 
 static char *rand_string(char *str, size_t size) {
     const char charset[] = "abcdefghijklmnopqrstuvwxyz";
@@ -35,41 +26,53 @@ static char *rand_string(char *str, size_t size) {
     return str;
 }
 
-static Class *emit_class(List *program, char *name) {
-	Class *c = malloc(sizeof(Class));
-	c->name = strdup(name);
-
-	list_clear(&c->method);
-	list_insert(list_end(program), c);
-	return c;
+LabelEntry emit_get_label(const char *name) {
+	for(int i = 0; i < label_counter; ++i) {
+		if(strcmp(labels[i].name, name) == 0) {
+			return labels[i];
+		}
+	}
 }
 
-static Method *emit_method(Class *class, char *name) {
-	Method *m = malloc(sizeof(Method));
-	m->name = strdup(name);
+LabelEntry emit_label(const char *name) {
+	LabelEntry label = {
+		.line = emit_op_get_counter(),
+	};
+	strcpy(label.name, name);
 
-	list_clear(&m->op);
-	list_insert(list_end(&class->method), m);
-	return m;
+	labels[label_counter++] = label;
+
+	return label;
 }
 
-static Op *emit_op(Method *method, OpType op) {
+static Op *emit_op(OpType op) {
 	Op *ins = malloc(sizeof(Op));
 	ins->op = op;
+	ins->left_label = NULL;
 	ins->has_left = false;
-	list_insert(list_end(&method->op), ins);
 
 	codes[code_counter++] = ins;
 
 	return ins;
 }
 
-static Op *emit_op_left(Method *method, OpType op, uint64_t left) {
+static Op *emit_op_left(OpType op, uint64_t left) {
 	Op *ins = malloc(sizeof(Op));
 	ins->op = op;
-	ins->has_left = true;
 	ins->left = left;
-	list_insert(list_end(&method->op), ins);
+	ins->left_label = NULL;
+	ins->has_left = true;
+
+	codes[code_counter++] = ins;
+
+	return ins;
+}
+
+static Op *emit_op_left_label(OpType op, const char *left) {
+	Op *ins = malloc(sizeof(Op));
+	ins->op = op;
+	ins->left_label = strdup(left);
+	ins->has_left = true;
 
 	codes[code_counter++] = ins;
 
@@ -93,11 +96,11 @@ static int emit_constant(List *list, char *data, bool obfuscated) {
 	return list_size(list) - 1;
 }
 
-static int emit_op_get_counter(Method *program) {
+static int emit_op_get_counter() {
 	return code_counter + 1;
 }
 
-static void emit_file(List *constants, List *program) {
+static void emit_file(List *constants) {
 	Ty *c = type_get("Main");
 	if(!c) {
 		printf("entry point class Main not found\n");
@@ -110,21 +113,23 @@ static void emit_file(List *constants, List *program) {
 		exit(1);
 	}
 
-
 	FILE *prg = fopen("~prg.out", "wb");
 
-	for(int i = 0; i < label_counter; ++i) {
-		if(labels[i].method == m) {
-			uint32_t entry = labels[i].line;
-			fwrite(&entry, sizeof(int), 1, prg);
-			break;
-		}
-	}
+	char entry_label[256];
+	sprintf(entry_label, "%s_%p", m->name, m);
+	LabelEntry entry = emit_get_label(entry_label);
+
+	fwrite(&entry.line, sizeof(int), 1, prg);
 
 	fwrite(&code_counter, sizeof(int), 1, prg);
 
 	for(int i = 0; i < code_counter; i++) {
 		Op *ins = codes[i];
+
+		if(ins->left_label) {
+			LabelEntry label = emit_get_label(ins->left_label);
+			ins->left = label.line;
+		}
 
 		char op = ins->op;
 
@@ -209,6 +214,122 @@ static void emit_file(List *constants, List *program) {
 	unlink("~cst.out");
 }
 
+void emit_asm() {
+	for(int pc = 0; pc < code_counter; pc++) {
+		Op *ins = codes[pc];
+
+		for(int i = 0; i < label_counter; ++i) {
+			if((labels[i].line - 1) == pc) {
+				printf("%s:\n", labels[i].name);
+				break;
+			}
+		}
+
+		switch(ins->op) {
+			case OP_LOAD: {
+				printf("\t%i\tload\t%i\n", pc + 1, (ins->left));
+			}
+			break;
+			case OP_STORE: {
+				printf("\t%i\tstore\t%i\n", pc + 1, (ins->left));
+			}
+			break;
+			case OP_POP: {
+				printf("\t%i\tpop\t\n", pc + 1);
+			}
+			break;
+			case OP_CMPEQ: {
+				printf("\t%i\tcmpeq\n", pc + 1);
+			}
+			break;
+			case OP_CMPGT: {
+				printf("\t%i\tcmpgt\n", pc + 1);
+			}
+			break;
+			case OP_CMPLT: {
+				printf("\t%i\tcmplt\n", pc + 1);
+			}
+			break;
+			case OP_ADD: {
+				printf("\t%i\tadd\n", pc + 1);
+			}
+			break;
+			case OP_SUB: {
+				printf("\t%i\tsub\n", pc + 1);
+			}
+			break;
+			case OP_MUL: {
+				printf("\t%i\tmul\n", pc + 1);
+			}
+			break;
+			case OP_DIV: {
+				printf("\t%i\tdiv\n", pc + 1);
+			}
+			break;
+			case OP_MOD: {
+				printf("\t%i\tmod\n", pc + 1);
+			}
+			break;
+			case OP_OR: {
+				printf("\t%i\tor\n", pc + 1);
+			}
+			break;
+			case OP_PUSH: {
+				printf("\t%i\tpush\t%li\n", pc + 1, ins->left);
+			}
+			break;
+			case OP_LOAD_CONST: {
+				printf("\t%i\tloadconst\t%i\t//%i\n", pc + 1, (int)ins->left, (ins->left));
+			}
+			break;
+			case OP_LOAD_MEMBER: {
+				printf("\t%i\tloadmember\t%i\n", pc + 1, (ins->left));
+			}
+			break;
+			case OP_STORE_MEMBER: {
+				printf("\t%i\tstoremember\t%i\n", pc + 1, (ins->left));
+			}
+			break;
+			case OP_CALL: {
+				printf("\t%i\tcall\t%s\n", pc + 1, ins->left_label);
+			}
+			break;
+			case OP_SYSCALL: {
+				printf("\t%i\tsyscall\t\tARGLEN: %i\n", pc + 1, (int)ins->left);
+			}
+			break;
+			case OP_NEWO: {
+				printf("\t%i\tnewo\t%i\n", pc + 1, (ins->left));
+			}
+			break;
+			case OP_NEWARRAY: {
+				printf("\t%i\tnew_array\t%i\n", pc + 1, (ins->left));
+			}
+			break;
+			case OP_LOAD_ARRAY: {
+				printf("\t%i\tload_array\n", pc + 1);
+			}
+			break;
+			case OP_STORE_ARRAY: {
+				printf("\t%i\tstore_array\n", pc + 1);
+			}
+			break;
+			case OP_JE: {
+				printf("\t%i\tje\t%i\n", pc + 1, (int)ins->left);
+			}
+			break;
+			case OP_JMP: {
+				printf("\t%i\tjmp\t%i\n", pc + 1, (int)ins->left);
+			}
+			break;
+			case OP_RET: {
+				printf("\t%i\tret\t\n", pc + 1);
+			}
+			break;
+		}
+	}
+}
+
 static void gen_program(Node *node) {
 	while(!list_empty(&node->bodylist)) {
 		Node *entry = (Node*)list_remove(list_begin(&node->bodylist));
@@ -217,8 +338,6 @@ static void gen_program(Node *node) {
 }
 
 static void gen_class(Node *node) {
-	class = emit_class(program, node->token->data);
-
 	while(!list_empty(&node->bodylist)) {
 		Node *entry = (Node*)list_remove(list_begin(&node->bodylist));
 		gen_visitor(entry);
@@ -248,15 +367,10 @@ static int gen_arg(Node *node) {
 }
 
 static void gen_method(Node *node) {
-	method = emit_method(class, node->token->data);
-	method->modifier = node->modifier;
+	char label[256];
+	sprintf(label, "%s_%p", node->token->data, node->method);
 
-	LabelEntry label = {
-		.method = node->method,
-		.line = emit_op_get_counter(method)
-	};
-
-	labels[label_counter++] = label;
+	emit_label(label);
 
 	gen_visitor(node->args);
 
@@ -265,38 +379,38 @@ static void gen_method(Node *node) {
 		gen_visitor(entry);
 	}
 
-	emit_op_left(method, OP_PUSH, 0);
-	emit_op(method, OP_RET);
+	emit_op_left(OP_PUSH, 0);
+	emit_op(OP_RET);
 }
 
 static void gen_if(Node *node) {
-	int start = emit_op_get_counter(method);
+	int start = emit_op_get_counter();
 
 	gen_visitor(node->condition);
-	emit_op_left(method, OP_PUSH, 0);
-	Op *jmp = emit_op_left(method, OP_JE, 0);
+	emit_op_left(OP_PUSH, 0);
+	Op *jmp = emit_op_left(OP_JE, 0);
 	gen_visitor(node->body);
 
-	Op *jmp2 = emit_op_left(method, OP_JMP, 0);
+	Op *jmp2 = emit_op_left(OP_JMP, 0);
 
-	jmp->left = emit_op_get_counter(method);
+	jmp->left = emit_op_get_counter();
 	if(node->alternate) {
 		gen_visitor(node->alternate);
 	}
 
-	jmp2->left = emit_op_get_counter(method);
+	jmp2->left = emit_op_get_counter();
 }
 
 static void gen_while(Node *node) {
-	int start = emit_op_get_counter(method);
+	int start = emit_op_get_counter();
 
 	gen_visitor(node->condition);
-	emit_op_left(method, OP_PUSH, 0);
-	Op *jmp = emit_op_left(method, OP_JE, 0);
+	emit_op_left(OP_PUSH, 0);
+	Op *jmp = emit_op_left(OP_JE, 0);
 	gen_visitor(node->body);
-	emit_op_left(method, OP_JMP, start);
+	emit_op_left(OP_JMP, start);
 
-	jmp->left = emit_op_get_counter(method);
+	jmp->left = emit_op_get_counter();
 }
 
 static void gen_block(Node *node) {
@@ -307,35 +421,35 @@ static void gen_block(Node *node) {
 }
 
 static void gen_variable(Node *node) {
-	emit_op_left(method, OP_LOAD, emit_constant(&constants, node->token->data, true));
+	emit_op_left(OP_LOAD, emit_constant(&constants, node->token->data, true));
 }
 
 static void gen_member(Node *node) {
 	if(node->body) {
 		gen_visitor(node->body);
-		emit_op_left(method, OP_LOAD_MEMBER, emit_constant(&constants, node->token->data, true));
+		emit_op_left(OP_LOAD_MEMBER, emit_constant(&constants, node->token->data, true));
 	}
 }
 
 static void gen_new(Node *node) {
-	// emit_op_left(method, OP_LOAD_CONST, emit_constant(&constants, node->token->data, true));
+	// emit_op_left(OP_LOAD_CONST, emit_constant(&constants, node->token->data, true));
 
 	// gen_visitor(node->args);
 
-	emit_op_left(method, OP_NEWO, emit_constant(&constants, node->token->data, true));
+	emit_op_left(OP_NEWO, emit_constant(&constants, node->token->data, true));
 }
 
 static void gen_new_array(Node *node) {
 	gen_visitor(node->args);
 
-	emit_op_left(method, OP_NEWARRAY, emit_constant(&constants, node->token->data, true));
+	emit_op_left(OP_NEWARRAY, emit_constant(&constants, node->token->data, true));
 }
 
 static void gen_array_member(Node *node) {
 	if(node->body) {
 		gen_visitor(node->body);
 		gen_visitor(node->index);
-		emit_op(method, OP_LOAD_ARRAY);
+		emit_op(OP_LOAD_ARRAY);
 	}
 }
 
@@ -343,13 +457,13 @@ static void gen_expr(Node *node) {
 	gen_visitor(node->body);
 
 	// assignless
-	emit_op(method, OP_POP);
+	emit_op(OP_POP);
 }
 
 static void gen_decl(Node *node) {
 	if(node->body) {
 		gen_visitor(node->body);
-		emit_op_left(method, OP_STORE, emit_constant(&constants, node->token->data, true));
+		emit_op_left(OP_STORE, emit_constant(&constants, node->token->data, true));
 	}
 }
 
@@ -364,14 +478,14 @@ static void gen_store(Node *node) {
 		if(node->index) {
 			/* x[y] = z */
 			gen_visitor(node->index);
-			emit_op(method, OP_STORE_ARRAY);
+			emit_op(OP_STORE_ARRAY);
 		} else {
 			/* x.y = z */
-			emit_op_left(method, OP_STORE_MEMBER, emit_constant(&constants, node->token->data, true));
+			emit_op_left(OP_STORE_MEMBER, emit_constant(&constants, node->token->data, true));
 		}
 	} else {
 		/* x = y */
-		emit_op_left(method, OP_STORE, emit_constant(&constants, node->token->data, true));
+		emit_op_left(OP_STORE, emit_constant(&constants, node->token->data, true));
 	}
 
 }
@@ -387,39 +501,39 @@ static void gen_binary(Node *node) {
 
 	switch(node->type) {
 		case ND_EQ: {
-			emit_op(method, OP_CMPEQ);
+			emit_op(OP_CMPEQ);
 		}
 		break;
 		case ND_GT: {
-			emit_op(method, OP_CMPGT);
+			emit_op(OP_CMPGT);
 		}
 		break;
 		case ND_LT: {
-			emit_op(method, OP_CMPLT);
+			emit_op(OP_CMPLT);
 		}
 		break;
 		case ND_ADD: {
-			emit_op(method, OP_ADD);
+			emit_op(OP_ADD);
 		}
 		break;
 		case ND_SUB: {
-			emit_op(method, OP_SUB);
+			emit_op(OP_SUB);
 		}
 		break;
 		case ND_MUL: {
-			emit_op(method, OP_MUL);
+			emit_op(OP_MUL);
 		}
 		break;
 		case ND_DIV: {
-			emit_op(method, OP_DIV);
+			emit_op(OP_DIV);
 		}
 		break;
 		case ND_MOD: {
-			emit_op(method, OP_MOD);
+			emit_op(OP_MOD);
 		}
 		break;
 		case ND_OR: {
-			emit_op(method, OP_OR);
+			emit_op(OP_OR);
 		}
 		break;
 	}
@@ -428,44 +542,40 @@ static void gen_binary(Node *node) {
 static void gen_char(Node *node) {
 	int t = (int)node->token->data[0];
 
-	emit_op_left(method, OP_PUSH, (float)node->token->data[0]);
+	emit_op_left(OP_PUSH, (float)node->token->data[0]);
 }
 
 static void gen_number(Node *node) {
-	emit_op_left(method, OP_PUSH, atof(node->token->data));
+	emit_op_left(OP_PUSH, atof(node->token->data));
 }
 
 static void gen_float(Node *node) {
-	emit_op_left(method, OP_PUSH, atof(node->token->data));
+	emit_op_left(OP_PUSH, atof(node->token->data));
 }
 
 static void gen_string(Node *node) {
-	emit_op_left(method, OP_LOAD_CONST, emit_constant(&constants, node->token->data, false));
+	emit_op_left(OP_LOAD_CONST, emit_constant(&constants, node->token->data, false));
 }
 
 static void gen_return(Node *node) {
 	gen_visitor(node->body);
-	emit_op(method, OP_RET);
+	emit_op(OP_RET);
 }
 
 static void gen_call(Node *node) {
 	int arg_count = gen_arg(node->args);
 	gen_visitor(node->body);
 
-	printf("neneneenenene %s() %p %li\n", node->token->data, node->method, list_size(&node->args->bodylist));
+	char label[256];
+	sprintf(label, "%s_%p", node->token->data, node->method);
 
-	for(int i = 0; i < label_counter; ++i) {
-		if(labels[i].method == node->method) {
-			uint32_t left = (arg_count << 24) | (labels[i].line);
-			emit_op_left(method, OP_CALL, left);
-			break;
-		}
-	}
+	emit_op_left(OP_PUSH, arg_count);
+	emit_op_left_label(OP_CALL, label);
 }
 
 static void gen_syscall(Node *node) {
 	gen_visitor(node->args);
-	emit_op_left(method, OP_SYSCALL, list_size(&node->args->bodylist));
+	emit_op_left(OP_SYSCALL, list_size(&node->args->bodylist));
 }
 
 static void gen_visitor(Node *node) {
@@ -577,12 +687,11 @@ static void gen_visitor(Node *node) {
 	}
 }
 
-void gen(Node *node, List *p) {
+void gen(Node *node) {
 	list_clear(&constants);
-	list_clear(p);
-	program = p;
 	gen_visitor(node);
 
-	// print_code();
-	emit_file(&constants, p);
+	emit_asm();
+
+	emit_file(&constants);
 }

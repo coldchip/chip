@@ -18,8 +18,8 @@
 #include "list.h"
 #include "intepreter.h"
 
-Object *cache[8192] = {}; // generate instances of all classes to allow static invoking
-Object *globals[8192] = {};
+Object *cache[8192] = {}; 
+Object *globals[8192] = {}; // generate instances of all classes to allow static invoking
 static char *constants[8192] = {};
 
 static Op *codes[32768] = {};
@@ -414,13 +414,13 @@ int64_t eval(int pc) {
 			}
 			break;
 			case OP_CALL: {
-				Object *instance = POP_STACK_OBJECT();
+				int64_t arg_length = POP_STACK();
+				Object *instance   = POP_STACK_OBJECT();
 
-				uint32_t jmp    = (((uint32_t)current->left) & 0x00FFFFFF);
-				uint32_t length = (((uint32_t)current->left) >> 24) & 0xFF;
+				uint32_t jmp    = (uint32_t)current->left;
 
-				int64_t args[length];
-				for(int i = 0; i < length; i++) {
+				int64_t args[arg_length];
+				for(int i = 0; i < arg_length; i++) {
 					int64_t arg = POP_STACK();
 					args[i] = arg;
 				}
@@ -429,7 +429,7 @@ int64_t eval(int pc) {
 
 				stack[fp][FIND_OR_INSERT_CONST(constants, "this")] = instance;
 				PUSH_STACK(pc);
-				for(int i = 0; i < length; i++) {
+				for(int i = 0; i < arg_length; i++) {
 					PUSH_STACK(args[i]);
 				}
 
@@ -623,7 +623,7 @@ void intepreter(const char *input) {
 
 	int entry = load_file(input);
 
-	emit_print();
+	// emit_print();
 
 	eval(entry - 1);
 }

@@ -64,22 +64,29 @@ typedef struct _Method {
 	Modifier modifier;
 } Method;
 
+typedef struct {
+	TyMethod *method;
+	char name[256];
+	int line;
+} LabelEntry;
+
 typedef struct _Op {
-	ListNode node;
 	OpType op;
 	uint64_t left;
+	char *left_label;
 	bool has_left;
 } Op;
 
 static char      *rand_string(char *str, size_t size);
 
-static Class     *emit_class(List *program, char *name);
-static Method    *emit_method(Class *class, char *name);
-static Op *       emit_op(Method *method, OpType op);
-static Op *       emit_op_left(Method *method, OpType op, uint64_t left);
+LabelEntry        emit_get_label(const char *name);
+LabelEntry        emit_label(const char *name);
+static Op *       emit_op(OpType op);
+static Op *       emit_op_left(OpType op, uint64_t left);
+static Op        *emit_op_left_label(OpType op, const char *left);
 static int        emit_constant(List *list, char *data, bool obfuscated);
-static int        emit_op_get_counter(Method *method);
-static void       emit_file(List *constants, List *program);
+static int        emit_op_get_counter();
+static void       emit_file(List *constants);
 
 static void       gen_program(Node *node);
 static void       gen_class(Node *node);
@@ -107,6 +114,6 @@ static void       gen_return(Node *node);
 static void       gen_call(Node *node);
 static void       gen_syscall(Node *node);
 static void       gen_visitor(Node *node);
-void              gen(Node *node, List *p);
+void              gen(Node *node);
 
 #endif

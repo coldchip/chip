@@ -1,7 +1,7 @@
 CC=gcc
 
 chip:
-	$(CC) src/*.c -o chip -g -std=c11 -lm 
+	$(CC) src/*.c -o chip -Ofast -std=c11 -lm -s
 
 run:
 	./chip

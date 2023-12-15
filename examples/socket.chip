@@ -1,3 +1,32 @@
+class Art {
+	method triangle(int n) : [static] returns String {
+		String output = new String();
+		output.constructor();
+
+		int outpust;
+
+		int c1 = (n - 1) / 2;
+		int c2 = 3 * n / 2 - 1;
+
+		int i = 0;
+		while(i < n) {
+			int j = 0;
+			while(j < n) {
+				if(i + j eq c1 or i - j eq c1 or j - i eq c1 or i + j eq c2 or i eq c1 or j eq c1) {
+					output.append("*");
+				} else {
+					output.append(" ");
+				}
+				j = j + 1;
+			}
+			output.append("\n");
+			i = i + 1;
+		}
+
+		return output;
+	}
+}
+
 class Convert {
 	method string(int number) : [static] returns char[] {
 		if(number eq 0) {
@@ -130,33 +159,6 @@ class String {
 
 	method length() returns int {
 		return this.count;
-	}
-}
-
-class Art {
-	method triangle(int n) : [static] returns String {
-		String output = new String();
-		output.constructor();
-
-		int c1 = (n - 1) / 2;
-		int c2 = 3 * n / 2 - 1;
-
-		int i = 0;
-		while(i < n) {
-			int j = 0;
-			while(j < n) {
-				if(i + j eq c1 or i - j eq c1 or j - i eq c1 or i + j eq c2 or i eq c1 or j eq c1) {
-					output.append("*");
-				} else {
-					output.append(" ");
-				}
-				j = j + 1;
-			}
-			output.append("\n");
-			i = i + 1;
-		}
-
-		return output;
 	}
 }
 
