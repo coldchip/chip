@@ -146,7 +146,6 @@ static void emit_file(List *constants) {
 		Constant *constant = (Constant*)c;
 
 		if(
-			false &&
 			constant->obfuscated && 
 			!strcasecmp(constant->data, "this") == 0 && 
 			!strcasecmp(constant->data, "count") == 0
@@ -264,6 +263,10 @@ void emit_asm() {
 			break;
 			case OP_OR: {
 				printf("\tor\n");
+			}
+			break;
+			case OP_DUP: {
+				printf("\tdup\n");
 			}
 			break;
 			case OP_PUSH: {
@@ -440,17 +443,21 @@ static void gen_member(Node *node) {
 }
 
 static void gen_new(Node *node) {
-	// emit_op_left(OP_LOAD_CONST, emit_constant(&constants, node->token->data, true));
-
-	// gen_visitor(node->args);
-
 	emit_op_left(OP_NEWO, emit_constant(&constants, node->token->data, true));
 
 	if(node->method) {
-		// emit_op_left_label(OP_CALL, label);
+		emit_op(OP_DUP);
+	
+		int arg_count = gen_arg(node->args);
+
 		char label[256];
 		sprintf(label, "SUB_%p.%s", node->method, node->method->name);
-		printf("%s\n", label);
+
+		emit_op_left(OP_PUSH, arg_count);
+		emit_op_left_label(OP_CALL, label);
+
+		// discard constructor return
+		emit_op(OP_POP);
 	}
 }
 
@@ -578,8 +585,9 @@ static void gen_return(Node *node) {
 }
 
 static void gen_call(Node *node) {
-	int arg_count = gen_arg(node->args);
 	gen_visitor(node->body);
+
+	int arg_count = gen_arg(node->args);
 
 	char label[256];
 	sprintf(label, "SUB_%p.%s", node->method, node->method->name);

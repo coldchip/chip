@@ -1,9 +1,6 @@
 class Art {
 	method triangle(int n) : [static] returns String {
 		String output = new String();
-		output.constructor();
-
-		int outpust;
 
 		int c1 = (n - 1) / 2;
 		int c2 = 3 * n / 2 - 1;
@@ -197,8 +194,7 @@ class Socket {
 
 	method accept() returns Client {
 		int fd = syscall(62, this.fd) : int;
-		Client c = new Client();
-		c.constructor(fd);
+		Client c = new Client(fd);
 		return c;
 	}
 }
@@ -207,7 +203,6 @@ class Header {
 	String buffer;
 	method constructor() returns void {
 		this.buffer = new String();
-		this.buffer.constructor();
 		this.buffer.append("HTTP/1.0 200 OK\r\n");
 	}
 
@@ -227,8 +222,7 @@ class Header {
 class Main {
 	method main() : [static] returns void {
 
-		Socket s = new Socket();
-		s.constructor("0.0.0.0", 19132);
+		Socket s = new Socket("0.0.0.0", 19132);
 
 		if(s.bind() eq 1) {
 
@@ -243,14 +237,13 @@ class Main {
 
 
 				String body = new String();
-				body.constructor();
 				int y = 0;
 
 				body.append("<pre>");
 				body.append(Art.triangle(13).getBytes());
 				body.append("</pre>");
 
-				while(y < 1024) {
+				while(y < 8192) {
 					int sqrt = Math.sqrt(y);
 					body.append(Convert.string(sqrt));
 					body.append(":");
@@ -260,7 +253,6 @@ class Main {
 				}
 
 				Header header = new Header();
-				header.constructor();
 				header.append("Server", Convert.string(Math.sqrt(68)));
 				header.append("Content-Type", "text/html");
 				header.append("Content-Length", Convert.string(body.length()));

@@ -137,6 +137,10 @@ void emit_print() {
 				printf("\t%i\tor\n", pc + 1);
 			}
 			break;
+			case OP_DUP: {
+				printf("\t%i\tdup\n", pc + 1);
+			}
+			break;
 			case OP_PUSH: {
 				printf("\t%i\tpush\t%li\n", pc + 1, ins->left);
 			}
@@ -421,15 +425,14 @@ int64_t eval(int pc) {
 			break;
 			case OP_CALL: {
 				int64_t arg_length = POP_STACK();
-				Object *instance   = POP_STACK_OBJECT();
-
-				uint32_t jmp    = (uint32_t)current->left;
 
 				int64_t args[arg_length];
 				for(int i = 0; i < arg_length; i++) {
 					int64_t arg = POP_STACK();
 					args[i] = arg;
 				}
+
+				Object *instance = POP_STACK_OBJECT();
 
 				PUSH_FRAME(); 
 
@@ -439,7 +442,7 @@ int64_t eval(int pc) {
 					PUSH_STACK(args[i]);
 				}
 
-				pc = jmp - 1;
+				pc = (uint32_t)current->left - 1;
 
 				continue;
 			}

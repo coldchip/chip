@@ -24,7 +24,7 @@ typedef enum {
 	OP_MOD,
 	OP_OR,
 
-	OP_DUP,
+	OP_DUP, // duplicate from stack top
 
 	OP_PUSH,
 	OP_LOAD_CONST,
