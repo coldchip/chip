@@ -262,13 +262,8 @@ int64_t eval(int pc) {
 		Op *current = codes[pc];
 		switch(current->op) {
 			case OP_LOAD: {
-				if(globals[current->left]) {
-					Object *var = globals[current->left];
-					PUSH_STACK_OBJECT(var);
-				} else {
-					int64_t var = stack[fp][current->left];
-					PUSH_STACK(var);
-				}
+				int64_t var = stack[fp][current->left];
+				PUSH_STACK(var);
 			}
 			break;
 			case OP_STORE: {
@@ -436,7 +431,7 @@ int64_t eval(int pc) {
 
 				PUSH_FRAME(); 
 
-				stack[fp][FIND_OR_INSERT_CONST(constants, "this")] = instance;
+				stack[fp][0] = instance;
 				PUSH_STACK(pc);
 				for(int i = 0; i < arg_length; i++) {
 					PUSH_STACK(args[i]);
@@ -544,6 +539,8 @@ int64_t eval(int pc) {
 					clock_t end = clock();
 					double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 					printf("%f\n", time_spent);
+				} else if(name == 33) {
+					PUSH_STACK(rand());
 				} else {
 					printf("unknown syscall %i\n", name);
 					exit(1);

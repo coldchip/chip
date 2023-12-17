@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include "tokenize.h"
+#include "varscope.h"
 #include "type.h"
 
 typedef enum {
@@ -68,6 +69,8 @@ typedef struct _Node {
 	Modifier modifier;
 
 	Token *token;
+
+	VarScope *var;
 } Node;
 
 Node              *new_node(NodeType type, Token *token);

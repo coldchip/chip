@@ -199,8 +199,29 @@ class Socket {
 	}
 }
 
+class Random {
+	method integer() returns int {
+		return syscall(33) : void;
+	}
+
+	method string(int length) returns char[] {
+		char[] set = "abcdef0123456789";
+
+		char[] result = new char[length];
+
+		int i = 0;
+		while(i < length) {
+			result[i] = set[Random.integer() % set.count];
+			i = i + 1;
+		}
+
+		return result;
+	}
+}
+
 class Header {
 	String buffer;
+	int dfvbsiffs;
 	method constructor() returns void {
 		this.buffer = new String();
 		this.buffer.append("HTTP/1.0 200 OK\r\n");
@@ -243,18 +264,20 @@ class Main {
 				body.append(Art.triangle(13).getBytes());
 				body.append("</pre>");
 
-				while(y < 8192) {
+				while(y < 128) {
 					int sqrt = Math.sqrt(y);
 					body.append(Convert.string(sqrt));
 					body.append(":");
 					body.append(Convert.string(sqrt * sqrt));
+					body.append(":");
+					body.append(Random.string(32));
 					body.append("\n");
 					y = y + 1;
 				}
 
 				Header header = new Header();
 				header.append("Server", Convert.string(Math.sqrt(68)));
-				header.append("Content-Type", "text/html");
+				header.append("Content-Type", "text/plain");
 				header.append("Content-Length", Convert.string(body.length()));
 
 
@@ -268,5 +291,6 @@ class Main {
 		} else {
 			Console.write("unable to bind\n");
 		}
+
 	}
 }

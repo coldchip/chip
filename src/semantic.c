@@ -18,7 +18,7 @@ void semantic_peek_class(Node *node) {
 		Node *class = (Node*)c;
 		if(class->type != ND_CLASS) continue;
 
-		type_insert(class->token->data);
+		type_insert(class->token->data, 8);
 	}
 
 
@@ -49,12 +49,6 @@ void semantic_peek_class(Node *node) {
 				}
 				break;
 				case ND_METHOD: {
-					Node *params = method->args;
-					for(ListNode *p = list_begin(&params->bodylist); p != list_end(&params->bodylist); p = list_next(p)) {
-						Node *param = (Node*)p;
-
-					}
-
 					Node *type = method->data_type;
 					Ty *ty = type_get(type->token->data);
 					if(!ty) {
@@ -130,7 +124,14 @@ void semantic_param(Node *node) {
 			exit(1);
 		}
 
-		varscope_add(param->token->data, ty);
+		param->var = varscope_add(param->token->data, ty);
+	}
+}
+
+void semantic_arg(Node *node) {
+	for(ListNode *a = list_begin(&node->bodylist); a != list_end(&node->bodylist); a = list_next(a)) {
+		Node *arg = (Node*)a;
+		semantic_unfold_expr(arg);
 	}
 }
 
@@ -219,7 +220,7 @@ void semantic_decl(Node *node) {
 		exit(1);
 	}
 
-	varscope_add(node->token->data, left);
+	node->var = varscope_add(node->token->data, left);
 
 	if(node->body) {
 		Ty *right = semantic_unfold_expr(node->body);
@@ -281,10 +282,7 @@ Ty *semantic_unfold_expr(Node *node) {
 				exit(1);
 			}
 
-			for(ListNode *a = list_begin(&node->args->bodylist); a != list_end(&node->args->bodylist); a = list_next(a)) {
-				Node *arg = (Node*)a;
-				semantic_unfold_expr(arg);
-			}
+			semantic_arg(node->args);
 
 			node->method = method;
 
@@ -300,6 +298,8 @@ Ty *semantic_unfold_expr(Node *node) {
 				exit(1);
 			}
 
+			node->var = var;
+
 			return var ? var->type : ty;
 		}
 		break;
@@ -311,12 +311,42 @@ Ty *semantic_unfold_expr(Node *node) {
 			return type_get("float");
 		}
 		break;
+		case ND_CHAR: {
+			return type_get("char");
+		}
+		break;
 		case ND_STRING: {
 			return type_get("char");
 		}
 		break;
-		case ND_SYSCALL:
-		case ND_NEW:
+		case ND_SYSCALL: {
+			Node *type = node->data_type;
+			Ty *ty = type_get(type->token->data);
+			if(!ty) {
+				printf("unknown type %s\n", type->token->data);
+				exit(1);
+			}
+
+			semantic_arg(node->args);
+
+			return ty;
+		}
+		break;
+		case ND_NEW: {
+			Node *type = node->data_type;
+			Ty *ty = type_get(type->token->data);
+			if(!ty) {
+				printf("unknown type %s\n", type->token->data);
+				exit(1);
+			}
+
+			semantic_arg(node->args);
+
+			node->method = type_get_method(ty, "constructor");
+
+			return ty;
+		}
+		break;
 		case ND_NEWARRAY: {
 			Node *type = node->data_type;
 			Ty *ty = type_get(type->token->data);
@@ -324,6 +354,8 @@ Ty *semantic_unfold_expr(Node *node) {
 				printf("unknown type %s\n", type->token->data);
 				exit(1);
 			}
+
+			semantic_unfold_expr(node->args);
 
 			node->method = type_get_method(ty, "constructor");
 
@@ -347,12 +379,12 @@ void semantic(Node *node) {
 	type_clear();
 	varscope_clear();
 
-	Ty *int_type = type_insert("int");
+	Ty *int_type = type_insert("int", 8);
 	insert_method(int_type, "count", NULL, 0, int_type);
-	Ty *char_type = type_insert("char");
+	Ty *char_type = type_insert("char", 8);
 	insert_method(char_type, "count", NULL, 0, int_type);
-	type_insert("float");
-	type_insert("void");
+	type_insert("float", 8);
+	type_insert("void", 8);
 
 	semantic_peek_class(node);
 	semantic_program(node);

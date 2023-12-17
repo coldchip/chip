@@ -35,9 +35,10 @@ TyMethod *type_get_method(Ty *ty, char *name) {
 	return NULL;
 }
 
-Ty *type_insert(char *name) {
+Ty *type_insert(char *name, int size) {
 	Ty *type = malloc(sizeof(Ty));
 	type->name = strdup(name);
+	type->size = size;
 	list_clear(&type->methods);
 
 	list_insert(list_end(&types), type);

@@ -23,12 +23,24 @@ void varscope_pop() {
 	sp--;
 }
 
-void varscope_add(char *name, Ty *type) {
+int varscope_size() {
+	int size = 0;
+	for(ListNode *v = list_begin(&varscope[sp]); v != list_end(&varscope[sp]); v = list_next(v)) {
+		VarScope *var = (VarScope*)v;
+		size += 1;
+	}
+	return size;
+}
+
+VarScope *varscope_add(char *name, Ty *type) {
 	VarScope *var = malloc(sizeof(VarScope));
 	var->name = strdup(name);
 	var->type = type;
+	var->offset = varscope_size();
 
 	list_insert(list_end(&varscope[sp]), var);
+
+	return var;
 }
 
 VarScope *varscope_get(char *name) {
@@ -41,6 +53,5 @@ VarScope *varscope_get(char *name) {
 			}
 		}
 	}
-
 	return NULL;
 }

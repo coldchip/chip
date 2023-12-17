@@ -108,7 +108,7 @@ static void emit_file(List *constants) {
 	FILE *prg = fopen("~prg.out", "wb");
 
 	char entry_label[256];
-	sprintf(entry_label, "SUB_%p.%s", m, m->name);
+	sprintf(entry_label, "SUB_%p_%s", m, m->name);
 	LabelEntry entry = emit_get_label(entry_label);
 
 	fwrite(&entry.line, sizeof(int), 1, prg);
@@ -363,7 +363,7 @@ static int gen_arg(Node *node) {
 
 static void gen_method(Node *node) {
 	char label[256];
-	sprintf(label, "SUB_%p.%s", node->method, node->method->name);
+	sprintf(label, "SUB_%p_%s", node->method, node->method->name);
 
 	emit_label(label);
 
@@ -380,13 +380,13 @@ static void gen_method(Node *node) {
 
 static void gen_if(Node *node) {
 	char condition_label[256];
-	sprintf(condition_label, "IB.%i", rand_string());
+	sprintf(condition_label, "IB_%i", rand_string());
 
 	char alternate_label[256];
-	sprintf(alternate_label, "IA.%i", rand_string());
+	sprintf(alternate_label, "IA_%i", rand_string());
 
 	char exit_label[256];
-	sprintf(exit_label, "IE.%i", rand_string());
+	sprintf(exit_label, "IE_%i", rand_string());
 
 	gen_visitor(node->condition);
 	emit_op_left(OP_PUSH, 0);
@@ -407,10 +407,10 @@ static void gen_if(Node *node) {
 
 static void gen_while(Node *node) {
 	char body_label[256];
-	sprintf(body_label, "WB.%i", rand_string());
+	sprintf(body_label, "WB_%i", rand_string());
 
 	char exit_label[256];
-	sprintf(exit_label, "WE.%i", rand_string());
+	sprintf(exit_label, "WE_%i", rand_string());
 
 	emit_label(body_label);
 
@@ -432,7 +432,11 @@ static void gen_block(Node *node) {
 }
 
 static void gen_variable(Node *node) {
-	emit_op_left(OP_LOAD, emit_constant(&constants, node->token->data, true));
+	if(node->var) {
+		emit_op_left(OP_LOAD, node->var->offset);
+	} else {
+		emit_op_left(OP_PUSH, 0);
+	}
 }
 
 static void gen_member(Node *node) {
@@ -451,7 +455,7 @@ static void gen_new(Node *node) {
 		int arg_count = gen_arg(node->args);
 
 		char label[256];
-		sprintf(label, "SUB_%p.%s", node->method, node->method->name);
+		sprintf(label, "SUB_%p_%s", node->method, node->method->name);
 
 		emit_op_left(OP_PUSH, arg_count);
 		emit_op_left_label(OP_CALL, label);
@@ -485,7 +489,7 @@ static void gen_expr(Node *node) {
 static void gen_decl(Node *node) {
 	if(node->body) {
 		gen_visitor(node->body);
-		emit_op_left(OP_STORE, emit_constant(&constants, node->token->data, true));
+		emit_op_left(OP_STORE, node->var->offset);
 	}
 }
 
@@ -507,7 +511,7 @@ static void gen_store(Node *node) {
 		}
 	} else {
 		/* x = y */
-		emit_op_left(OP_STORE, emit_constant(&constants, node->token->data, true));
+		emit_op_left(OP_STORE, node->var->offset);
 	}
 
 }
@@ -590,7 +594,7 @@ static void gen_call(Node *node) {
 	int arg_count = gen_arg(node->args);
 
 	char label[256];
-	sprintf(label, "SUB_%p.%s", node->method, node->method->name);
+	sprintf(label, "SUB_%p_%s", node->method, node->method->name);
 
 	emit_op_left(OP_PUSH, arg_count);
 	emit_op_left_label(OP_CALL, label);

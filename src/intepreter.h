@@ -32,6 +32,8 @@ int FIND_OR_INSERT_CONST(char **constants, char *data) {
 			return i;
 		}
 	}
+
+	return 0;
 }
 
 #define POP_STACK() (sp--, stack[fp][sp])
