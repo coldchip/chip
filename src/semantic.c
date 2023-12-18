@@ -45,7 +45,7 @@ void semantic_peek_class(Node *node) {
 						exit(1);
 					}
 
-					insert_method(class_ty, method->token->data, NULL, 0, ty);
+					insert_variable(class_ty, method->token->data, ty);
 				}
 				break;
 				case ND_METHOD: {
@@ -124,7 +124,8 @@ void semantic_param(Node *node) {
 			exit(1);
 		}
 
-		param->var = varscope_add(param->token->data, ty);
+		VarScope *var = varscope_add(param->token->data, ty);
+		param->offset = var->offset;
 	}
 }
 
@@ -220,7 +221,8 @@ void semantic_decl(Node *node) {
 		exit(1);
 	}
 
-	node->var = varscope_add(node->token->data, left);
+	VarScope *var = varscope_add(node->token->data, left);
+	node->offset = var->offset;
 
 	if(node->body) {
 		Ty *right = semantic_unfold_expr(node->body);
@@ -264,13 +266,15 @@ Ty *semantic_unfold_expr(Node *node) {
 		case ND_MEMBER: {
 			Ty *parent = semantic_unfold_expr(node->body);
 
-			TyMethod *method = type_get_method(parent, node->token->data);
-			if(!method) {
+			TyVariable *variable = type_get_variable(parent, node->token->data);
+			if(!variable) {
 				printf("unknown member %s\n", node->token->data);
 				exit(1);
 			}
 
-			return method->type;
+			node->offset = variable->offset;
+
+			return variable->type;
 		}
 		break;
 		case ND_CALL: {
@@ -298,7 +302,7 @@ Ty *semantic_unfold_expr(Node *node) {
 				exit(1);
 			}
 
-			node->var = var;
+			node->offset = var ? var->offset : 0;
 
 			return var ? var->type : ty;
 		}
@@ -342,6 +346,7 @@ Ty *semantic_unfold_expr(Node *node) {
 
 			semantic_arg(node->args);
 
+			node->size   = type_size(ty);
 			node->method = type_get_method(ty, "constructor");
 
 			return ty;
@@ -380,9 +385,9 @@ void semantic(Node *node) {
 	varscope_clear();
 
 	Ty *int_type = type_insert("int", 8);
-	insert_method(int_type, "count", NULL, 0, int_type);
+	insert_variable(int_type, "count", int_type);
 	Ty *char_type = type_insert("char", 8);
-	insert_method(char_type, "count", NULL, 0, int_type);
+	insert_variable(char_type, "count", int_type);
 	type_insert("float", 8);
 	type_insert("void", 8);
 

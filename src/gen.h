@@ -33,7 +33,7 @@ typedef enum {
 	OP_CALL,
 	OP_SYSCALL,
 	OP_NEWO,
-	OP_NEWARRAY,
+	OP_NEW_ARRAY,
 	OP_LOAD_ARRAY,
 	OP_STORE_ARRAY,
 	OP_JE, // pops 2 items from stack and compare, jumps to x if true

@@ -171,7 +171,7 @@ void emit_print() {
 				printf("\t%i\tnewo\t%s\n", pc + 1, GET_CONST(ins->left));
 			}
 			break;
-			case OP_NEWARRAY: {
+			case OP_NEW_ARRAY: {
 				printf("\t%i\tnew_array\t%s\n", pc + 1, GET_CONST(ins->left));
 			}
 			break;
@@ -222,12 +222,10 @@ double load_var(double *vars, int index) {
 
 int allocs = 0;
 
-Object *new_object(Type type, int index) {
+Object *new_object(int size) {
 	Object *o = malloc(sizeof(Object));
+	o->varlist = malloc(sizeof(int64_t) * size);
 	o->array = NULL;
-	o->type = type;
-	o->index = index;
-	o->refs = 0;
 
 	allocs++;
 
@@ -246,13 +244,10 @@ void free_object(Object *object) {
 }
 
 int64_t eval(int pc) {
-	/*
-		assume if instance == NULL then method is static
-	*/
 	clock_t begin;
 
 	/* stack */
-	int64_t stack[16][1024];
+	int64_t stack[128][1024];
 	/* frame pointer */
 	int64_t fp = 0;
 	/* stack pointer */
@@ -287,7 +282,7 @@ int64_t eval(int pc) {
 					
 					PUSH_STACK_OBJECT(o);
 				} else {
-					Object *o = new_object(TY_ARRAY, FIND_OR_INSERT_CONST(constants, "char"));
+					Object *o = new_object(1);
 				
 					char *str = GET_CONST(current->left);
 					int   size = strlen(str);
@@ -298,7 +293,7 @@ int64_t eval(int pc) {
 						o->array[i] = (char)str[i];
 					}
 
-					store_var_double(&o->varlist, FIND_OR_INSERT_CONST(constants, "count"), size);
+					store_var_double(o->varlist, FIND_OR_INSERT_CONST(constants, "count"), size);
 					
 					cache[(int)current->left] = o;
 
@@ -488,7 +483,9 @@ int64_t eval(int pc) {
 					Object  *ip   = POP_STACK_OBJECT();
 					int64_t port = POP_STACK();
 					char ip_c[128];
+
 					strncpy(ip_c, ip->array, ip->varlist[FIND_OR_INSERT_CONST(constants, "count")]);
+
 
 					struct sockaddr_in servaddr;
 					servaddr.sin_family = AF_INET;
@@ -510,14 +507,14 @@ int64_t eval(int pc) {
 					int64_t fd = POP_STACK();
 					int64_t size = POP_STACK();
 
-					Object *r = new_object(TY_ARRAY, FIND_OR_INSERT_CONST(constants, "char"));
+					Object *r = new_object(1);
 					
 					r->array = malloc(sizeof(char) * size);
 
 					char data[8192];
 					int actual = read((int)fd, r->array, size);
 
-					store_var_double(&r->varlist, FIND_OR_INSERT_CONST(constants, "count"), actual);
+					store_var_double(r->varlist, FIND_OR_INSERT_CONST(constants, "count"), actual);
 
 					PUSH_STACK(r);
 				} else if(name == 64) {
@@ -548,19 +545,19 @@ int64_t eval(int pc) {
 			}
 			break;
 			case OP_NEWO: {
-				Object *o = new_object(TY_VARIABLE, current->left);
+				Object *o = new_object((int)current->left);
 				PUSH_STACK_OBJECT(o);
 			}
 			break;
-			case OP_NEWARRAY: {
+			case OP_NEW_ARRAY: {
 				int64_t size = POP_STACK();
 
-				Object *instance = new_object(TY_ARRAY, current->left);
+				Object *instance = new_object(1);
 				instance->array = malloc(sizeof(char) * size);
 
 				memset(instance->array, 0, sizeof(char) * size);
 
-				store_var_double(&instance->varlist, FIND_OR_INSERT_CONST(constants, "count"), size);
+				store_var_double(instance->varlist, FIND_OR_INSERT_CONST(constants, "count"), size);
 
 				PUSH_STACK_OBJECT(instance);
 			}

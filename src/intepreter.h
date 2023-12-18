@@ -17,7 +17,7 @@ typedef struct _Object {
 	int index;
 
 	char *array;
-	uint64_t varlist[2048];
+	uint64_t *varlist;
 
 	int refs;
 	int gc_refs;
@@ -48,7 +48,7 @@ int               load_file(const char *name);
 void              emit_print();
 void              store_var(double *vars, int index, Object *object);
 double            load_var(double *vars, int index);
-Object           *new_object(Type type, int index);
+Object           *new_object(int size);
 int64_t           eval(int pc);
 void              intepreter(const char *input);
 

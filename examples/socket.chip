@@ -116,7 +116,7 @@ class String {
 	char[] buffer;
 	int count;
 	method constructor() returns void {
-		this.buffer = new char[0];
+		this.buffer = new char[16];
 		this.count = 0;
 	}
 
@@ -221,7 +221,6 @@ class Random {
 
 class Header {
 	String buffer;
-	int dfvbsiffs;
 	method constructor() returns void {
 		this.buffer = new String();
 		this.buffer.append("HTTP/1.0 200 OK\r\n");
@@ -235,7 +234,7 @@ class Header {
 	}
 
 	method getBytes() returns char[] {
-		this.buffer.append("\r\n\r\n");
+		this.buffer.append("\r\n");
 		return this.buffer.getBytes();
 	}
 }
@@ -244,9 +243,7 @@ class Main {
 	method main() : [static] returns void {
 
 		Socket s = new Socket("0.0.0.0", 19132);
-
 		if(s.bind() eq 1) {
-
 			Console.write("http://0.0.0.0:19132\n");
 
 			while(1) {
@@ -260,11 +257,10 @@ class Main {
 				String body = new String();
 				int y = 0;
 
-				body.append("<pre>");
 				body.append(Art.triangle(13).getBytes());
-				body.append("</pre>");
+				body.append("\n");
 
-				while(y < 128) {
+				while(y < 32) {
 					int sqrt = Math.sqrt(y);
 					body.append(Convert.string(sqrt));
 					body.append(":");

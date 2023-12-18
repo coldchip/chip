@@ -13,6 +13,18 @@ Ty *type_current_class() {
 	return (Ty*)list_back(&types);
 }
 
+Ty *type_insert(char *name, int size) {
+	Ty *type = malloc(sizeof(Ty));
+	type->name = strdup(name);
+	type->size = size;
+	list_clear(&type->variables);
+	list_clear(&type->methods);
+
+	list_insert(list_end(&types), type);
+
+	return type;
+}
+
 Ty *type_get(char *name) {
 	for(ListNode *i = list_begin(&types); i != list_end(&types); i = list_next(i)) {
 		Ty *ty = (Ty*)i;
@@ -24,26 +36,18 @@ Ty *type_get(char *name) {
 	return NULL;
 }
 
-TyMethod *type_get_method(Ty *ty, char *name) {
-	for(ListNode *i = list_begin(&ty->methods); i != list_end(&ty->methods); i = list_next(i)) {
-		TyMethod *method = (TyMethod*)i;
-
-		if(strcmp(method->name, name) == 0) {
-			return method;
-		}
-	}
-	return NULL;
+int type_size(Ty *class) {
+	return (int)list_size(&class->variables);
 }
 
-Ty *type_insert(char *name, int size) {
-	Ty *type = malloc(sizeof(Ty));
-	type->name = strdup(name);
-	type->size = size;
-	list_clear(&type->methods);
+TyVariable *insert_variable(Ty *class, char *name, Ty *type) {
+	TyVariable *variable = malloc(sizeof(TyMethod));
+	variable->type = type;
+	variable->name = strdup(name);
+	variable->offset = type_size(class);
 
-	list_insert(list_end(&types), type);
-
-	return type;
+	list_insert(list_end(&class->variables), variable);
+	return variable;
 }
 
 TyMethod *insert_method(Ty *class, char *name, Ty **args, int args_count, Ty *type) {
@@ -53,4 +57,26 @@ TyMethod *insert_method(Ty *class, char *name, Ty **args, int args_count, Ty *ty
 
 	list_insert(list_end(&class->methods), method);
 	return method;
+}
+
+TyVariable *type_get_variable(Ty *class, char *name) {
+	for(ListNode *i = list_begin(&class->variables); i != list_end(&class->variables); i = list_next(i)) {
+		TyVariable *variable = (TyVariable*)i;
+
+		if(strcmp(variable->name, name) == 0) {
+			return variable;
+		}
+	}
+	return NULL;
+}
+
+TyMethod *type_get_method(Ty *class, char *name) {
+	for(ListNode *i = list_begin(&class->methods); i != list_end(&class->methods); i = list_next(i)) {
+		TyMethod *method = (TyMethod*)i;
+
+		if(strcmp(method->name, name) == 0) {
+			return method;
+		}
+	}
+	return NULL;
 }

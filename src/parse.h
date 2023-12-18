@@ -52,7 +52,6 @@ typedef struct _Node {
 	ListNode node;
 
 	NodeType type;
-	TyMethod *method;
 	struct _Node *data_type;
 	struct _Node *left;
 	struct _Node *right;
@@ -70,7 +69,10 @@ typedef struct _Node {
 
 	Token *token;
 
-	VarScope *var;
+	TyMethod *method;
+
+	int size;
+	int offset;
 } Node;
 
 Node              *new_node(NodeType type, Token *token);

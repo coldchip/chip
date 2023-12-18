@@ -290,14 +290,14 @@ void emit_asm() {
 			}
 			break;
 			case OP_SYSCALL: {
-				printf("\tsyscall\t\tARGLEN: %i\n", (int)ins->left);
+				printf("\tsyscall\n");
 			}
 			break;
 			case OP_NEWO: {
 				printf("\tnewo\t%i\n", (ins->left));
 			}
 			break;
-			case OP_NEWARRAY: {
+			case OP_NEW_ARRAY: {
 				printf("\tnew_array\t%i\n", (ins->left));
 			}
 			break;
@@ -432,22 +432,18 @@ static void gen_block(Node *node) {
 }
 
 static void gen_variable(Node *node) {
-	if(node->var) {
-		emit_op_left(OP_LOAD, node->var->offset);
-	} else {
-		emit_op_left(OP_PUSH, 0);
-	}
+	emit_op_left(OP_LOAD, node->offset);
 }
 
 static void gen_member(Node *node) {
 	if(node->body) {
 		gen_visitor(node->body);
-		emit_op_left(OP_LOAD_FIELD, emit_constant(&constants, node->token->data, true));
+		emit_op_left(OP_LOAD_FIELD, node->offset);
 	}
 }
 
 static void gen_new(Node *node) {
-	emit_op_left(OP_NEWO, emit_constant(&constants, node->token->data, true));
+	emit_op_left(OP_NEWO, node->size);
 
 	if(node->method) {
 		emit_op(OP_DUP);
@@ -468,7 +464,7 @@ static void gen_new(Node *node) {
 static void gen_new_array(Node *node) {
 	gen_visitor(node->args);
 
-	emit_op_left(OP_NEWARRAY, emit_constant(&constants, node->token->data, true));
+	emit_op_left(OP_NEW_ARRAY, emit_constant(&constants, node->token->data, true));
 }
 
 static void gen_array_member(Node *node) {
@@ -489,7 +485,7 @@ static void gen_expr(Node *node) {
 static void gen_decl(Node *node) {
 	if(node->body) {
 		gen_visitor(node->body);
-		emit_op_left(OP_STORE, node->var->offset);
+		emit_op_left(OP_STORE, node->offset);
 	}
 }
 
@@ -507,11 +503,11 @@ static void gen_store(Node *node) {
 			emit_op(OP_STORE_ARRAY);
 		} else {
 			/* x.y = z */
-			emit_op_left(OP_STORE_FIELD, emit_constant(&constants, node->token->data, true));
+			emit_op_left(OP_STORE_FIELD, node->offset);
 		}
 	} else {
 		/* x = y */
-		emit_op_left(OP_STORE, node->var->offset);
+		emit_op_left(OP_STORE, node->offset);
 	}
 
 }

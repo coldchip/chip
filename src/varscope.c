@@ -24,12 +24,7 @@ void varscope_pop() {
 }
 
 int varscope_size() {
-	int size = 0;
-	for(ListNode *v = list_begin(&varscope[sp]); v != list_end(&varscope[sp]); v = list_next(v)) {
-		VarScope *var = (VarScope*)v;
-		size += 1;
-	}
-	return size;
+	return (int)list_size(&varscope[sp]);
 }
 
 VarScope *varscope_add(char *name, Ty *type) {

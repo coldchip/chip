@@ -8,7 +8,6 @@
 Node *new_node(NodeType type, Token *token) {
 	Node *node  = malloc(sizeof(Node));
 	node->type  = type;
-	node->method = NULL;
 	node->token = token;
 	node->data_type = NULL;
 	node->left  = NULL;
@@ -19,6 +18,11 @@ Node *new_node(NodeType type, Token *token) {
 	node->condition = NULL;
 	node->args = NULL;
 	node->is_array = false;
+
+	node->method = NULL;
+
+	node->size = 0;
+	node->offset = 0;
 
 	list_clear(&node->bodylist);
 
