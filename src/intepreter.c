@@ -16,6 +16,7 @@
 #include <time.h>
 #include "chip.h"
 #include "list.h"
+#include "optimize.h"
 #include "intepreter.h"
 
 Object *cache[8192] = {}; 
@@ -256,14 +257,23 @@ int64_t eval(int pc) {
 	while(pc < code_size) {
 		Op *current = codes[pc];
 		switch(current->op) {
+			case OP_NOP: {
+				
+			}
+			break;
 			case OP_LOAD: {
 				int64_t var = stack[fp][current->left];
 				PUSH_STACK(var);
 			}
 			break;
 			case OP_STORE: {
-				int64_t v1 = POP_STACK();
-				stack[fp][current->left] = v1;
+				int64_t var = POP_STACK();
+				stack[fp][current->left] = var;
+			}
+			break;
+			case OP_MOV: {
+				int64_t var = TOP_STACK();
+				stack[fp][current->left] = var;
 			}
 			break;
 			case OP_DUP: {
@@ -615,6 +625,29 @@ int64_t eval(int pc) {
 			break;
 		}
 		pc++;
+		// printf("%i %i\n", pc, current->op);
+		// static int co = 0;
+		// printf("%i %i\n", co, current->op);
+		// if(current->op != OP_NOP) {
+		// 	co++;
+		// }
+		// switch(current->op) {
+		// 	case OP_LOAD: {
+		// 		printf("load\n");
+		// 	}
+		// 	break;
+		// 	case OP_PUSH: {
+		// 		printf("push\n");
+		// 	}
+		// 	break;
+		// 	case OP_SYSCALL: {
+		// 		printf("syscall\n");
+		// 	}
+		// 	break;
+		// 	default: {
+		// 		printf("%i %i\n", co, current->op);
+		// 	}
+		// }
 	}
 
 	return 0;

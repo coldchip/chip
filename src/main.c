@@ -2,7 +2,7 @@
 #include "chip.h"
 #include "list.h"
 #include "parse.h"
-#include "gen.h"
+#include "codegen.h"
 #include "semantic.h"
 
 int main(int argc, char const *argv[]) {

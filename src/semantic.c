@@ -124,7 +124,7 @@ void semantic_param(Node *node) {
 			exit(1);
 		}
 
-		VarScope *var = varscope_add(param->token->data, ty);
+		Var *var = varscope_add(param->token->data, ty);
 		param->offset = var->offset;
 	}
 }
@@ -221,7 +221,7 @@ void semantic_decl(Node *node) {
 		exit(1);
 	}
 
-	VarScope *var = varscope_add(node->token->data, left);
+	Var *var = varscope_add(node->token->data, left);
 	node->offset = var->offset;
 
 	if(node->body) {
@@ -294,8 +294,8 @@ Ty *semantic_unfold_expr(Node *node) {
 		}
 		break;
 		case ND_VARIABLE: {
-			VarScope *var = varscope_get(node->token->data);
-			Ty       *ty  = type_get(node->token->data);
+			Var *var = varscope_get(node->token->data);
+			Ty  *ty  = type_get(node->token->data);
 
 			if(!var && !ty) {
 				printf("undefined variable %s\n", node->token->data);

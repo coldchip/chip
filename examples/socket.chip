@@ -194,8 +194,7 @@ class Socket {
 
 	method accept() returns Client {
 		int fd = syscall(62, this.fd) : int;
-		Client c = new Client(fd);
-		return c;
+		return new Client(fd);
 	}
 }
 
@@ -260,7 +259,7 @@ class Main {
 				body.append(Art.triangle(13).getBytes());
 				body.append("\n");
 
-				while(y < 32) {
+				while(y < 128) {
 					int sqrt = Math.sqrt(y);
 					body.append(Convert.string(sqrt));
 					body.append(":");

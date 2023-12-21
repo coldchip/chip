@@ -5,8 +5,10 @@
 #include <stdint.h>
 
 typedef enum {
+	OP_NOP = 0,
 	OP_LOAD,
 	OP_STORE,
+	OP_MOV,
 	OP_POP,
 	OP_CMPEQ,
 	OP_CMPGT,
@@ -47,26 +49,6 @@ typedef struct _Constant {
 	bool obfuscated;
 } Constant;
 
-typedef struct _Class {
-	ListNode node;
-	char *name;
-	int index;
-	List method;
-} Class;
-
-
-typedef struct _Method {
-	ListNode node;
-	char *name;
-	int index;
-	List op;
-
-	struct _Op **codes;
-	int code_count;
-
-	Modifier modifier;
-} Method;
-
 typedef struct {
 	TyMethod *method;
 	char name[256];
@@ -82,6 +64,7 @@ typedef struct _Op {
 
 static int        rand_string();
 
+void              emit_label_to_address();
 LabelEntry        emit_get_label(const char *name);
 LabelEntry        emit_label(const char *name);
 static Op *       emit_op(OpType op);

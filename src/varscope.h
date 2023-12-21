@@ -8,13 +8,13 @@ typedef struct {
 	char *name;
 	Ty *type;
 	int offset;
-} VarScope;
+} Var;
 
 void                 varscope_clear();
 void                 varscope_push();
 void                 varscope_pop();
 int                  varscope_size();
-VarScope *           varscope_add(char *name, Ty *type);
-VarScope            *varscope_get(char *name);
+Var *                varscope_add(char *name, Ty *type);
+Var                 *varscope_get(char *name);
 
 #endif

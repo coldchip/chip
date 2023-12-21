@@ -1,7 +1,7 @@
 #ifndef INTEPRETER_H
 #define INTEPRETER_H
 
-#include "gen.h"
+#include "codegen.h"
 
 typedef enum {
 	TY_FUNCTION,
@@ -36,6 +36,7 @@ int FIND_OR_INSERT_CONST(char **constants, char *data) {
 	return 0;
 }
 
+#define TOP_STACK() (stack[fp][sp-1])
 #define POP_STACK() (sp--, stack[fp][sp])
 #define PUSH_STACK(d) (stack[fp][sp++] = d)
 #define POP_FRAME() (fp--)

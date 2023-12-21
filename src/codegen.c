@@ -3,7 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "chip.h"
-#include "gen.h"
+#include "codegen.h"
 
 static LabelEntry labels[8192] = {};
 int label_counter = 0;
@@ -16,6 +16,17 @@ static List constants;
 static int rand_string() {
 	static int result = 0;
     return result++;
+}
+
+void emit_label_to_address() {
+	for(int i = 0; i < code_counter; i++) {
+		Op *ins = codes[i];
+
+		if(ins->left_label) {
+			LabelEntry label = emit_get_label(ins->left_label);
+			ins->left = label.line;
+		}
+	}
 }
 
 LabelEntry emit_get_label(const char *name) {
@@ -31,6 +42,8 @@ LabelEntry emit_label(const char *name) {
 		.line = emit_op_get_counter(),
 	};
 	strcpy(label.name, name);
+
+	emit_op(OP_NOP);
 
 	labels[label_counter++] = label;
 
@@ -117,11 +130,6 @@ static void emit_file(List *constants) {
 
 	for(int i = 0; i < code_counter; i++) {
 		Op *ins = codes[i];
-
-		if(ins->left_label) {
-			LabelEntry label = emit_get_label(ins->left_label);
-			ins->left = label.line;
-		}
 
 		char op = ins->op;
 
@@ -217,12 +225,20 @@ void emit_asm() {
 		}
 
 		switch(ins->op) {
+			case OP_NOP: {
+				printf("\tnop\n");
+			}
+			break;
 			case OP_LOAD: {
 				printf("\tload\t%i\n", (ins->left));
 			}
 			break;
 			case OP_STORE: {
 				printf("\tstore\t%i\n", (ins->left));
+			}
+			break;
+			case OP_MOV: {
+				printf("\tmov\t%i\n", (ins->left));
 			}
 			break;
 			case OP_POP: {
@@ -714,7 +730,11 @@ void gen(Node *node) {
 	list_clear(&constants);
 	gen_visitor(node);
 
+	optimize_peephole(codes, code_counter);
+
 	emit_asm();
+
+	emit_label_to_address();
 
 	emit_file(&constants);
 }
