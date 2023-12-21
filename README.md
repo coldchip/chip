@@ -65,7 +65,7 @@ WB_42:
 	call	SUB_0x55f2855374e0_write
 	pop	
 	load	0
-	loadconst	2	//2
+	loadconst	2	// \n
 	push	1
 	call	SUB_0x55f2855374e0_write
 	pop	
