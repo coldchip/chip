@@ -240,52 +240,22 @@ class Header {
 
 class Main {
 	method main() : [static] returns void {
+		int n1 = 0;
+		int n2 = 1;
+		int n3;
+		int i;
+		int count = 10;    
 
-		Socket s = new Socket("0.0.0.0", 19132);
-		if(s.bind() eq 1) {
-			Console.write("http://0.0.0.0:19132\n");
+		while(i < 30) {    
+			n3 = n1 + n2;    
 
-			while(1) {
-				Client c = s.accept();
-				Console.write("hello client\n");
+			Console.write(Convert.string(n3));
+			Console.write("\n");    
 
-				char[] input = c.read(8192);
-				Console.write(input);
+			n1 = n2;    
+			n2 = n3;  
 
-
-				String body = new String();
-				int y = 0;
-
-				body.append(Art.triangle(13).getBytes());
-				body.append("\n");
-
-				while(y < 128) {
-					int sqrt = Math.sqrt(y);
-					body.append(Convert.string(sqrt));
-					body.append(":");
-					body.append(Convert.string(sqrt * sqrt));
-					body.append(":");
-					body.append(Random.string(32));
-					body.append("\n");
-					y = y + 1;
-				}
-
-				Header header = new Header();
-				header.append("Server", Convert.string(Math.sqrt(68)));
-				header.append("Content-Type", "text/plain");
-				header.append("Content-Length", Convert.string(body.length()));
-
-
-				c.write(header.getBytes());
-				c.write(body.getBytes());
-
-				c.close();
-
-				Console.write(Art.triangle(27).getBytes());
-			}
-		} else {
-			Console.write("unable to bind\n");
+			i = i + 1;
 		}
-
 	}
 }
