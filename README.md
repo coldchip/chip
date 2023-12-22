@@ -4,7 +4,7 @@ Chip is a compiled and interpreted programming language. The syntax was designed
 
 The whole point of this project is to not only create a functioning compiler but to teach how compilers work in the simplest way possible.
 
-The program uses a recursive descent parser to build a parse tree.
+The program uses a recursive descent parser to build a parse tree. 
 
 Unlike JVM, the bytecodes here will be stripped of any labels and the position of jumps will be calculated during the code generation stage. This is to enable to code to be more independent and also discourages decompilation. 
 

@@ -263,6 +263,11 @@ Ty *semantic_unfold_expr(Node *node) {
 			return left;
 		}
 		break;
+		case ND_NEG:
+		case ND_NOT: {
+			return semantic_unfold_expr(node->body);
+		}
+		break;
 		case ND_MEMBER: {
 			Ty *parent = semantic_unfold_expr(node->body);
 

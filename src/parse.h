@@ -38,6 +38,8 @@ typedef enum {
 	ND_MUL,
 	ND_DIV,
 	ND_MOD,
+	ND_NEG,
+	ND_NOT,
 	ND_OR,
 	ND_NUMBER,
 	ND_FLOAT,
@@ -112,6 +114,7 @@ static Node       *parse_equality(Token **current);
 static Node       *parse_relational(Token **current);
 static Node       *parse_add_sub(Token **current);
 static Node       *parse_mul_div(Token **current);
+static Node       *parse_unary(Token **current);
 static Node       *parse_postfix(Token **current);
 Node              *parse_primary(Token **current);
 

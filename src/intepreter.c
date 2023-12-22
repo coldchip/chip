@@ -130,6 +130,10 @@ void emit_print() {
 				printf("\t%i\tdiv\n", pc + 1);
 			}
 			break;
+			case OP_NEG: {
+				printf("\tneg\n");
+			}
+			break;
 			case OP_MOD: {
 				printf("\t%i\tmod\n", pc + 1);
 			}
@@ -377,6 +381,11 @@ int64_t eval(int pc) {
 				PUSH_STACK(c);
 			}
 			break;
+			case OP_NEG: {
+				int64_t a = POP_STACK();
+				PUSH_STACK(-a);
+			}
+			break;
 			case OP_FADD: {
 				double a = POP_STACK();
 				double b = POP_STACK();
@@ -515,16 +524,10 @@ int64_t eval(int pc) {
 					PUSH_STACK(newfd);
 				} else if(name == 63) {
 					int64_t fd = POP_STACK();
+					Object *buffer = POP_STACK_OBJECT();
 					int64_t size = POP_STACK();
 
-					Object *r = new_object(1);
-					
-					r->array = malloc(sizeof(char) * size);
-
-					char data[8192];
-					int actual = read((int)fd, r->array, size);
-
-					store_var_double(r->varlist, FIND_OR_INSERT_CONST(constants, "count"), actual);
+					int r = read((int)fd, buffer->array, size);
 
 					PUSH_STACK(r);
 				} else if(name == 64) {
@@ -542,6 +545,8 @@ int64_t eval(int pc) {
 					PUSH_STACK(0);
 				} else if(name == 13) {
 					begin = clock();
+				} else if(name == 6969) {
+					exit(0);
 				} else if(name == 14) {
 					clock_t end = clock();
 					double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
@@ -625,29 +630,6 @@ int64_t eval(int pc) {
 			break;
 		}
 		pc++;
-		// printf("%i %i\n", pc, current->op);
-		// static int co = 0;
-		// printf("%i %i\n", co, current->op);
-		// if(current->op != OP_NOP) {
-		// 	co++;
-		// }
-		// switch(current->op) {
-		// 	case OP_LOAD: {
-		// 		printf("load\n");
-		// 	}
-		// 	break;
-		// 	case OP_PUSH: {
-		// 		printf("push\n");
-		// 	}
-		// 	break;
-		// 	case OP_SYSCALL: {
-		// 		printf("syscall\n");
-		// 	}
-		// 	break;
-		// 	default: {
-		// 		printf("%i %i\n", co, current->op);
-		// 	}
-		// }
 	}
 
 	return 0;

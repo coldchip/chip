@@ -273,6 +273,10 @@ void emit_asm() {
 				printf("\tdiv\n");
 			}
 			break;
+			case OP_NEG: {
+				printf("\tneg\n");
+			}
+			break;
 			case OP_MOD: {
 				printf("\tmod\n");
 			}
@@ -480,7 +484,7 @@ static void gen_new(Node *node) {
 static void gen_new_array(Node *node) {
 	gen_visitor(node->args);
 
-	emit_op_left(OP_NEW_ARRAY, emit_constant(&constants, node->token->data, true));
+	emit_op_left(OP_NEW_ARRAY, 0);
 }
 
 static void gen_array_member(Node *node) {
@@ -577,9 +581,18 @@ static void gen_binary(Node *node) {
 	}
 }
 
-static void gen_char(Node *node) {
-	int t = (int)node->token->data[0];
+static void gen_neg(Node *node) {
+	gen_visitor(node->body);
+	emit_op(OP_NEG);
+}
 
+static void gen_not(Node *node) {
+	gen_visitor(node->body);
+	emit_op_left(OP_PUSH, 0);
+	emit_op(OP_CMPEQ);
+}
+
+static void gen_char(Node *node) {
 	emit_op_left(OP_PUSH, (float)node->token->data[0]);
 }
 
@@ -593,6 +606,23 @@ static void gen_float(Node *node) {
 
 static void gen_string(Node *node) {
 	emit_op_left(OP_LOAD_CONST, emit_constant(&constants, node->token->data, false));
+
+	// emit_op_left(OP_PUSH, strlen(node->token->data));
+	// emit_op_left(OP_NEW_ARRAY, 0);
+	// emit_op(OP_DUP);
+
+	// emit_op_left(OP_STORE, 128);
+
+	// for(int i = 0; i < strlen(node->token->data); i++) {
+	// 	emit_op_left(OP_PUSH, (char)node->token->data[i] - 20);
+	// 	emit_op_left(OP_PUSH, 20);
+	// 	emit_op(OP_ADD);
+
+	// 	emit_op_left(OP_LOAD, 128);
+	// 	emit_op_left(OP_PUSH, i);
+	// 	emit_op(OP_STORE_ARRAY);
+	// }
+
 }
 
 static void gen_return(Node *node) {
@@ -693,6 +723,14 @@ static void gen_visitor(Node *node) {
 		case ND_MOD:
 		case ND_OR: {
 			gen_binary(node);
+		}
+		break;
+		case ND_NEG: {
+			gen_neg(node);
+		}
+		break;
+		case ND_NOT: {
+			gen_not(node);
 		}
 		break;
 		case ND_CHAR: {

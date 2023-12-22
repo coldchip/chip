@@ -68,23 +68,39 @@ static Node *parse_add_sub(Token **current) {
 }
 
 static Node *parse_mul_div(Token **current) {
-	Node *node = parse_postfix(current);
+	Node *node = parse_unary(current);
 	for(;;) {
 		Token *token = *current;
 		if(consume_string(current, "*")) {
-			node = new_node_binary(ND_MUL, token, node, parse_postfix(current));
+			node = new_node_binary(ND_MUL, token, node, parse_unary(current));
 			continue;
 		}
 		if(consume_string(current, "/")) {
-			node = new_node_binary(ND_DIV, token, node, parse_postfix(current));
+			node = new_node_binary(ND_DIV, token, node, parse_unary(current));
 			continue;
 		}
 		if(consume_string(current, "%")) {
-			node = new_node_binary(ND_MOD, token, node, parse_postfix(current));
+			node = new_node_binary(ND_MOD, token, node, parse_unary(current));
 			continue;
 		}
 		return node;
 	}
+}
+
+static Node *parse_unary(Token **current) {
+	if(consume_string(current, "-")) {
+		Node *node = new_node(ND_NEG, NULL);
+		node->body = parse_postfix(current);
+		return node;
+	}
+
+	if(consume_string(current, "!")) {
+		Node *node = new_node(ND_NOT, NULL);
+		node->body = parse_postfix(current);
+		return node;
+	}
+
+	return parse_postfix(current);
 }
 
 static Node *parse_postfix(Token **current) {

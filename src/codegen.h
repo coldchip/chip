@@ -18,6 +18,7 @@ typedef enum {
 	OP_SUB,
 	OP_MUL,
 	OP_DIV,
+	OP_NEG,
 	/* floating point arithmetric operations */
 	OP_FADD,
 	OP_FSUB,
@@ -88,6 +89,8 @@ static void       gen_new(Node *node);
 static void       gen_new_array(Node *node);
 static void       gen_array_member(Node *node);
 static void       gen_expr(Node *node);
+static void       gen_neg(Node *node);
+static void       gen_not(Node *node);
 static void       gen_decl(Node *node);
 static void       gen_assign(Node *node);
 static void       gen_store(Node *node);
