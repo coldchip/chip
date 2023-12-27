@@ -50,10 +50,11 @@ TyVariable *insert_variable(Ty *class, char *name, Ty *type) {
 	return variable;
 }
 
-TyMethod *insert_method(Ty *class, char *name, Ty **args, int args_count, Ty *type) {
+TyMethod *insert_method(Ty *class, char *name, char *signature, Ty *type) {
 	TyMethod *method = malloc(sizeof(TyMethod));
 	method->type = type;
 	method->name = strdup(name);
+	method->signature = strdup(signature);
 
 	list_insert(list_end(&class->methods), method);
 	return method;
@@ -70,11 +71,11 @@ TyVariable *type_get_variable(Ty *class, char *name) {
 	return NULL;
 }
 
-TyMethod *type_get_method(Ty *class, char *name) {
+TyMethod *type_get_method(Ty *class, char *name, char *signature) {
 	for(ListNode *i = list_begin(&class->methods); i != list_end(&class->methods); i = list_next(i)) {
 		TyMethod *method = (TyMethod*)i;
 
-		if(strcmp(method->name, name) == 0) {
+		if(strcmp(method->name, name) == 0 && strcmp(method->signature, signature) == 0) {
 			return method;
 		}
 	}

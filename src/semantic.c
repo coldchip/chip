@@ -1,5 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include "chip.h"
 #include "parse.h"
 #include "varscope.h"
 #include "semantic.h"
@@ -40,7 +42,7 @@ void semantic_peek_class(Node *node) {
 						exit(1);
 					}
 
-					if(type_get_method(class_ty, method->token->data)) {
+					if(type_get_variable(class_ty, method->token->data)) {
 						printf("error, redefinition of class variable %s\n", method->token->data);
 						exit(1);
 					}
@@ -56,12 +58,14 @@ void semantic_peek_class(Node *node) {
 						exit(1);
 					}
 
-					if(type_get_method(class_ty, method->token->data)) {
-						printf("error, redefinition of method %s\n", method->token->data);
+					char *signature = semantic_param_signature(method->args);
+
+					if(type_get_method(class_ty, method->token->data, signature)) {
+						printf("error, redefinition of method %s(%s)\n", method->token->data, signature);
 						exit(1);
 					}
 
-					method->method = insert_method(class_ty, method->token->data, NULL, 0, ty);
+					method->method = insert_method(class_ty, method->token->data, signature, ty);
 				}
 				break;
 			}
@@ -108,6 +112,42 @@ void semantic_class_decl(Node *node) {
 	printf("\t - %s %s;\n", type->token->data, node->token->data);
 }
 
+char *semantic_param_signature(Node *node) {
+	char result[8192];
+	strcpy(result, "");
+
+	for(ListNode *p = list_begin(&node->bodylist); p != list_end(&node->bodylist); p = list_next(p)) {
+		Node *param = (Node*)p;
+
+		Node *type = param->data_type;
+		Ty *ty = type_get(type->token->data);
+		if(!ty) {
+			printf("unknown type %s in parameter\n", type->token->data);
+			exit(1);
+		}
+
+		strcat(result, ty->name);
+		strcat(result, ";");
+	}
+
+	return strdup(result);
+}
+
+char *semantic_arg_signature(Node *node) {
+	char result[8192];
+	strcpy(result, "");
+
+	for(ListNode *a = list_begin(&node->bodylist); a != list_end(&node->bodylist); a = list_next(a)) {
+		Node *arg = (Node*)a;
+		Ty *ty = semantic_unfold_expr(arg);
+
+		strcat(result, ty->name);
+		strcat(result, ";");
+	}
+
+	return strdup(result);
+}
+
 void semantic_param(Node *node) {
 	for(ListNode *p = list_begin(&node->bodylist); p != list_end(&node->bodylist); p = list_next(p)) {
 		Node *param = (Node*)p;
@@ -137,7 +177,7 @@ void semantic_arg(Node *node) {
 }
 
 void semantic_method(Ty *class_ty, Node *node) {
-	printf("\t - method %s %p\n", node->token->data, node->method);
+	printf("\t - method %s(%s)\n", node->token->data, node->method->signature);
 
 	varscope_push();
 	
@@ -285,9 +325,13 @@ Ty *semantic_unfold_expr(Node *node) {
 		case ND_CALL: {
 			Ty *parent = semantic_unfold_expr(node->body);
 
-			TyMethod *method = type_get_method(parent, node->token->data);
+			char *signature = semantic_arg_signature(node->args);
+
+			printf("CALL %s(%s)\n", node->token->data, signature);
+
+			TyMethod *method = type_get_method(parent, node->token->data, signature);
 			if(!method) {
-				printf("call to unknown member %s\n", node->token->data);
+				printf("call to unknown member %s(%s)\n", node->token->data, signature);
 				exit(1);
 			}
 
@@ -351,8 +395,15 @@ Ty *semantic_unfold_expr(Node *node) {
 
 			semantic_arg(node->args);
 
+			char *signature  = semantic_arg_signature(node->args);
+			TyMethod *method = type_get_method(ty, "constructor", signature);
+			if(!method) {
+				printf("call to unknown constructor %s of type %s\n", signature, type->token->data);
+				exit(1);
+			}
+
 			node->size   = type_size(ty);
-			node->method = type_get_method(ty, "constructor");
+			node->method = method;
 
 			return ty;
 		}
@@ -366,8 +417,6 @@ Ty *semantic_unfold_expr(Node *node) {
 			}
 
 			semantic_unfold_expr(node->args);
-
-			node->method = type_get_method(ty, "constructor");
 
 			return ty;
 		}

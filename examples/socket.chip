@@ -120,6 +120,18 @@ class Console {
 			i = i + 1;
 		}
 	}
+
+	method write(int num) : [static] returns void {
+		char[] a = Convert.string(num);
+
+		this.write(a);
+	}
+
+	method write(String str) : [static] returns void {
+		char[] a = str.getBytes();
+
+		this.write(a);
+	}
 }
 
 class String {
@@ -128,6 +140,11 @@ class String {
 	method constructor() returns void {
 		this.buffer = new char[16];
 		this.count = 0;
+	}
+
+	method constructor(char[] a) returns void {
+		this.constructor();
+		this.append(a);
 	}
 
 	method expandCapacity(int minimumCapacity) returns int {
@@ -158,6 +175,12 @@ class String {
 		return 0;
 	}
 
+	method append(String bb) returns void {
+		this.append(bb.getBytes());
+
+		return 0;
+	}
+
 	method getBytes() returns char[] {
 		char[] finals = new char[this.count];
 		syscall(8000, finals, 0, this.buffer, 0, this.count) : void;
@@ -181,6 +204,11 @@ class Client {
 
 	method write(char[] data) returns int {
 		return syscall(64, this.fd, data) : int;
+	}
+
+	method write(String str) : [static] returns int {
+		char[] a = str.getBytes();
+		return this.write(a);
 	}
 
 	method close() returns void {
@@ -213,7 +241,7 @@ class Random {
 		return syscall(33) : void;
 	}
 
-	method string(int length) returns char[] {
+	method string(int length) returns String {
 		char[] set = "abcdef0123456789";
 
 		char[] result = new char[length];
@@ -224,7 +252,7 @@ class Random {
 			i = i + 1;
 		}
 
-		return result;
+		return new String(result);
 	}
 }
 
@@ -242,14 +270,16 @@ class Header {
 		this.buffer.append("\r\n");
 	}
 
-	method getBytes() returns char[] {
+	method toString() returns String {
 		this.buffer.append("\r\n");
-		return this.buffer.getBytes();
+		return this.buffer;
 	}
 }
 
 class Main {
 	method main() : [static] returns void {
+		int z = 999;
+
 		Socket s = new Socket("0.0.0.0", 19132);
 		if(s.bind()) {
 			Console.write("http://0.0.0.0:19132\n");
@@ -264,13 +294,13 @@ class Main {
 				Console.write(input);
 
 
-				String body = new String();
+				String body = new String("hello\n");
 				int y = 0;
 
-				body.append(Art.triangle(13).getBytes());
+				body.append(Art.triangle(13));
 				body.append("\n");
 
-				while(y < 16) {
+				while(y < 8192) {
 					int sqrt = Math.sqrt(y);
 					body.append(Convert.string(sqrt));
 					body.append(":");
@@ -289,12 +319,12 @@ class Main {
 				header.append("Content-Length", Convert.string(body.length()));
 
 
-				c.write(header.getBytes());
-				c.write(body.getBytes());
+				c.write(header.toString());
+				c.write(body);
 
 				c.close();
 
-				Console.write(Art.triangle(27).getBytes());
+				Console.write(Art.triangle(27));
 			}
 		} else {
 			Console.write("unable to bind\n");

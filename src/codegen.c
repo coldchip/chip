@@ -112,7 +112,7 @@ static void emit_file(List *constants) {
 		exit(1);
 	}
 
-	TyMethod *m = type_get_method(c, "main");
+	TyMethod *m = type_get_method(c, "main", "");
 	if(!m) {
 		printf("entry point method main not found\n");
 		exit(1);

@@ -7,6 +7,8 @@ void semantic_peek_class(Node *node);
 
 void semantic_program(Node *node);
 void semantic_class(Node *node);
+char *semantic_param_signature(Node *node);
+char *semantic_arg_signature(Node *node);
 void semantic_param(Node *node);
 void semantic_arg(Node *node);
 void semantic_method(Ty *class_ty, Node *node);
