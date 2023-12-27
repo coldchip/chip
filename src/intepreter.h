@@ -46,7 +46,6 @@ int FIND_OR_INSERT_CONST(char **constants, char *data) {
 
 
 int               load_file(const char *name);
-void              emit_print();
 void              store_var(double *vars, int index, Object *object);
 double            load_var(double *vars, int index);
 Object           *new_object(int size);

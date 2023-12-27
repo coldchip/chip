@@ -4,45 +4,53 @@
 #include "parse.h"
 #include <stdint.h>
 
+#define LIST_OF_OPS \
+	X(OP_NOP, "nop") \
+	X(OP_LOAD, "load") \
+	X(OP_STORE, "store") \
+	X(OP_MOV, "mov") \
+	X(OP_POP, "pop") \
+	X(OP_CMPEQ, "cmpeq") \
+	X(OP_CMPGT, "cmpgt") \
+	X(OP_CMPLT, "cmplt") \
+	X(OP_ADD, "add") \
+	X(OP_SUB, "sub") \
+	X(OP_MUL, "mul") \
+	X(OP_DIV, "div") \
+	X(OP_NEG, "neg") \
+	X(OP_FADD, "fadd") \
+	X(OP_FSUB, "fsub") \
+	X(OP_FMUL, "fmul") \
+	X(OP_FDIV, "fdiv") \
+	X(OP_MOD, "mod") \
+	X(OP_OR, "or") \
+	X(OP_DUP, "dup") \
+	X(OP_PUSH, "push") \
+	X(OP_LOAD_CONST, "loadconst") \
+	X(OP_LOAD_FIELD, "loadfield") \
+	X(OP_STORE_FIELD, "storefield") \
+	X(OP_CALL, "call") \
+	X(OP_SYSCALL, "syscall") \
+	X(OP_NEWO, "newo") \
+	X(OP_NEW_ARRAY, "newarr") \
+	X(OP_LOAD_ARRAY, "loadarr") \
+	X(OP_STORE_ARRAY, "storearr") \
+	X(OP_JE, "je") \
+	X(OP_JMP, "jmp") \
+	X(OP_RET, "ret")
+
+
+#define X(name, display) name,
 typedef enum {
-	OP_NOP = 0,
-	OP_LOAD,
-	OP_STORE,
-	OP_MOV,
-	OP_POP,
-	OP_CMPEQ,
-	OP_CMPGT,
-	OP_CMPLT,
-	/* integer arithmetric operations */
-	OP_ADD,
-	OP_SUB,
-	OP_MUL,
-	OP_DIV,
-	OP_NEG,
-	/* floating point arithmetric operations */
-	OP_FADD,
-	OP_FSUB,
-	OP_FMUL,
-	OP_FDIV,
-	OP_MOD,
-	OP_OR,
-
-	OP_DUP, // duplicate from stack top
-
-	OP_PUSH,
-	OP_LOAD_CONST,
-	OP_LOAD_FIELD,
-	OP_STORE_FIELD,
-	OP_CALL,
-	OP_SYSCALL,
-	OP_NEWO,
-	OP_NEW_ARRAY,
-	OP_LOAD_ARRAY,
-	OP_STORE_ARRAY,
-	OP_JE, // pops 2 items from stack and compare, jumps to x if true
-	OP_JMP,    // unconditional jump
-	OP_RET
+  LIST_OF_OPS
 } OpType;
+#undef X
+
+#define X(name, display) display,
+static char *op_display[] = {
+  LIST_OF_OPS
+};
+#undef X
 
 typedef struct _Constant {
 	ListNode node;

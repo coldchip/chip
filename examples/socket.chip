@@ -294,7 +294,7 @@ class Main {
 				Console.write(input);
 
 
-				String body = new String("hello\n");
+				String body = new String("hello world\n");
 				int y = 0;
 
 				body.append(Art.triangle(13));

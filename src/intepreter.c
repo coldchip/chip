@@ -86,124 +86,6 @@ int load_file(const char *name) {
 	return entry;
 }
 
-void emit_print() {
-	for(int pc = 0; pc < code_size; pc++) {
-		Op *ins = codes[pc];
-		switch(ins->op) {
-			case OP_LOAD: {
-				printf("\t%i\tload\t%s\n", pc + 1, GET_CONST(ins->left));
-			}
-			break;
-			case OP_STORE: {
-				printf("\t%i\tstore\t%s\n", pc + 1, GET_CONST(ins->left));
-			}
-			break;
-			case OP_POP: {
-				printf("\t%i\tpop\t\n", pc + 1);
-			}
-			break;
-			case OP_CMPEQ: {
-				printf("\t%i\tcmpeq\n", pc + 1);
-			}
-			break;
-			case OP_CMPGT: {
-				printf("\t%i\tcmpgt\n", pc + 1);
-			}
-			break;
-			case OP_CMPLT: {
-				printf("\t%i\tcmplt\n", pc + 1);
-			}
-			break;
-			case OP_ADD: {
-				printf("\t%i\tadd\n", pc + 1);
-			}
-			break;
-			case OP_SUB: {
-				printf("\t%i\tsub\n", pc + 1);
-			}
-			break;
-			case OP_MUL: {
-				printf("\t%i\tmul\n", pc + 1);
-			}
-			break;
-			case OP_DIV: {
-				printf("\t%i\tdiv\n", pc + 1);
-			}
-			break;
-			case OP_NEG: {
-				printf("\tneg\n");
-			}
-			break;
-			case OP_MOD: {
-				printf("\t%i\tmod\n", pc + 1);
-			}
-			break;
-			case OP_OR: {
-				printf("\t%i\tor\n", pc + 1);
-			}
-			break;
-			case OP_DUP: {
-				printf("\t%i\tdup\n", pc + 1);
-			}
-			break;
-			case OP_PUSH: {
-				printf("\t%i\tpush\t%li\n", pc + 1, ins->left);
-			}
-			break;
-			case OP_LOAD_CONST: {
-				printf("\t%i\tloadconst\t%i\t//%s\n", pc + 1, (int)ins->left, GET_CONST(ins->left));
-			}
-			break;
-			case OP_LOAD_FIELD: {
-				printf("\t%i\tloadmember\t%s\n", pc + 1, GET_CONST(ins->left));
-			}
-			break;
-			case OP_STORE_FIELD: {
-				printf("\t%i\tstoremember\t%s\n", pc + 1, GET_CONST(ins->left));
-			}
-			break;
-			case OP_CALL: {
-				uint32_t args = (((uint32_t)ins->left) >> 24) & 0xFF;
-				uint32_t jmp = ((uint32_t)ins->left) & 0x00FFFFFF;
-				printf("\t%i\tcall\t%i, %i\n", pc + 1, jmp, args);
-			}
-			break;
-			case OP_SYSCALL: {
-				printf("\t%i\tsyscall\t\tARGLEN: %i\n", pc + 1, (int)ins->left);
-			}
-			break;
-			case OP_NEWO: {
-				printf("\t%i\tnewo\t%s\n", pc + 1, GET_CONST(ins->left));
-			}
-			break;
-			case OP_NEW_ARRAY: {
-				printf("\t%i\tnew_array\t%s\n", pc + 1, GET_CONST(ins->left));
-			}
-			break;
-			case OP_LOAD_ARRAY: {
-				printf("\t%i\tload_array\n", pc + 1);
-			}
-			break;
-			case OP_STORE_ARRAY: {
-				printf("\t%i\tstore_array\n", pc + 1);
-			}
-			break;
-			case OP_JE: {
-				printf("\t%i\tje\t%i\n", pc + 1, (int)ins->left);
-			}
-			break;
-			case OP_JMP: {
-				printf("\t%i\tjmp\t%i\n", pc + 1, (int)ins->left);
-			}
-			break;
-			case OP_RET: {
-				printf("\t%i\tret\t\n", pc + 1);
-			}
-			break;
-		}
-	}
-}
-
 void store_var(double *vars, int index, Object *object) {
 	*(Object **)&vars[index] = object;
 }
@@ -640,8 +522,6 @@ void intepreter(const char *input) {
 	signal(SIGPIPE, SIG_IGN);
 
 	int entry = load_file(input);
-
-	// emit_print();
 
 	eval(entry - 1);
 }

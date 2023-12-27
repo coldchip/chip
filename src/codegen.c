@@ -152,25 +152,12 @@ static void emit_file(List *constants) {
 
 	for(ListNode *c = list_begin(constants); c != list_end(constants); c = list_next(c)) {
 		Constant *constant = (Constant*)c;
+	
+		int constant_size = strlen(constant->data);
 
-		if(
-			constant->obfuscated && 
-			!strcasecmp(constant->data, "this") == 0 && 
-			!strcasecmp(constant->data, "count") == 0
-		) {
-
-			char obfuscated2[1024] = "";
-
-			int constant_size = strlen(obfuscated2);
-			fwrite(&constant_size, sizeof(constant_size), 1, cst);
-			fwrite(obfuscated2, sizeof(char), constant_size, cst);
-		} else {
-
-			int constant_size = strlen(constant->data);
-
-			fwrite(&constant_size, sizeof(constant_size), 1, cst);
-			fwrite(constant->data, sizeof(char), constant_size, cst);
-		}
+		fwrite(&constant_size, sizeof(constant_size), 1, cst);
+		fwrite(constant->data, sizeof(char), constant_size, cst);
+		
 	}
 
 	fclose(cst);
@@ -224,123 +211,10 @@ void emit_asm() {
 			}
 		}
 
-		switch(ins->op) {
-			case OP_NOP: {
-				printf("\tnop\n");
-			}
-			break;
-			case OP_LOAD: {
-				printf("\tload\t%i\n", (ins->left));
-			}
-			break;
-			case OP_STORE: {
-				printf("\tstore\t%i\n", (ins->left));
-			}
-			break;
-			case OP_MOV: {
-				printf("\tmov\t%i\n", (ins->left));
-			}
-			break;
-			case OP_POP: {
-				printf("\tpop\t\n");
-			}
-			break;
-			case OP_CMPEQ: {
-				printf("\tcmpeq\n");
-			}
-			break;
-			case OP_CMPGT: {
-				printf("\tcmpgt\n");
-			}
-			break;
-			case OP_CMPLT: {
-				printf("\tcmplt\n");
-			}
-			break;
-			case OP_ADD: {
-				printf("\tadd\n");
-			}
-			break;
-			case OP_SUB: {
-				printf("\tsub\n");
-			}
-			break;
-			case OP_MUL: {
-				printf("\tmul\n");
-			}
-			break;
-			case OP_DIV: {
-				printf("\tdiv\n");
-			}
-			break;
-			case OP_NEG: {
-				printf("\tneg\n");
-			}
-			break;
-			case OP_MOD: {
-				printf("\tmod\n");
-			}
-			break;
-			case OP_OR: {
-				printf("\tor\n");
-			}
-			break;
-			case OP_DUP: {
-				printf("\tdup\n");
-			}
-			break;
-			case OP_PUSH: {
-				printf("\tpush\t%li\n", ins->left);
-			}
-			break;
-			case OP_LOAD_CONST: {
-				printf("\tloadconst\t%i\t//%i\n", (int)ins->left, (ins->left));
-			}
-			break;
-			case OP_LOAD_FIELD: {
-				printf("\tloadfield\t%i\n", ins->left);
-			}
-			break;
-			case OP_STORE_FIELD: {
-				printf("\tstorefield\t%i\n", ins->left);
-			}
-			break;
-			case OP_CALL: {
-				printf("\tcall\t%s\n", ins->left_label);
-			}
-			break;
-			case OP_SYSCALL: {
-				printf("\tsyscall\n");
-			}
-			break;
-			case OP_NEWO: {
-				printf("\tnewo\t%i\n", (ins->left));
-			}
-			break;
-			case OP_NEW_ARRAY: {
-				printf("\tnew_array\t%i\n", (ins->left));
-			}
-			break;
-			case OP_LOAD_ARRAY: {
-				printf("\tload_array\n");
-			}
-			break;
-			case OP_STORE_ARRAY: {
-				printf("\tstore_array\n");
-			}
-			break;
-			case OP_JE: {
-				printf("\tje\t%s\n", ins->left_label);
-			}
-			break;
-			case OP_JMP: {
-				printf("\tjmp\t%s\n", ins->left_label);
-			}
-			break;
-			case OP_RET: {
-				printf("\tret\t\n");
-			}
-			break;
+		if(ins->left_label) {
+			printf("\t%s\t%s\n", op_display[ins->op], ins->left_label);
+		} else {
+			printf("\t%s\t%i\n", op_display[ins->op], ins->left);
 		}
 	}
 }
