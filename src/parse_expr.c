@@ -7,16 +7,23 @@
 #include "type.h"
 
 Node *parse_expr(Token **current) {
+	Node *node = parse_assign(current);
+	return node;
+}
+
+static Node *parse_assign(Token **current) {
 	Node *node = parse_or(current);
+	if(consume_string(current, "=")) {
+		return new_node_binary(ND_ASSIGN, NULL, node, parse_assign(current));
+	}
 	return node;
 }
 
 static Node *parse_or(Token **current) {
 	Node *node = parse_equality(current);
 	for(;;) {
-		Token *token = *current;
 		if(consume_string(current, "or")) {
-			node = new_node_binary(ND_OR, token, node, parse_equality(current));
+			node = new_node_binary(ND_OR, NULL, node, parse_equality(current));
 			continue;
 		}
 		return node;
@@ -26,9 +33,8 @@ static Node *parse_or(Token **current) {
 static Node *parse_equality(Token **current) {
 	Node *node = parse_relational(current);
 	for(;;) {
-		Token *token = *current;
 		if(consume_string(current, "eq")) {
-			node = new_node_binary(ND_EQ, token, node, parse_relational(current));
+			node = new_node_binary(ND_EQ, NULL, node, parse_relational(current));
 			continue;
 		}
 		return node;
@@ -38,13 +44,12 @@ static Node *parse_equality(Token **current) {
 static Node *parse_relational(Token **current) {
 	Node *node = parse_add_sub(current);
 	for(;;) {
-		Token *token = *current;
 		if(consume_string(current, ">")) {
-			node = new_node_binary(ND_GT, token, node, parse_add_sub(current));
+			node = new_node_binary(ND_GT, NULL, node, parse_add_sub(current));
 			continue;
 		}
 		if(consume_string(current, "<")) {
-			node = new_node_binary(ND_LT, token, node, parse_add_sub(current));
+			node = new_node_binary(ND_LT, NULL, node, parse_add_sub(current));
 			continue;
 		}
 		return node;
@@ -54,13 +59,12 @@ static Node *parse_relational(Token **current) {
 static Node *parse_add_sub(Token **current) {
 	Node *node = parse_mul_div(current);
 	for(;;) {
-		Token *token = *current;
 		if(consume_string(current, "+")) {
-			node = new_node_binary(ND_ADD, token, node, parse_mul_div(current));
+			node = new_node_binary(ND_ADD, NULL, node, parse_mul_div(current));
 			continue;
 		}
 		if(consume_string(current, "-")) {
-			node = new_node_binary(ND_SUB, token, node, parse_mul_div(current));
+			node = new_node_binary(ND_SUB, NULL, node, parse_mul_div(current));
 			continue;
 		}
 		return node;
@@ -70,17 +74,16 @@ static Node *parse_add_sub(Token **current) {
 static Node *parse_mul_div(Token **current) {
 	Node *node = parse_unary(current);
 	for(;;) {
-		Token *token = *current;
 		if(consume_string(current, "*")) {
-			node = new_node_binary(ND_MUL, token, node, parse_unary(current));
+			node = new_node_binary(ND_MUL, NULL, node, parse_unary(current));
 			continue;
 		}
 		if(consume_string(current, "/")) {
-			node = new_node_binary(ND_DIV, token, node, parse_unary(current));
+			node = new_node_binary(ND_DIV, NULL, node, parse_unary(current));
 			continue;
 		}
 		if(consume_string(current, "%")) {
-			node = new_node_binary(ND_MOD, token, node, parse_unary(current));
+			node = new_node_binary(ND_MOD, NULL, node, parse_unary(current));
 			continue;
 		}
 		return node;
@@ -154,9 +157,13 @@ Node *parse_primary(Token **current) {
 		if(equals_string(current, "[")) {
 			Node *node = new_node(ND_NEWARRAY, name);
 			node->data_type = type;
+			
 			expect_string(current, "[");
 			node->args = parse_expr(current);
 			expect_string(current, "]");
+
+			node->array_depth++;
+
 			return node;
 		} else {
 			Node *node = new_node(ND_NEW, name);
@@ -191,7 +198,7 @@ Node *parse_primary(Token **current) {
 	} else if(consume_type(current, TK_STRING)) {
 		return new_node(ND_STRING, token);
 	} else {
-		printf("error, unexpected token '%s'\n", (*current)->data);
+		printf("error, unexpected token '%s', expecting expression\n", (*current)->data);
 		exit(1);
 	}
 }

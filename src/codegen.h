@@ -18,10 +18,6 @@
 	X(OP_MUL, "mul") \
 	X(OP_DIV, "div") \
 	X(OP_NEG, "neg") \
-	X(OP_FADD, "fadd") \
-	X(OP_FSUB, "fsub") \
-	X(OP_FMUL, "fmul") \
-	X(OP_FDIV, "fdiv") \
 	X(OP_MOD, "mod") \
 	X(OP_OR, "or") \
 	X(OP_DUP, "dup") \

@@ -26,7 +26,6 @@ typedef struct {
 } TyMethod;
 
 void                 type_clear();
-Ty                  *type_current_class();
 Ty *                 type_insert(char *name, int size);
 Ty                  *type_get(char *name);
 int                  type_size(Ty *class);

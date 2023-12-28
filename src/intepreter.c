@@ -144,7 +144,7 @@ int64_t eval(int pc) {
 		Op *current = codes[pc];
 		switch(current->op) {
 			case OP_NOP: {
-				
+
 			}
 			break;
 			case OP_LOAD: {
@@ -163,8 +163,7 @@ int64_t eval(int pc) {
 			}
 			break;
 			case OP_DUP: {
-				int64_t a = POP_STACK();
-				PUSH_STACK(a);
+				int64_t a = TOP_STACK();
 				PUSH_STACK(a);
 			}
 			break;
@@ -266,38 +265,6 @@ int64_t eval(int pc) {
 			case OP_NEG: {
 				int64_t a = POP_STACK();
 				PUSH_STACK(-a);
-			}
-			break;
-			case OP_FADD: {
-				double a = POP_STACK();
-				double b = POP_STACK();
-				double c = b + a;
-				int64_t d = *(int64_t*)&c;
-				PUSH_STACK(d);
-			}
-			break;
-			case OP_FSUB: {
-				double a = POP_STACK();
-				double b = POP_STACK();
-				double c = b - a;
-				int64_t d = *(int64_t*)&c;
-				PUSH_STACK(d);
-			}
-			break;
-			case OP_FMUL: {
-				double a = POP_STACK();
-				double b = POP_STACK();
-				double c = b * a;
-				int64_t d = *(int64_t*)&c;
-				PUSH_STACK(d);
-			}
-			break;
-			case OP_FDIV: {
-				double a = POP_STACK();
-				double b = POP_STACK();
-				double c = b / a;
-				int64_t d = *(int64_t*)&c;
-				PUSH_STACK(d);
 			}
 			break;
 			case OP_MOD: {

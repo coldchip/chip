@@ -9,10 +9,6 @@ void type_clear() {
 	list_clear(&types);
 }
 
-Ty *type_current_class() {
-	return (Ty*)list_back(&types);
-}
-
 Ty *type_insert(char *name, int size) {
 	Ty *type = malloc(sizeof(Ty));
 	type->name = strdup(name);

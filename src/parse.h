@@ -63,7 +63,7 @@ typedef struct _Node {
 	struct _Node *body;
 	struct _Node *alternate;
 
-	bool is_array;
+	int array_depth;
 
 	List bodylist;
 
@@ -84,7 +84,6 @@ bool               is_class(Token **current);
 bool               is_method(Token **current);
 bool               is_call(Token **current);
 bool               is_declaration(Token **current);
-bool               is_assign(Token **current);
 
 static Node       *parse_program(Token **current);
 Node              *parse_basetype(Token **current);
@@ -97,7 +96,6 @@ Node              *parse_params(Token **current);
 Node              *parse_arg(Token **current);
 Node              *parse_args(Token **current);
 static Node       *parse_stmt(Token **current);
-static Node       *parse_expr_stmt(Token **current);
 
 Node              *parse(List *tokens);
 
@@ -109,6 +107,7 @@ void               normalize_type(Node *node);
 */
 
 Node              *parse_expr(Token **current);
+static Node       *parse_assign(Token **current);
 static Node       *parse_or(Token **current);
 static Node       *parse_equality(Token **current);
 static Node       *parse_relational(Token **current);

@@ -11,6 +11,8 @@
 	Chip semantic analyzer
 */
 
+Ty *return_ty = NULL;
+
 /*
 	process class & method types without statements 
 */
@@ -94,7 +96,10 @@ void semantic_class(Node *node) {
 			}
 			break;
 			case ND_METHOD: {
-				semantic_method(ty, entry);
+				varscope_push();
+				varscope_add("this", ty);
+				semantic_method(entry);
+				varscope_pop();
 			}
 			break;
 		}
@@ -116,6 +121,10 @@ char *semantic_param_signature(Node *node) {
 	char result[8192];
 	strcpy(result, "");
 
+	if(list_size(&node->bodylist) == 0) {
+		strcat(result, "void;");
+	}
+
 	for(ListNode *p = list_begin(&node->bodylist); p != list_end(&node->bodylist); p = list_next(p)) {
 		Node *param = (Node*)p;
 
@@ -136,6 +145,10 @@ char *semantic_param_signature(Node *node) {
 char *semantic_arg_signature(Node *node) {
 	char result[8192];
 	strcpy(result, "");
+
+	if(list_size(&node->bodylist) == 0) {
+		strcat(result, "void;");
+	}
 
 	for(ListNode *a = list_begin(&node->bodylist); a != list_end(&node->bodylist); a = list_next(a)) {
 		Node *arg = (Node*)a;
@@ -176,12 +189,11 @@ void semantic_arg(Node *node) {
 	}
 }
 
-void semantic_method(Ty *class_ty, Node *node) {
-	printf("\t - method %s(%s)\n", node->token->data, node->method->signature);
+void semantic_method(Node *node) {
+	Node *type = node->data_type;
+	return_ty = type_get(type->token->data);
 
-	varscope_push();
-	
-	varscope_add("this", class_ty);
+	printf("\t - method %s(%s) : %s\n", node->token->data, node->method->signature, return_ty->name);
 
 	if(node->args) {
 		semantic_param(node->args);
@@ -192,7 +204,6 @@ void semantic_method(Ty *class_ty, Node *node) {
 		semantic_stmt(stmt);
 
 	}
-	varscope_pop();
 }
 
 void semantic_stmt(Node *node) {
@@ -220,10 +231,6 @@ void semantic_stmt(Node *node) {
 			semantic_decl(node);
 		}
 		break;
-		case ND_ASSIGN: {
-			semantic_assign(node);
-		}
-		break;
 		case ND_EXPR: {
 			semantic_expr(node);
 		}
@@ -245,7 +252,14 @@ void semantic_while(Node *node) {
 }
 
 void semantic_return(Node *node) {
-	semantic_unfold_expr(node->body);
+	Ty *ty = type_get("void");
+	if(node->body) {
+		ty = semantic_unfold_expr(node->body);
+	}
+
+	if(ty != return_ty) {
+		printf("warning: returning type of: %s, expected: %s\n", ty->name, return_ty->name);
+	}
 }
 
 void semantic_decl(Node *node) {
@@ -273,22 +287,24 @@ void semantic_decl(Node *node) {
 	}
 }
 
-void semantic_assign(Node *node) {
-	Ty *left = semantic_unfold_expr(node->left);
-	Ty *right = semantic_unfold_expr(node->right);
-
-	if(left != right) {
-		printf("error: incompatible types: %s cannot be converted to %s\n", right->name, left->name);
-		exit(1);
-	}
-}
-
 void semantic_expr(Node *node) {
 	semantic_unfold_expr(node->body);
 }
 
 Ty *semantic_unfold_expr(Node *node) {
 	switch(node->type) {
+		case ND_ASSIGN: {
+			Ty *left = semantic_unfold_expr(node->left);
+			Ty *right = semantic_unfold_expr(node->right);
+
+			if(left != right) {
+				printf("error: incompatible types: %s cannot be converted to %s\n", right->name, left->name);
+				exit(1);
+			}
+
+			return left;
+		}
+		break;
 		case ND_EQ:
 		case ND_GT:
 		case ND_LT:
@@ -326,8 +342,6 @@ Ty *semantic_unfold_expr(Node *node) {
 			Ty *parent = semantic_unfold_expr(node->body);
 
 			char *signature = semantic_arg_signature(node->args);
-
-			printf("CALL %s(%s)\n", node->token->data, signature);
 
 			TyMethod *method = type_get_method(parent, node->token->data, signature);
 			if(!method) {

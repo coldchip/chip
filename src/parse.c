@@ -17,7 +17,7 @@ Node *new_node(NodeType type, Token *token) {
 	node->alternate = NULL;
 	node->condition = NULL;
 	node->args = NULL;
-	node->is_array = false;
+	node->array_depth = 0;
 
 	node->method = NULL;
 
@@ -82,34 +82,14 @@ bool is_declaration(Token **current) {
 	Token *state = *current;
 
 	if(consume_type(current, TK_IDENTIFIER)) {
-		if(consume_type(current, TK_IDENTIFIER)) {
-			*current = state;
-			return true;
-		}
-		if(consume_string(current, "[")) {
-			if(consume_string(current, "]")) {
-				if(consume_type(current, TK_IDENTIFIER)) {
-					*current = state;
-					return true;
-				}
+		while(consume_string(current, "[")) {
+			if(!consume_string(current, "]")) {
+				*current = state;
+				return false;
 			}
 		}
-	}
-	*current = state;
-	return false;
-}
-
-/* 
-	a = (expr)
-*/
-
-bool is_assign(Token **current) {
-	Token *state = *current;
-
-	/* todo: improve */
-	if(parse_expr(current)) {
-		if(consume_string(current, "=")) {
-			*current = state;			
+		if(consume_type(current, TK_IDENTIFIER)) {
+			*current = state;
 			return true;
 		}
 	}
@@ -140,15 +120,15 @@ Node *parse_basetype(Token **current) {
 }
 
 /*
-	type?[]
+	type?[]?...[]
 */
 
 Node *parse_type(Token **current) {
 	Node *node = parse_basetype(current);
-	if(consume_string(current, "[")) {
-		node->is_array = true;
+	while(consume_string(current, "[")) {
 		expect_string(current, "]");
 	}
+
 	return node;
 }
 
@@ -315,20 +295,12 @@ static Node *parse_stmt(Token **current) {
 		return node;
 	} else if(consume_string(current, "return")) {
 		Node *node = new_node(ND_RETURN, NULL);
-		node->body = parse_expr(current);
+		if(!equals_string(current, ";")) {
+			node->body = parse_expr(current);
+		}
 		expect_string(current, ";");
 		return node;
-	} else {
-		Node *node = parse_expr_stmt(current);
-		expect_string(current, ";");
-		return node;
-	}
-}
-
-static Node *parse_expr_stmt(Token **current) {
-	if(is_declaration(current)) {
-		/* <type> name = a; */
-
+	} else if(is_declaration(current)) {
 		Node *type = parse_type(current);
 
 		Node *node = new_node(ND_DECL, *current);
@@ -340,20 +312,13 @@ static Node *parse_expr_stmt(Token **current) {
 			node->body = parse_expr(current);
 		}
 
-		return node;
-	} else if(is_assign(current)) {
-		/* x.y = z */
-		Node *node = new_node(ND_ASSIGN, NULL);
-		node->left = parse_expr(current);
-		if(consume_string(current, "=")) {
-			node->right = parse_expr(current);
-		}
+		expect_string(current, ";");
 
 		return node;
 	} else {
-		/* x.y.z() */
 		Node *node = new_node(ND_EXPR, NULL);
 		node->body = parse_expr(current);
+		expect_string(current, ";");
 
 		return node;
 	}

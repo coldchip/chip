@@ -112,7 +112,7 @@ static void emit_file(List *constants) {
 		exit(1);
 	}
 
-	TyMethod *m = type_get_method(c, "main", "");
+	TyMethod *m = type_get_method(c, "main", "void;");
 	if(!m) {
 		printf("entry point method main not found\n");
 		exit(1);
@@ -371,8 +371,6 @@ static void gen_array_member(Node *node) {
 
 static void gen_expr(Node *node) {
 	gen_visitor(node->body);
-
-	// assignless
 	emit_op(OP_POP);
 }
 
@@ -385,6 +383,7 @@ static void gen_decl(Node *node) {
 
 static void gen_assign(Node *node) {
 	gen_visitor(node->right);
+	emit_op_left(OP_DUP, 0);
 	gen_store(node->left);
 }
 
@@ -500,7 +499,11 @@ static void gen_string(Node *node) {
 }
 
 static void gen_return(Node *node) {
-	gen_visitor(node->body);
+	if(node->body) {
+		gen_visitor(node->body);
+	} else {
+		emit_op_left(OP_PUSH, 0);
+	}
 	emit_op(OP_RET);
 }
 
