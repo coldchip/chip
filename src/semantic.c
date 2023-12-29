@@ -152,7 +152,7 @@ char *semantic_arg_signature(Node *node) {
 
 	for(ListNode *a = list_begin(&node->bodylist); a != list_end(&node->bodylist); a = list_next(a)) {
 		Node *arg = (Node*)a;
-		Ty *ty = semantic_unfold_expr(arg);
+		Ty *ty = semantic_walk_expr(arg);
 
 		strcat(result, ty->name);
 		strcat(result, ";");
@@ -185,7 +185,7 @@ void semantic_param(Node *node) {
 void semantic_arg(Node *node) {
 	for(ListNode *a = list_begin(&node->bodylist); a != list_end(&node->bodylist); a = list_next(a)) {
 		Node *arg = (Node*)a;
-		semantic_unfold_expr(arg);
+		semantic_walk_expr(arg);
 	}
 }
 
@@ -239,7 +239,7 @@ void semantic_stmt(Node *node) {
 }
 
 void semantic_if(Node *node) {
-	semantic_unfold_expr(node->condition);
+	semantic_walk_expr(node->condition);
 	semantic_stmt(node->body);
 	if(node->alternate) {
 		semantic_stmt(node->alternate);
@@ -247,14 +247,14 @@ void semantic_if(Node *node) {
 }
 
 void semantic_while(Node *node) {
-	semantic_unfold_expr(node->condition);
+	semantic_walk_expr(node->condition);
 	semantic_stmt(node->body);
 }
 
 void semantic_return(Node *node) {
 	Ty *ty = type_get("void");
 	if(node->body) {
-		ty = semantic_unfold_expr(node->body);
+		ty = semantic_walk_expr(node->body);
 	}
 
 	if(ty != return_ty) {
@@ -279,26 +279,22 @@ void semantic_decl(Node *node) {
 	node->offset = var->offset;
 
 	if(node->body) {
-		Ty *right = semantic_unfold_expr(node->body);
-		if(left != right) {
-			printf("error: incompatible types: %s cannot be converted to %s\n", right->name, left->name);
-			exit(1);
-		}
+		semantic_walk_expr(node->body);
 	}
 }
 
 void semantic_expr(Node *node) {
-	semantic_unfold_expr(node->body);
+	semantic_walk_expr(node->body);
 }
 
-Ty *semantic_unfold_expr(Node *node) {
+Ty *semantic_walk_expr(Node *node) {
 	switch(node->type) {
 		case ND_ASSIGN: {
-			Ty *left = semantic_unfold_expr(node->left);
-			Ty *right = semantic_unfold_expr(node->right);
+			Ty *left  = semantic_walk_expr(node->left);
+			Ty *right = semantic_walk_expr(node->right);
 
-			if(left != right) {
-				printf("error: incompatible types: %s cannot be converted to %s\n", right->name, left->name);
+			if(left != right && !type_compatible(right, left)) {
+				printf("error: incompatible types: cannot assign %s to %s\n", right->name, left->name);
 				exit(1);
 			}
 
@@ -314,18 +310,24 @@ Ty *semantic_unfold_expr(Node *node) {
 		case ND_DIV:
 		case ND_MOD:
 		case ND_OR: {
-			Ty *left = semantic_unfold_expr(node->left);
-			Ty *right = semantic_unfold_expr(node->right);
-			return left;
+			Ty *left  = semantic_walk_expr(node->left);
+			Ty *right = semantic_walk_expr(node->right);
+			Ty *common = type_get_common(left, right);
+			if(!common || !type_compatible(left, common) || !type_compatible(right, common)) {
+				printf("error: incompatible types: %s cannot perform arithmetric operation to %s\n", right->name, left->name);
+				exit(1);
+			}
+
+			return common;
 		}
 		break;
 		case ND_NEG:
 		case ND_NOT: {
-			return semantic_unfold_expr(node->body);
+			return semantic_walk_expr(node->body);
 		}
 		break;
 		case ND_MEMBER: {
-			Ty *parent = semantic_unfold_expr(node->body);
+			Ty *parent = semantic_walk_expr(node->body);
 
 			TyVariable *variable = type_get_variable(parent, node->token->data);
 			if(!variable) {
@@ -339,7 +341,7 @@ Ty *semantic_unfold_expr(Node *node) {
 		}
 		break;
 		case ND_CALL: {
-			Ty *parent = semantic_unfold_expr(node->body);
+			Ty *parent = semantic_walk_expr(node->body);
 
 			char *signature = semantic_arg_signature(node->args);
 
@@ -430,14 +432,14 @@ Ty *semantic_unfold_expr(Node *node) {
 				exit(1);
 			}
 
-			semantic_unfold_expr(node->args);
+			semantic_walk_expr(node->args);
 
 			return ty;
 		}
 		break;
 		case ND_ARRAYMEMBER: {
-			semantic_unfold_expr(node->index);
-			return semantic_unfold_expr(node->body);
+			semantic_walk_expr(node->index);
+			return semantic_walk_expr(node->body);
 		}
 		break;
 		default: {
@@ -451,13 +453,6 @@ Ty *semantic_unfold_expr(Node *node) {
 void semantic(Node *node) {
 	type_clear();
 	varscope_clear();
-
-	Ty *int_type = type_insert("int", 8);
-	insert_variable(int_type, "count", int_type);
-	Ty *char_type = type_insert("char", 8);
-	insert_variable(char_type, "count", int_type);
-	type_insert("float", 8);
-	type_insert("void", 8);
 
 	semantic_peek_class(node);
 	semantic_program(node);

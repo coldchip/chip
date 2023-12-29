@@ -308,7 +308,8 @@ static Node *parse_stmt(Token **current) {
 
 		expect_type(current, TK_IDENTIFIER);
 
-		if(consume_string(current, "=")) {
+		if(equals_string(current, "=")) {
+			prev(current);
 			node->body = parse_expr(current);
 		}
 

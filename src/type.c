@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include "type.h"
 #include "chip.h"
 
@@ -7,6 +8,39 @@ List types;
 
 void type_clear() {
 	list_clear(&types);
+
+	/* built-in types */
+	Ty *int_type = type_insert("int", 8);
+	insert_variable(int_type, "count", int_type);
+	Ty *char_type = type_insert("char", 8);
+	insert_variable(char_type, "count", int_type);
+	type_insert("float", 8);
+	type_insert("void", 8);
+}
+
+bool type_compatible(Ty *from, Ty *to) {
+	if(type_get_common(from, to) == to) {
+		return true;
+	}
+
+	return false;
+}
+
+Ty *type_get_common(Ty *left, Ty *right) {
+	Ty *ty_float = type_get("float");
+	Ty *ty_int   = type_get("int");
+	Ty *ty_char  = type_get("char");
+
+	if(left == ty_float || right == ty_float) {
+		return ty_float;
+	}
+	if(left == ty_int || right == ty_int) {
+		return ty_int;
+	}
+	if(left == ty_char || right == ty_char) {
+		return ty_char;
+	}
+	return NULL;
 }
 
 Ty *type_insert(char *name, int size) {

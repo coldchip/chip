@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <math.h>
 #include "chip.h"
 #include "codegen.h"
 
@@ -133,14 +134,22 @@ static void emit_file(List *constants) {
 
 		char op = ins->op;
 
-		if(ins->has_left) {
-			op = op | (1 << 7);
-		}
-				
+		printf("%s ", op_display[op]);
+
+		op = op | (closest_container_size(ins->left) << 6);
+
+		printf("%02x ", op & 0xff);
 		fwrite(&op, sizeof(char), 1, prg);
-		if(ins->has_left) {
-			fwrite(&ins->left, sizeof(uint64_t), 1, prg);
+
+		if(op_size[ins->op]) {
+			// TODO: CONVERT TO BIG ENDIAN
+			char *left = (char*)&ins->left;
+			for(int i = 0; i < ((int)pow(2, closest_container_size(ins->left))); ++i) {
+				printf("%02x", left[i] & 0xff);
+				fwrite(&left[i], sizeof(char), 1, prg);
+			}
 		}
+		printf("\n");
 	}
 
 	fclose(prg);
@@ -214,8 +223,24 @@ void emit_asm() {
 		if(ins->left_label) {
 			printf("\t%s\t%s\n", op_display[ins->op], ins->left_label);
 		} else {
-			printf("\t%s\t%i\n", op_display[ins->op], ins->left);
+			if(ins->has_left) {
+				printf("\t%s\t%i\n", op_display[ins->op], ins->left);
+			} else {
+				printf("\t%s\n", op_display[ins->op]);
+			}
 		}
+	}
+}
+
+int closest_container_size(int64_t number) {
+	if(number <= 255) {
+		return 0;
+	} else if(number <= 65535) {
+		return 1;
+	} else if(number <= 4294967295) {
+		return 2;
+	} else if(number <= 18446744073709551615) {
+		return 3;
 	}
 }
 
@@ -358,7 +383,7 @@ static void gen_new(Node *node) {
 static void gen_new_array(Node *node) {
 	gen_visitor(node->args);
 
-	emit_op_left(OP_NEW_ARRAY, 0);
+	emit_op(OP_NEW_ARRAY);
 }
 
 static void gen_array_member(Node *node) {
@@ -370,20 +395,22 @@ static void gen_array_member(Node *node) {
 }
 
 static void gen_expr(Node *node) {
-	gen_visitor(node->body);
-	emit_op(OP_POP);
+	if(node->body) {
+		gen_visitor(node->body);
+		emit_op(OP_POP);
+	}
 }
 
 static void gen_decl(Node *node) {
 	if(node->body) {
 		gen_visitor(node->body);
-		emit_op_left(OP_STORE, node->offset);
+		emit_op(OP_POP);
 	}
 }
 
 static void gen_assign(Node *node) {
 	gen_visitor(node->right);
-	emit_op_left(OP_DUP, 0);
+	emit_op(OP_DUP);
 	gen_store(node->left);
 }
 
@@ -521,7 +548,7 @@ static void gen_call(Node *node) {
 
 static void gen_syscall(Node *node) {
 	gen_visitor(node->args);
-	emit_op_left(OP_SYSCALL, list_size(&node->args->bodylist));
+	emit_op(OP_SYSCALL);
 }
 
 static void gen_visitor(Node *node) {

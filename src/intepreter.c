@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <time.h>
+#include <math.h>
 #include "chip.h"
 #include "list.h"
 #include "optimize.h"
@@ -68,14 +69,21 @@ int load_file(const char *name) {
 
 	for(int i = 0; i < code_count; i++) {
 		char     op = 0;
-		int64_t op_left = 0;
+		int64_t  op_left = 0;
 		fread(&op, sizeof(op), 1, fp);
-		if((op >> 7) & 0x01) {
-			fread(&op_left, sizeof(op_left), 1, fp);
+
+		int mod = (op >> 6) & 0x03;
+		op = op & 0x3F;
+
+		if(op_size[op]) {
+			char *left = &op_left;
+			for(int i = 0; i < ((int)pow(2, mod)); ++i) {
+				fread(&left[i], sizeof(char), 1, fp);
+			}
 		}
 
 		Op *ins = malloc(sizeof(Op));
-		ins->op = op & 0x7F;
+		ins->op = op;
 		ins->left = op_left;
 
 		codes[code_size++] = ins;
