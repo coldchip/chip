@@ -4,11 +4,18 @@
 #include "parse.h"
 #include <stdint.h>
 
+#if __BIG_ENDIAN__
+# define htonll(x) (x)
+# define ntohll(x) (x)
+#else
+# define htonll(x) (((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
+# define ntohll(x) (((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
+#endif
+
 #define LIST_OF_OPS \
 	X(OP_NOP, "nop", false) \
 	X(OP_LOAD, "load", true) \
 	X(OP_STORE, "store", true) \
-	X(OP_MOV, "mov", true) \
 	X(OP_POP, "pop", false) \
 	X(OP_CMPEQ, "cmpeq", false) \
 	X(OP_CMPGT, "cmpgt", false) \
@@ -70,7 +77,6 @@ typedef struct _Op {
 	OpType op;
 	uint64_t left;
 	char *left_label;
-	bool has_left;
 } Op;
 
 static int        rand_string();
@@ -85,7 +91,7 @@ static int        emit_constant(List *list, char *data, bool obfuscated);
 static int        emit_op_get_counter();
 static void       emit_file(List *constants);
 
-int               closest_container_size(int64_t number);
+uint8_t           closest_container_size(int64_t number);
 
 static void       gen_program(Node *node);
 static void       gen_class(Node *node);
@@ -103,6 +109,7 @@ static void       gen_array_member(Node *node);
 static void       gen_expr(Node *node);
 static void       gen_neg(Node *node);
 static void       gen_not(Node *node);
+static void       gen_cast(Node *node);
 static void       gen_decl(Node *node);
 static void       gen_assign(Node *node);
 static void       gen_store(Node *node);

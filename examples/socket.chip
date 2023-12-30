@@ -134,6 +134,10 @@ class Console {
 	}
 }
 
+class List {
+
+}
+
 class String {
 	char[] buffer;
 	int count;
@@ -298,7 +302,7 @@ class Main {
 				body.append(Art.triangle(13));
 				body.append("\n");
 
-				while(y < 16) {
+				while(y < 128) {
 					int sqrt = Math.sqrt(y);
 					body.append(Convert.string(sqrt));
 					body.append(":");
@@ -306,10 +310,12 @@ class Main {
 					body.append(":");
 					body.append(Random.string(32));
 					body.append("\n");
+					body.append(Art.triangle(27));
+					body.append("\n");
 					y = y + 1;
 				}
 
-				char[] text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
+				char[] text = "hey Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
 
 				body.append(text);
 				body.append(text);
@@ -332,5 +338,6 @@ class Main {
 			Console.write("unable to bind\n");
 		}
 
+		float zzscd = 0.33333 + 2;
 	}
 }

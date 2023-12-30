@@ -41,6 +41,7 @@ typedef enum {
 	ND_NEG,
 	ND_NOT,
 	ND_OR,
+	ND_CAST,
 	ND_NUMBER,
 	ND_FLOAT,
 	ND_CHAR,

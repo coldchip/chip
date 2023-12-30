@@ -22,6 +22,10 @@ void semantic_peek_class(Node *node) {
 		Node *class = (Node*)c;
 		if(class->type != ND_CLASS) continue;
 
+		if(type_get(class->token->data)) {
+			printf("error, redefinition of class %s\n", class->token->data);
+			exit(1);
+		}
 		type_insert(class->token->data, 8);
 	}
 
@@ -318,11 +322,27 @@ Ty *semantic_walk_expr(Node *node) {
 				exit(1);
 			}
 
+			if(left != common) {
+				Node *cast_left = new_node(ND_CAST, NULL);
+				cast_left->body = node->left;
+				node->left = cast_left;
+			}
+
+			if(right != common) {
+				Node *cast_right = new_node(ND_CAST, NULL);
+				cast_right->body = node->right;
+				node->right = cast_right;
+			}
+
 			return common;
 		}
 		break;
 		case ND_NEG:
 		case ND_NOT: {
+			return semantic_walk_expr(node->body);
+		}
+		break;
+		case ND_CAST: {
 			return semantic_walk_expr(node->body);
 		}
 		break;

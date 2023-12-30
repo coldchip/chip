@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <math.h>
 #include "chip.h"
 #include "codegen.h"
 
@@ -44,22 +43,13 @@ LabelEntry emit_label(const char *name) {
 	};
 	strcpy(label.name, name);
 
-	emit_op(OP_NOP);
-
 	labels[label_counter++] = label;
 
 	return label;
 }
 
 static Op *emit_op(OpType op) {
-	Op *ins = malloc(sizeof(Op));
-	ins->op = op;
-	ins->left_label = NULL;
-	ins->has_left = false;
-
-	codes[code_counter++] = ins;
-
-	return ins;
+	return emit_op_left(op, 0);
 }
 
 static Op *emit_op_left(OpType op, uint64_t left) {
@@ -67,7 +57,6 @@ static Op *emit_op_left(OpType op, uint64_t left) {
 	ins->op = op;
 	ins->left = left;
 	ins->left_label = NULL;
-	ins->has_left = true;
 
 	codes[code_counter++] = ins;
 
@@ -78,7 +67,6 @@ static Op *emit_op_left_label(OpType op, const char *left) {
 	Op *ins = malloc(sizeof(Op));
 	ins->op = op;
 	ins->left_label = strdup(left);
-	ins->has_left = true;
 
 	codes[code_counter++] = ins;
 
@@ -129,26 +117,51 @@ static void emit_file(List *constants) {
 
 	fwrite(&code_counter, sizeof(int), 1, prg);
 
+	int pos = 0;
+
 	for(int i = 0; i < code_counter; i++) {
 		Op *ins = codes[i];
 
-		char op = ins->op;
+		uint8_t op    = ins->op;
+		int64_t left  = ins->left;
+		uint8_t width = closest_container_size(left);
 
-		printf("%s ", op_display[op]);
+		uint8_t encoded_op   = (op << 2) | (width & 0x03);
+		int64_t encoded_left = (left);
 
-		op = op | (closest_container_size(ins->left) << 6);
+		printf("\033[1;30m");
+		printf("0x%02x", pos);
+		printf("\033[0m");
 
-		printf("%02x ", op & 0xff);
-		fwrite(&op, sizeof(char), 1, prg);
+		fwrite(&encoded_op, sizeof(uint8_t), 1, prg);
+		pos++;
 
-		if(op_size[ins->op]) {
-			// TODO: CONVERT TO BIG ENDIAN
-			char *left = (char*)&ins->left;
-			for(int i = 0; i < ((int)pow(2, closest_container_size(ins->left))); ++i) {
-				printf("%02x", left[i] & 0xff);
-				fwrite(&left[i], sizeof(char), 1, prg);
-			}
+		printf("\t");
+
+		printf("\033[1;33m");
+		printf("%s", op_display[op]);
+		printf("\033[0m");
+
+		printf(" ");
+		if(op_size[op]) {
+			printf("\033[1;36m");
+			printf("i%i", 8 * (1 << width));
+			printf("\033[0m");
 		}
+		printf(" ");
+
+		if(op_size[op]) {
+			printf("\033[1;32m");
+			printf("0x");
+			for(int i = 0; i < (1 << width); ++i) {
+				uint8_t bit = ((uint8_t*)&encoded_left)[i] & 0xFF;
+				printf("%02x", bit & 0xFF);
+				fwrite(&bit, sizeof(bit), 1, prg);
+				pos++;
+			}
+			printf("\033[0m");
+		}
+
 		printf("\n");
 	}
 
@@ -223,7 +236,7 @@ void emit_asm() {
 		if(ins->left_label) {
 			printf("\t%s\t%s\n", op_display[ins->op], ins->left_label);
 		} else {
-			if(ins->has_left) {
+			if(op_size[ins->op]) {
 				printf("\t%s\t%i\n", op_display[ins->op], ins->left);
 			} else {
 				printf("\t%s\n", op_display[ins->op]);
@@ -232,14 +245,14 @@ void emit_asm() {
 	}
 }
 
-int closest_container_size(int64_t number) {
-	if(number <= 255) {
+uint8_t closest_container_size(int64_t number) {
+	if(number == (int8_t)(number & 0xFF)) {
 		return 0;
-	} else if(number <= 65535) {
+	} else if(number == (int16_t)(number & 0xFFFF)) {
 		return 1;
-	} else if(number <= 4294967295) {
+	} else if(number == (int32_t)(number & 0xFFFFFFFF)) {
 		return 2;
-	} else if(number <= 18446744073709551615) {
+	} else if(number == (int64_t)(number & 0xFFFFFFFFFFFFFFFF)) {
 		return 3;
 	}
 }
@@ -492,16 +505,23 @@ static void gen_not(Node *node) {
 	emit_op(OP_CMPEQ);
 }
 
+static void gen_cast(Node *node) {
+	gen_visitor(node->body);
+	emit_op(OP_NOP);
+}
+
 static void gen_char(Node *node) {
 	emit_op_left(OP_PUSH, (float)node->token->data[0]);
 }
 
 static void gen_number(Node *node) {
-	emit_op_left(OP_PUSH, atof(node->token->data));
+	emit_op_left(OP_PUSH, atol(node->token->data));
 }
 
 static void gen_float(Node *node) {
-	emit_op_left(OP_PUSH, atof(node->token->data));
+	double  value   = atof(node->token->data);
+	int64_t value_i = *(int64_t*)&value;
+	emit_op_left(OP_PUSH, value_i);
 }
 
 static void gen_string(Node *node) {
@@ -635,6 +655,10 @@ static void gen_visitor(Node *node) {
 		break;
 		case ND_NOT: {
 			gen_not(node);
+		}
+		break;
+		case ND_CAST: {
+			gen_cast(node);
 		}
 		break;
 		case ND_CHAR: {
