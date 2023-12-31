@@ -20,10 +20,21 @@ static Node *parse_assign(Token **current) {
 }
 
 static Node *parse_or(Token **current) {
+	Node *node = parse_and(current);
+	for(;;) {
+		if(consume_string(current, "||")) {
+			node = new_node_binary(ND_OR, NULL, node, parse_and(current));
+			continue;
+		}
+		return node;
+	}
+}
+
+static Node *parse_and(Token **current) {
 	Node *node = parse_equality(current);
 	for(;;) {
-		if(consume_string(current, "or")) {
-			node = new_node_binary(ND_OR, NULL, node, parse_equality(current));
+		if(consume_string(current, "&&")) {
+			node = new_node_binary(ND_AND, NULL, node, parse_equality(current));
 			continue;
 		}
 		return node;
@@ -33,7 +44,7 @@ static Node *parse_or(Token **current) {
 static Node *parse_equality(Token **current) {
 	Node *node = parse_relational(current);
 	for(;;) {
-		if(consume_string(current, "eq")) {
+		if(consume_string(current, "==")) {
 			node = new_node_binary(ND_EQ, NULL, node, parse_relational(current));
 			continue;
 		}
@@ -152,15 +163,15 @@ Node *parse_primary(Token **current) {
 	if(consume_string(current, "new")) {
 		Token *name = *current;
 
-		Node *type = parse_basetype(current);
+		Node *type = parse_type(current);
 
-		if(equals_string(current, "[")) {
+		if(type->array_depth > 0) {
 			Node *node = new_node(ND_NEWARRAY, name);
 			node->data_type = type;
 			
-			expect_string(current, "[");
+			expect_string(current, "(");
 			node->args = parse_expr(current);
-			expect_string(current, "]");
+			expect_string(current, ")");
 
 			node->array_depth++;
 

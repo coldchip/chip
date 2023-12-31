@@ -136,8 +136,18 @@ static bool is_punctuation(char bit) {
 		bit == '[' ||
 		bit == ']' ||
 		bit == '-' ||
+		bit == '&' ||
+		bit == '|' ||
 		bit == '!' ||
 		bit == ';'
+	);
+}
+
+static bool is_joined_punctuation(char first, char second) {
+	return (
+		(first == '=' && second == '=') ||
+		(first == '|' && second == '|') ||
+		(first == '&' && second == '&')
 	);
 }
 
@@ -197,9 +207,14 @@ void tokenize(char *input, List *tokens) {
 			input++;
 			continue;
 		} else if(is_punctuation(*input)) {
-			Token *token = new_token(TK_PUNCTUATION, input, 1, line);
-			list_insert(list_end(tokens), token);
+			char *start = input;
 			input++;
+			if(is_joined_punctuation(*start, *input)) {
+				input++;
+			}
+
+			Token *token = new_token(TK_PUNCTUATION, start, input - start, line);
+			list_insert(list_end(tokens), token);
 			continue;
 		} else {
 			printf("unknown token %c\n", *input);

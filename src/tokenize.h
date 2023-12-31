@@ -37,6 +37,7 @@ static bool        is_number(char bit);
 static bool        is_space(char bit);
 static bool        is_break(char bit);
 static bool        is_punctuation(char bit);
+static bool        is_joined_punctuation(char first, char second);
 void               tokenize(char *input, List *tokens);
 
 #endif

@@ -313,7 +313,8 @@ Ty *semantic_walk_expr(Node *node) {
 		case ND_MUL:
 		case ND_DIV:
 		case ND_MOD:
-		case ND_OR: {
+		case ND_OR:
+		case ND_AND: {
 			Ty *left  = semantic_walk_expr(node->left);
 			Ty *right = semantic_walk_expr(node->right);
 			Ty *common = type_get_common(left, right);

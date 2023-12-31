@@ -41,6 +41,7 @@ typedef enum {
 	ND_NEG,
 	ND_NOT,
 	ND_OR,
+	ND_AND,
 	ND_CAST,
 	ND_NUMBER,
 	ND_FLOAT,
@@ -110,6 +111,7 @@ void               normalize_type(Node *node);
 Node              *parse_expr(Token **current);
 static Node       *parse_assign(Token **current);
 static Node       *parse_or(Token **current);
+static Node       *parse_and(Token **current);
 static Node       *parse_equality(Token **current);
 static Node       *parse_relational(Token **current);
 static Node       *parse_add_sub(Token **current);

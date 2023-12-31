@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "chip.h"
+#include "optimize.h"
 #include "codegen.h"
 
 static LabelEntry labels[8192] = {};
@@ -237,7 +238,7 @@ void emit_asm() {
 			printf("\t%s\t%s\n", op_display[ins->op], ins->left_label);
 		} else {
 			if(op_size[ins->op]) {
-				printf("\t%s\t%i\n", op_display[ins->op], ins->left);
+				printf("\t%s\t%li\n", op_display[ins->op], ins->left);
 			} else {
 				printf("\t%s\n", op_display[ins->op]);
 			}
@@ -320,20 +321,25 @@ static void gen_if(Node *node) {
 	char exit_label[256];
 	sprintf(exit_label, "IE_%i", rand_string());
 
+	// check
 	gen_visitor(node->condition);
-	emit_op_left(OP_PUSH, 0);
-	emit_op_left_label(OP_JE, alternate_label);
+	emit_op_left(OP_PUSH, 1);
+	emit_op_left_label(OP_JE, condition_label);
+	emit_op_left_label(OP_JMP, alternate_label);
 
+	// body
+	emit_label(condition_label);
 	gen_visitor(node->body);
-
 	emit_op_left_label(OP_JMP, exit_label);
 
+	// else
 	emit_label(alternate_label);
-
 	if(node->alternate) {
 		gen_visitor(node->alternate);
 	}
+	emit_op_left_label(OP_JMP, exit_label);
 
+	// exit
 	emit_label(exit_label);
 }
 
@@ -344,15 +350,17 @@ static void gen_while(Node *node) {
 	char exit_label[256];
 	sprintf(exit_label, "WE_%i", rand_string());
 
+	// check
 	emit_label(body_label);
-
 	gen_visitor(node->condition);
-	emit_op_left(OP_PUSH, 0);
-	emit_op_left_label(OP_JE, exit_label);
+	emit_op_left(OP_PUSH, 1);
+	emit_op_left_label(OP_JNE, exit_label);
 
+	// body
 	gen_visitor(node->body);
 	emit_op_left_label(OP_JMP, body_label);
 
+	// exit
 	emit_label(exit_label);
 }
 
@@ -446,8 +454,28 @@ static void gen_store(Node *node) {
 }
 
 static void gen_binary(Node *node) {
+	char true_label[256];
+	sprintf(true_label, "LT_%i", rand_string());
+	char false_label[256];
+	sprintf(false_label, "LF_%i", rand_string());
+	char exit_label[256];
+	sprintf(exit_label, "LE_%i", rand_string());
+
 	if(node->left) {
 		gen_visitor(node->left);
+	}
+
+	switch(node->type) {
+		case ND_OR: {
+			emit_op_left(OP_PUSH, 1);
+			emit_op_left_label(OP_JE, true_label);
+		}
+		break;
+		case ND_AND: {
+			emit_op_left(OP_PUSH, 0);
+			emit_op_left_label(OP_JE, false_label);
+		}
+		break;
 	}
 
 	if(node->right) {
@@ -488,7 +516,41 @@ static void gen_binary(Node *node) {
 		}
 		break;
 		case ND_OR: {
-			emit_op(OP_OR);
+			emit_op_left(OP_PUSH, 1);
+			emit_op_left_label(OP_JE, true_label);
+			emit_op_left_label(OP_JMP, false_label);
+
+			// true
+			emit_label(true_label);
+			emit_op_left(OP_PUSH, 1);
+			emit_op_left_label(OP_JMP, exit_label);
+
+			// false
+			emit_label(false_label);
+			emit_op_left(OP_PUSH, 0);
+			emit_op_left_label(OP_JMP, exit_label);
+
+			// exit
+			emit_label(exit_label);
+		}
+		break;
+		case ND_AND: {
+			emit_op_left(OP_PUSH, 0);
+			emit_op_left_label(OP_JE, false_label);
+			emit_op_left_label(OP_JMP, true_label);
+
+			// true
+			emit_label(true_label);
+			emit_op_left(OP_PUSH, 1);
+			emit_op_left_label(OP_JMP, exit_label);
+
+			// false
+			emit_label(false_label);
+			emit_op_left(OP_PUSH, 0);
+			emit_op_left_label(OP_JMP, exit_label);
+
+			// exit
+			emit_label(exit_label);
 		}
 		break;
 	}
@@ -645,7 +707,8 @@ static void gen_visitor(Node *node) {
 		case ND_MUL:
 		case ND_DIV:
 		case ND_MOD:
-		case ND_OR: {
+		case ND_OR:
+		case ND_AND: {
 			gen_binary(node);
 		}
 		break;

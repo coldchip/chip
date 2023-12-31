@@ -108,24 +108,14 @@ static Node *parse_program(Token **current) {
 }
 
 /*
-	type
-*/
-
-Node *parse_basetype(Token **current) {
-	Node *node = new_node(ND_TYPE, *current);
-
-	expect_type(current, TK_IDENTIFIER);
-
-	return node;
-}
-
-/*
 	type?[]?...[]
 */
 
 Node *parse_type(Token **current) {
-	Node *node = parse_basetype(current);
+	Node *node = new_node(ND_TYPE, *current);
+	expect_type(current, TK_IDENTIFIER);
 	while(consume_string(current, "[")) {
+		node->array_depth++;
 		expect_string(current, "]");
 	}
 

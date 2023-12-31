@@ -115,7 +115,7 @@ int allocs = 0;
 
 Object *new_object(int size) {
 	Object *o = malloc(sizeof(Object));
-	o->varlist = malloc(sizeof(int64_t) * size);
+	o->varlist = malloc(sizeof(Slot) * size);
 	o->array = NULL;
 
 	allocs++;
@@ -138,7 +138,7 @@ int64_t eval(int pc) {
 	clock_t begin;
 
 	/* stack */
-	int64_t stack[128][1024];
+	Slot stack[128][1024] = {};
 	/* frame pointer */
 	int64_t fp = 0;
 	/* stack pointer */
@@ -152,18 +152,18 @@ int64_t eval(int pc) {
 			}
 			break;
 			case OP_LOAD: {
-				int64_t var = stack[fp][current->left];
-				PUSH_STACK(var);
+				Slot var = GET_VAR_SLOT(current->left);
+				PUSH_STACK_SLOT(var);
 			}
 			break;
 			case OP_STORE: {
-				int64_t var = POP_STACK();
-				stack[fp][current->left] = var;
+				Slot var = POP_STACK_SLOT();
+				SET_VAR_SLOT(current->left, var);
 			}
 			break;
 			case OP_DUP: {
-				int64_t a = TOP_STACK();
-				PUSH_STACK(a);
+				Slot s = TOP_STACK_SLOT();
+				PUSH_STACK_SLOT(s);
 			}
 			break;
 			case OP_PUSH: {
@@ -173,7 +173,6 @@ int64_t eval(int pc) {
 			case OP_LOAD_CONST: {
 				if(cache[(int)current->left]) {
 					Object *o = cache[(int)current->left];
-					
 					PUSH_STACK_OBJECT(o);
 				} else {
 					Object *o = new_object(1);
@@ -187,7 +186,7 @@ int64_t eval(int pc) {
 						o->array[i] = (char)str[i];
 					}
 
-					store_var_double(o->varlist, FIND_OR_INSERT_CONST(constants, "count"), size);
+					o->varlist[0].value = size;
 					
 					cache[(int)current->left] = o;
 
@@ -197,19 +196,18 @@ int64_t eval(int pc) {
 			break;
 			case OP_LOAD_FIELD: {
 				Object *instance = POP_STACK_OBJECT();
-				int64_t var = instance->varlist[current->left];
-
-				PUSH_STACK(var);
+				Slot var = instance->varlist[current->left];
+				PUSH_STACK_SLOT(var);
 			}
 			break;
 			case OP_STORE_FIELD: {
 				Object *instance = POP_STACK_OBJECT();
-				int64_t v2 = POP_STACK();
-				instance->varlist[current->left] = v2;
+				Slot var = POP_STACK_SLOT();
+				instance->varlist[current->left] = var;
 			}
 			break;
 			case OP_POP: {
-				POP_STACK();
+				POP_STACK_OBJECT();
 			}
 			break;
 			case OP_CMPEQ: {
@@ -273,13 +271,6 @@ int64_t eval(int pc) {
 				PUSH_STACK(c);
 			}
 			break;
-			case OP_OR: {
-				int64_t a = POP_STACK();
-				int64_t b = POP_STACK();
-				int64_t c = b || a;
-				PUSH_STACK(c);
-			}
-			break;
 			case OP_CALL: {
 				int64_t arg_length = POP_STACK();
 
@@ -289,11 +280,14 @@ int64_t eval(int pc) {
 					args[i] = arg;
 				}
 
-				Object *instance = POP_STACK_OBJECT();
+				Slot instance = POP_STACK_SLOT();
 
 				PUSH_FRAME(); 
 
-				stack[fp][0] = instance;
+				// preserve SP
+
+				SET_VAR_SLOT(0, instance);
+
 				PUSH_STACK(pc);
 				for(int i = 0; i < arg_length; i++) {
 					PUSH_STACK(args[i]);
@@ -351,7 +345,7 @@ int64_t eval(int pc) {
 					int64_t port = POP_STACK();
 					char ip_c[128];
 
-					strncpy(ip_c, ip->array, ip->varlist[FIND_OR_INSERT_CONST(constants, "count")]);
+					strncpy(ip_c, ip->array, ip->varlist[0].value);
 
 
 					struct sockaddr_in servaddr;
@@ -381,8 +375,9 @@ int64_t eval(int pc) {
 				} else if(name == 64) {
 					int64_t fd = POP_STACK();
 					Object *data = POP_STACK_OBJECT();
+					int64_t size = POP_STACK();
 
-					int w = write((int)fd, data->array, data->varlist[FIND_OR_INSERT_CONST(constants, "count")]);
+					int w = write((int)fd, data->array, size);
 
 					PUSH_STACK(w);
 				} else if(name == 65) {
@@ -401,6 +396,17 @@ int64_t eval(int pc) {
 					printf("%f\n", time_spent);
 				} else if(name == 33) {
 					PUSH_STACK(rand());
+				} else if(name == 34555) {
+					for(int x = 0; x < 128; x++) {
+						Slot *f = stack[x];
+						for(int y = 0; y < 1024; y++) {
+							Slot s = f[y];
+							if(s.is_ref) {
+								printf("%p\n", s.ref);
+							}
+						}
+					}
+					PUSH_STACK(0);
 				} else {
 					printf("unknown syscall %i\n", name);
 					exit(1);
@@ -420,7 +426,7 @@ int64_t eval(int pc) {
 
 				memset(instance->array, 0, sizeof(char) * size);
 
-				store_var_double(instance->varlist, FIND_OR_INSERT_CONST(constants, "count"), size);
+				instance->varlist[0].value = size;
 
 				PUSH_STACK_OBJECT(instance);
 			}
@@ -452,6 +458,16 @@ int64_t eval(int pc) {
 				}
 			}
 			break;
+			case OP_JNE: {
+				int64_t a = POP_STACK();
+				int64_t b = POP_STACK();
+
+				if(a != b) {
+					pc = current->left - 1;
+					continue;
+				}
+			}
+			break;
 			case OP_JMP: {
 				pc = current->left - 1;
 
@@ -459,12 +475,12 @@ int64_t eval(int pc) {
 			}
 			break;
 			case OP_RET: {
-				int64_t ret_data = POP_STACK();
+				Slot ret_data = POP_STACK_SLOT();
 				int64_t ret_addr = POP_STACK();
 
 				POP_FRAME();
 
-				PUSH_STACK(ret_data);
+				PUSH_STACK_SLOT(ret_data);
 
 				pc = ret_addr + 1;
 

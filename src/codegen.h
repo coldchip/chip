@@ -26,7 +26,6 @@
 	X(OP_DIV, "div", false) \
 	X(OP_NEG, "neg", false) \
 	X(OP_MOD, "mod", false) \
-	X(OP_OR, "or", false) \
 	X(OP_DUP, "dup", false) \
 	X(OP_PUSH,  "push", true) \
 	X(OP_LOAD_CONST, "loadconst", true) \
@@ -39,6 +38,7 @@
 	X(OP_LOAD_ARRAY, "loadarr", false) \
 	X(OP_STORE_ARRAY, "storearr", false) \
 	X(OP_JE, "je", true) \
+	X(OP_JNE, "jne", true) \
 	X(OP_JMP, "jmp", true) \
 	X(OP_RET, "ret", false)
 
