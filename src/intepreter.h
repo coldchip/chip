@@ -3,24 +3,14 @@
 
 #include "codegen.h"
 
-typedef enum {
-	TY_FUNCTION,
-	TY_VARIABLE,
-	TY_ARRAY
-} Type;
-
 typedef struct _Object {
 	ListNode node;
 
-	Type type;
-
-	int index;
-
 	char *array;
 	struct _Slot *varlist;
+	int size;
 
-	int refs;
-	int gc_refs;
+	bool is_marked;
 } Object;
 
 typedef struct _Slot {
@@ -54,14 +44,15 @@ int FIND_OR_INSERT_CONST(char **constants, char *data) {
 #define PUSH_FRAME() (fp++)
 #define POP_STACK_OBJECT() (sp--, stack[fp][sp].is_ref = false, stack[fp][sp].ref)
 #define PUSH_STACK_OBJECT(v) (stack[fp][sp].ref = v, stack[fp][sp].is_ref = true, sp++)
-#define POP_STACK_SLOT() (sp--, stack[fp][sp])
+#define POP_STACK_SLOT() ({sp--; Slot a = stack[fp][sp]; stack[fp][sp].is_ref = false; a;})
 #define PUSH_STACK_SLOT(v) (stack[fp][sp] = v, sp++)
 
 
 int               load_file(const char *name);
-void              store_var(double *vars, int index, Object *object);
-double            load_var(double *vars, int index);
 Object           *new_object(int size);
+void              gc(Slot *stack, int size);
+void              mark(Slot *stack, int size);
+void              sweep();
 int64_t           eval(int pc);
 void              intepreter(const char *input);
 

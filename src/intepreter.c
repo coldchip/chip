@@ -19,9 +19,10 @@
 #include "optimize.h"
 #include "intepreter.h"
 
-Object *cache[8192] = {}; 
 Object *globals[8192] = {}; // generate instances of all classes to allow static invoking
 static char *constants[8192] = {};
+
+List objects;
 
 static Op *codes[32768] = {};
 int code_size = 0;
@@ -90,33 +91,20 @@ int load_file(const char *name) {
 	return entry;
 }
 
-void store_var(double *vars, int index, Object *object) {
-	*(Object **)&vars[index] = object;
-}
-
-void store_var_double(int64_t *vars, int index, int64_t data) {
-	vars[index] = data;
-}
-
-double load_var(double *vars, int index) {
-	// for(ListNode *i = list_begin(&globals); i != list_end(&globals); i = list_next(i)) {
-	// 	Var *var = (Var*)i;
-	// 	if(var->index == index) {
-	// 		return var->object;
-	// 	}
-	// }
-	if(globals[index]) {
-		return *(double*)globals[index];
-	}
-	return vars[index];
-}
-
 int allocs = 0;
 
 Object *new_object(int size) {
 	Object *o = malloc(sizeof(Object));
-	o->varlist = malloc(sizeof(Slot) * size);
 	o->array = NULL;
+	o->varlist = malloc(sizeof(Slot) * size);
+	o->size = size;
+	o->is_marked = false;
+
+	for(int x = 0; x < size; x++) {
+		o->varlist[x].is_ref = false;
+	}
+
+	list_insert(list_end(&objects), o);
 
 	allocs++;
 
@@ -127,11 +115,53 @@ void free_object(Object *object) {
 	if(object->array) {
 		free(object->array);
 	}
+
+	free(object->varlist);
+
+	list_remove(&object->node);
 	free(object);
 
 	allocs--;
 
-	// printf("OBJECTS STILL REFRENCED: %i\n\n", allocs);
+	// printf("OBJECTS STILL REFRENCED: %i %li\n\n", allocs, list_size(&objects));
+}
+
+void gc(Slot *stack, int size) {
+	ListNode *j = list_begin(&objects);
+	while(j != list_end(&objects)) {
+		Object *object = (Object*)j;
+		j = list_next(j);
+
+		object->is_marked = false;
+	}
+
+	mark(stack, size);
+	sweep();
+}
+
+void mark(Slot *stack, int size) {
+	for(int y = 0; y < size; y++) {
+		Slot s = stack[y];
+		if(s.is_ref) {
+			Object *o = s.ref;
+			if(!o->is_marked) {
+				o->is_marked = true;
+				mark(o->varlist, o->size);
+			}
+		}
+	}
+}
+
+void sweep() {
+	ListNode *i = list_begin(&objects);
+	while(i != list_end(&objects)) {
+		Object *object = (Object*)i;
+		i = list_next(i);
+
+		if(!object->is_marked) {
+			free_object(object);
+		}
+	}
 }
 
 int64_t eval(int pc) {
@@ -171,27 +201,21 @@ int64_t eval(int pc) {
 			}
 			break;
 			case OP_LOAD_CONST: {
-				if(cache[(int)current->left]) {
-					Object *o = cache[(int)current->left];
-					PUSH_STACK_OBJECT(o);
-				} else {
-					Object *o = new_object(1);
-				
-					char *str = GET_CONST(current->left);
-					int   size = strlen(str);
+				Object *o = new_object(1);
+			
+				char *str  = GET_CONST(current->left);
+				int   size = strlen(str);
 
-					o->array = malloc(sizeof(char) * size);
+				o->array = malloc(sizeof(char) * size);
 
-					for(int i = 0; i < size; i++) {
-						o->array[i] = (char)str[i];
-					}
-
-					o->varlist[0].value = size;
-					
-					cache[(int)current->left] = o;
-
-					PUSH_STACK_OBJECT(o);
+				for(int i = 0; i < size; i++) {
+					o->array[i] = (char)str[i];
 				}
+
+				o->varlist[0].is_ref = false;
+				o->varlist[0].value  = size;
+
+				PUSH_STACK_OBJECT(o);
 			}
 			break;
 			case OP_LOAD_FIELD: {
@@ -274,10 +298,9 @@ int64_t eval(int pc) {
 			case OP_CALL: {
 				int64_t arg_length = POP_STACK();
 
-				int64_t args[arg_length];
+				Slot args[arg_length];
 				for(int i = 0; i < arg_length; i++) {
-					int64_t arg = POP_STACK();
-					args[i] = arg;
+					args[i] = POP_STACK_SLOT();
 				}
 
 				Slot instance = POP_STACK_SLOT();
@@ -290,7 +313,7 @@ int64_t eval(int pc) {
 
 				PUSH_STACK(pc);
 				for(int i = 0; i < arg_length; i++) {
-					PUSH_STACK(args[i]);
+					PUSH_STACK_SLOT(args[i]);
 				}
 
 				pc = (uint32_t)current->left - 1;
@@ -374,10 +397,10 @@ int64_t eval(int pc) {
 					PUSH_STACK(r);
 				} else if(name == 64) {
 					int64_t fd = POP_STACK();
-					Object *data = POP_STACK_OBJECT();
+					Object *buffer = POP_STACK_OBJECT();
 					int64_t size = POP_STACK();
 
-					int w = write((int)fd, data->array, size);
+					int w = write((int)fd, buffer->array, size);
 
 					PUSH_STACK(w);
 				} else if(name == 65) {
@@ -397,15 +420,7 @@ int64_t eval(int pc) {
 				} else if(name == 33) {
 					PUSH_STACK(rand());
 				} else if(name == 34555) {
-					for(int x = 0; x < 128; x++) {
-						Slot *f = stack[x];
-						for(int y = 0; y < 1024; y++) {
-							Slot s = f[y];
-							if(s.is_ref) {
-								printf("%p\n", s.ref);
-							}
-						}
-					}
+					gc(stack, 128 * 1024);
 					PUSH_STACK(0);
 				} else {
 					printf("unknown syscall %i\n", name);
@@ -426,7 +441,8 @@ int64_t eval(int pc) {
 
 				memset(instance->array, 0, sizeof(char) * size);
 
-				instance->varlist[0].value = size;
+				instance->varlist[0].is_ref = false;
+				instance->varlist[0].value  = size;
 
 				PUSH_STACK_OBJECT(instance);
 			}
@@ -502,6 +518,8 @@ int64_t eval(int pc) {
 void intepreter(const char *input) {
 	/* code */
 	signal(SIGPIPE, SIG_IGN);
+
+	list_clear(&objects);
 
 	int entry = load_file(input);
 

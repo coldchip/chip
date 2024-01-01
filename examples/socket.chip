@@ -61,8 +61,6 @@ class Convert {
 			k = k + 1;
 		}
 
-		syscall(5, result) : void;
-
 		return reverse;
 	}
 }
@@ -159,7 +157,6 @@ class String {
 
 		char[] newData = new char[](newCapacity);
         syscall(8000, newData, 0, this.buffer, 0, this.buffer.count) : void;
-        syscall(5, this.buffer) : void;
         this.buffer = newData;
 	}
 
@@ -170,18 +167,22 @@ class String {
         }
 	}
 
+	method append(char[] b, int length) returns void {
+		this.ensureCapacityInternal(this.count + length);
+		syscall(8000, this.buffer, this.count, b, 0, length) : void;
+
+		this.count = this.count + length;
+
+		return;
+	}
+
 	method append(char[] b) returns void {
-		this.ensureCapacityInternal(this.count + b.count);
-		syscall(8000, this.buffer, this.count, b, 0, b.count) : void;
-
-		this.count = this.count + b.count;
-
+		this.append(b, b.count);
 		return;
 	}
 
 	method append(String bb) returns void {
 		this.append(bb.getBytes());
-
 		return;
 	}
 
@@ -284,11 +285,20 @@ class Header {
 	}
 }
 
+class CircularRef {
+	CircularRef ref;
+
+	method constructor() returns void {
+
+	}
+
+	method setRef(CircularRef ref) returns void {
+		this.ref = ref;
+	}
+}
+
 class Main {
 	method main() : [static] returns void {
-		if(0 && 1) {
-			Console.write("csccscscs");
-		}
 		Socket s = new Socket("0.0.0.0", 19132);
 		if(s.bind()) {
 			Console.write("http://0.0.0.0:19132\n");
@@ -308,6 +318,7 @@ class Main {
 
 				body.append(Art.triangle(13));
 				body.append("\n");
+				body.append(input, r);
 
 				while(y < 128) {
 					int sqrt = Math.sqrt(y);
@@ -316,8 +327,6 @@ class Main {
 					body.append(Convert.string(sqrt * sqrt));
 					body.append(":");
 					body.append(Random.string(32));
-					body.append("\n");
-					body.append(Art.triangle(27));
 					body.append("\n");
 					y = y + 1;
 				}
@@ -330,7 +339,6 @@ class Main {
 				body.append(text);
 
 				Header header = new Header();
-				syscall(34555) : void;
 				header.append("Server", "Chip");
 				header.append("Content-Type", "text/plain");
 				header.append("Content-Length", Convert.string(body.length()));
@@ -341,6 +349,8 @@ class Main {
 				c.close();
 
 				Console.write(Art.triangle(27));
+
+				syscall(34555) : void;
 			}
 		} else {
 			Console.write("unable to bind\n");

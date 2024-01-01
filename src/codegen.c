@@ -761,7 +761,7 @@ void gen(Node *node) {
 
 	optimize_peephole(codes, code_counter);
 
-	emit_asm();
+	// emit_asm();
 
 	emit_label_to_address();
 
