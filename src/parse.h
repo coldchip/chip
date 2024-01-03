@@ -71,6 +71,8 @@ typedef struct _Node {
 
 	Modifier modifier;
 
+	Ty *computed_type;
+
 	Token *token;
 
 	TyMethod *method;

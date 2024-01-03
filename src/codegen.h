@@ -26,6 +26,13 @@
 	X(OP_DIV, "div", false) \
 	X(OP_NEG, "neg", false) \
 	X(OP_MOD, "mod", false) \
+	X(OP_FADD, "fadd", false) \
+	X(OP_FSUB, "fsub", false) \
+	X(OP_FMUL, "fmul", false) \
+	X(OP_FDIV, "fdiv", false) \
+	X(OP_FNEG, "fneg", false) \
+	X(OP_FMOD, "fmod", false) \
+	X(OP_I2F, "i2f", false) \
 	X(OP_DUP, "dup", false) \
 	X(OP_PUSH,  "push", true) \
 	X(OP_LOAD_CONST, "loadconst", true) \

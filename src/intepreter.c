@@ -127,14 +127,6 @@ void free_object(Object *object) {
 }
 
 void gc(Slot *stack, int size) {
-	ListNode *j = list_begin(&objects);
-	while(j != list_end(&objects)) {
-		Object *object = (Object*)j;
-		j = list_next(j);
-
-		object->is_marked = false;
-	}
-
 	mark(stack, size);
 	sweep();
 }
@@ -161,6 +153,8 @@ void sweep() {
 		if(!object->is_marked) {
 			free_object(object);
 		}
+
+		object->is_marked = false;
 	}
 }
 
@@ -289,10 +283,56 @@ int64_t eval(int pc) {
 			}
 			break;
 			case OP_MOD: {
-				int64_t a = (int)POP_STACK();
+				int64_t a = POP_STACK();
 				int64_t b = POP_STACK();
 				int64_t c = b % a;
 				PUSH_STACK(c);
+			}
+			break;
+			case OP_FADD: {
+				double a = POP_STACK_DOUBLE();
+				double b = POP_STACK_DOUBLE();
+				double c = b + a;
+				PUSH_STACK_DOUBLE(c);
+			}
+			break;
+			case OP_FSUB: {
+				double a = POP_STACK_DOUBLE();
+				double b = POP_STACK_DOUBLE();
+				double c = b - a;
+				PUSH_STACK_DOUBLE(c);
+			}
+			break;
+			case OP_FMUL: {
+				double a = POP_STACK_DOUBLE();
+				double b = POP_STACK_DOUBLE();
+				double c = b * a;
+				PUSH_STACK_DOUBLE(c);
+			}
+			break;
+			case OP_FDIV: {
+				double a = POP_STACK_DOUBLE();
+				double b = POP_STACK_DOUBLE();
+				double c = b / a;
+				PUSH_STACK_DOUBLE(c);
+			}
+			break;
+			case OP_FNEG: {
+				double a = POP_STACK_DOUBLE();
+				PUSH_STACK_DOUBLE(-a);
+			}
+			break;
+			case OP_FMOD: {
+				double a = POP_STACK_DOUBLE();
+				double b = POP_STACK_DOUBLE();
+				double c = fmod(a, b);
+				PUSH_STACK_DOUBLE(c);
+			}
+			break;
+			case OP_I2F: {
+				int64_t a = POP_STACK();
+				double  b = (double)a;
+				PUSH_STACK_DOUBLE(b);
 			}
 			break;
 			case OP_CALL: {
@@ -309,7 +349,7 @@ int64_t eval(int pc) {
 
 				// preserve SP
 
-				SET_VAR_SLOT(0, instance);
+				SET_VAR_SLOT(0, instance); // this
 
 				PUSH_STACK(pc);
 				for(int i = 0; i < arg_length; i++) {
@@ -419,6 +459,11 @@ int64_t eval(int pc) {
 					printf("%f\n", time_spent);
 				} else if(name == 33) {
 					PUSH_STACK(rand());
+				} else if(name == 49935) {
+					double  number = POP_STACK_DOUBLE();
+					Object *buf    = POP_STACK_OBJECT();
+					int length = sprintf(buf->array, "%f", number);
+					PUSH_STACK(length);
 				} else if(name == 34555) {
 					gc(stack, 128 * 1024);
 					PUSH_STACK(0);

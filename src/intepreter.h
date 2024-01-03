@@ -17,6 +17,7 @@ typedef struct _Slot {
 	bool is_ref;
 	union {
 		int64_t value;
+		double value_float;
 		Object *ref;
 	};
 } Slot;
@@ -38,12 +39,19 @@ int FIND_OR_INSERT_CONST(char **constants, char *data) {
 #define GET_VAR_SLOT(k) (stack[fp][k])
 
 #define TOP_STACK_SLOT() (stack[fp][sp-1])
+
 #define POP_STACK() (sp--, stack[fp][sp].value)
 #define PUSH_STACK(v) (stack[fp][sp].value = v, sp++)
+
+#define POP_STACK_DOUBLE() (sp--, stack[fp][sp].value_float)
+#define PUSH_STACK_DOUBLE(v) (stack[fp][sp].value_float = v, sp++)
+
 #define POP_FRAME() (fp--)
 #define PUSH_FRAME() (fp++)
+
 #define POP_STACK_OBJECT() (sp--, stack[fp][sp].is_ref = false, stack[fp][sp].ref)
 #define PUSH_STACK_OBJECT(v) (stack[fp][sp].ref = v, stack[fp][sp].is_ref = true, sp++)
+
 #define POP_STACK_SLOT() ({sp--; Slot a = stack[fp][sp]; stack[fp][sp].is_ref = false; a;})
 #define PUSH_STACK_SLOT(v) (stack[fp][sp] = v, sp++)
 

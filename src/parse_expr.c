@@ -107,13 +107,11 @@ static Node *parse_unary(Token **current) {
 		node->body = parse_postfix(current);
 		return node;
 	}
-
 	if(consume_string(current, "!")) {
 		Node *node = new_node(ND_NOT, NULL);
 		node->body = parse_postfix(current);
 		return node;
 	}
-
 	return parse_postfix(current);
 }
 
@@ -153,7 +151,6 @@ static Node *parse_postfix(Token **current) {
 
 			continue;
 		}
-
 		return node;
 	}
 }

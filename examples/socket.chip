@@ -25,12 +25,14 @@ class Art {
 }
 
 class Convert {
-	method string(int i) : [static] returns char[] {
+	method string(int i) : [static] returns String {
 		if(i == 0) {
-			return "0";
+			return new String("0");
 		}
 
-		int[] result = new int[](32);
+		char[] digits = "0123456789abcdef";
+
+		char[] result = new char[](32);
 
 		int negative = (i < 0);
 
@@ -41,17 +43,17 @@ class Convert {
 		}
 
 		while(i > 0) {
-			result[k] = 48 + (i % 10);
+			result[k] = digits[i % 10];
 			i = i / 10;
 			k = k + 1;
 		}
 
 		if(negative) {
-			result[k] = 45;
+			result[k] = '-';
 			k = k + 1;
 		}
 
-		int[] reverse = new int[](k);
+		char[] reverse = new char[](k);
 
 		i = k;
 		k = 0;
@@ -61,7 +63,14 @@ class Convert {
 			k = k + 1;
 		}
 
-		return reverse;
+		return new String(reverse);
+	}
+
+	method string(float a) returns String {
+		char[] buf = new char[](1024);
+		int length = syscall(49935, a, buf) : int;
+
+		return new String(buf, length);
 	}
 }
 
@@ -78,19 +87,19 @@ class Math {
 		}
 		return b;
 	}
-	method sqrt(int n) : [static] returns int {
-		int lo = Math.min(1, n); 
-		int hi = Math.max(1, n);
+	method sqrt(int n) : [static] returns float {
+		float lo = Math.min(1, n); 
+		float hi = Math.max(1, n);
 
 		while(100 * lo * lo < n) {
 			lo = lo * 10;
 		}
 		while(0.01 * hi * hi > n) {
-			hi = hi * 0;
+			hi = hi * 0.1;
 		}
 
-		int i = 0;
-		int mid = 0;
+		float i = 0;
+		float mid = 0;
 		while(i < 100) {
 			mid = (lo + hi) / 2;
 
@@ -147,6 +156,11 @@ class String {
 	method constructor(char[] a) returns void {
 		this.constructor();
 		this.append(a);
+	}
+
+	method constructor(char[] a, int length) returns void {
+		this.constructor();
+		this.append(a, length);
 	}
 
 	method expandCapacity(int minimumCapacity) returns int {
@@ -275,6 +289,18 @@ class Header {
 		this.buffer.append("\r\n");
 	}
 
+	method append(char[] k, String v) returns void {
+		this.append(k, v.getBytes());
+	}
+
+	method append(String k, char[] v) returns void {
+		this.append(k.getBytes(), v);
+	}
+
+	method append(String k, String v) returns void {
+		this.append(k.getBytes(), v.getBytes());
+	}
+
 	method length() returns int {
 		return this.buffer.length();
 	}
@@ -320,16 +346,18 @@ class Main {
 				body.append("\n");
 				body.append(input, r);
 
-				while(y < 128) {
-					int sqrt = Math.sqrt(y);
+				while(y < 1024) {
+					float sqrt = Math.sqrt(y);
 					body.append(Convert.string(sqrt));
 					body.append(":");
-					body.append(Convert.string(sqrt * sqrt));
+					body.append(Convert.string(y));
 					body.append(":");
 					body.append(Random.string(32));
 					body.append("\n");
 					y = y + 1;
 				}
+
+				CircularRef ref = new CircularRef();
 
 				char[] text = "hey Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
 

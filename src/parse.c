@@ -19,6 +19,8 @@ Node *new_node(NodeType type, Token *token) {
 	node->args = NULL;
 	node->array_depth = 0;
 
+	node->computed_type = NULL;
+
 	node->method = NULL;
 
 	node->size = 0;

@@ -496,23 +496,43 @@ static void gen_binary(Node *node) {
 		}
 		break;
 		case ND_ADD: {
-			emit_op(OP_ADD);
+			if(node->computed_type == type_get("float")) {
+				emit_op(OP_FADD);
+			} else {
+				emit_op(OP_ADD);
+			}
 		}
 		break;
 		case ND_SUB: {
-			emit_op(OP_SUB);
+			if(node->computed_type == type_get("float")) {
+				emit_op(OP_FSUB);
+			} else {
+				emit_op(OP_SUB);
+			}
 		}
 		break;
 		case ND_MUL: {
-			emit_op(OP_MUL);
+			if(node->computed_type == type_get("float")) {
+				emit_op(OP_FMUL);
+			} else {
+				emit_op(OP_MUL);
+			}
 		}
 		break;
 		case ND_DIV: {
-			emit_op(OP_DIV);
+			if(node->computed_type == type_get("float")) {
+				emit_op(OP_FDIV);
+			} else {
+				emit_op(OP_DIV);
+			}
 		}
 		break;
 		case ND_MOD: {
-			emit_op(OP_MOD);
+			if(node->computed_type == type_get("float")) {
+				emit_op(OP_FMOD);
+			} else {
+				emit_op(OP_MOD);
+			}
 		}
 		break;
 		case ND_OR: {
@@ -558,7 +578,11 @@ static void gen_binary(Node *node) {
 
 static void gen_neg(Node *node) {
 	gen_visitor(node->body);
-	emit_op(OP_NEG);
+	if(node->computed_type == type_get("float")) {
+		emit_op(OP_FNEG);
+	} else {
+		emit_op(OP_NEG);
+	}
 }
 
 static void gen_not(Node *node) {
@@ -569,7 +593,7 @@ static void gen_not(Node *node) {
 
 static void gen_cast(Node *node) {
 	gen_visitor(node->body);
-	emit_op(OP_NOP);
+	emit_op(OP_I2F);
 }
 
 static void gen_char(Node *node) {

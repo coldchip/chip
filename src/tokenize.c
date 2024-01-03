@@ -60,7 +60,12 @@ Token *prev(Token **current) {
 }
 
 bool equals_string(Token **current, char *data) {
-	return ((*current)->type != TK_EOF && strcmp((*current)->data, data) == 0);
+	return (
+		(*current)->type != TK_EOF && 
+		(*current)->type != TK_STRING && 
+		(*current)->type != TK_CHAR && 
+		(strcmp((*current)->data, data) == 0)
+	);
 }
 
 bool equals_type(Token **current, TokenType type) {

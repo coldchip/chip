@@ -297,9 +297,15 @@ Ty *semantic_walk_expr(Node *node) {
 			Ty *left  = semantic_walk_expr(node->left);
 			Ty *right = semantic_walk_expr(node->right);
 
-			if(left != right && !type_compatible(right, left)) {
-				printf("error: incompatible types: cannot assign %s to %s\n", right->name, left->name);
-				exit(1);
+			if(left != right) {
+				if(!type_compatible(right, left)) {
+					printf("error: incompatible types: cannot assign %s to %s\n", right->name, left->name);
+					exit(1);
+				}
+
+				Node *cast_right = new_node(ND_CAST, NULL);
+				cast_right->body = node->right;
+				node->right = cast_right;
 			}
 
 			return left;
@@ -335,12 +341,15 @@ Ty *semantic_walk_expr(Node *node) {
 				node->right = cast_right;
 			}
 
+			node->computed_type = common;
+
 			return common;
 		}
 		break;
 		case ND_NEG:
 		case ND_NOT: {
-			return semantic_walk_expr(node->body);
+			node->computed_type = semantic_walk_expr(node->body);
+			return node->computed_type;
 		}
 		break;
 		case ND_CAST: {
@@ -372,7 +381,7 @@ Ty *semantic_walk_expr(Node *node) {
 				exit(1);
 			}
 
-			semantic_arg(node->args);
+			// semantic_arg(node->args);
 
 			node->method = method;
 
@@ -432,9 +441,11 @@ Ty *semantic_walk_expr(Node *node) {
 
 			semantic_arg(node->args);
 
-			char *signature  = semantic_arg_signature(node->args);
+			char *signature = semantic_arg_signature(node->args);
+			
 			TyMethod *method = type_get_method(ty, "constructor", signature);
-			if(!method) {
+
+			if(!method && !strcmp(signature, "void;") == 0) {
 				printf("call to unknown constructor %s of type %s\n", signature, type->token->data);
 				exit(1);
 			}
