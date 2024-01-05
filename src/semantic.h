@@ -20,7 +20,7 @@ void semantic_decl(Node *node);
 void semantic_assign(Node *node);
 void semantic_expr(Node *node);
 
-Ty  *semantic_walk_expr(Node *node);
+Node *semantic_walk_expr(Node *node);
 
 void semantic(Node *node);
 

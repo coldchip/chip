@@ -156,9 +156,10 @@ char *semantic_arg_signature(Node *node) {
 
 	for(ListNode *a = list_begin(&node->bodylist); a != list_end(&node->bodylist); a = list_next(a)) {
 		Node *arg = (Node*)a;
-		Ty *ty = semantic_walk_expr(arg);
 
-		strcat(result, ty->name);
+		semantic_walk_expr(arg);
+
+		strcat(result, arg->ty->name);
 		strcat(result, ";");
 	}
 
@@ -258,7 +259,8 @@ void semantic_while(Node *node) {
 void semantic_return(Node *node) {
 	Ty *ty = type_get("void");
 	if(node->body) {
-		ty = semantic_walk_expr(node->body);
+		Node *body = semantic_walk_expr(node->body);
+		ty = body->ty;
 	}
 
 	if(ty != return_ty) {
@@ -291,15 +293,15 @@ void semantic_expr(Node *node) {
 	semantic_walk_expr(node->body);
 }
 
-Ty *semantic_walk_expr(Node *node) {
+Node *semantic_walk_expr(Node *node) {
 	switch(node->type) {
 		case ND_ASSIGN: {
-			Ty *left  = semantic_walk_expr(node->left);
-			Ty *right = semantic_walk_expr(node->right);
+			Node *left  = semantic_walk_expr(node->left);
+			Node *right = semantic_walk_expr(node->right);
 
-			if(left != right) {
-				if(!type_compatible(right, left)) {
-					printf("error: incompatible types: cannot assign %s to %s\n", right->name, left->name);
+			if(left->ty != right->ty) {
+				if(!type_compatible(right->ty, left->ty)) {
+					printf("error: incompatible types: cannot assign %s to %s\n", right->ty->name, left->ty->name);
 					exit(1);
 				}
 
@@ -308,7 +310,7 @@ Ty *semantic_walk_expr(Node *node) {
 				node->right = cast_right;
 			}
 
-			return left;
+			return node;
 		}
 		break;
 		case ND_EQ:
@@ -321,61 +323,64 @@ Ty *semantic_walk_expr(Node *node) {
 		case ND_MOD:
 		case ND_OR:
 		case ND_AND: {
-			Ty *left  = semantic_walk_expr(node->left);
-			Ty *right = semantic_walk_expr(node->right);
-			Ty *common = type_get_common(left, right);
-			if(!common || !type_compatible(left, common) || !type_compatible(right, common)) {
-				printf("error: incompatible types: %s cannot perform arithmetric operation to %s\n", right->name, left->name);
+			Node *left  = semantic_walk_expr(node->left);
+			Node *right = semantic_walk_expr(node->right);
+			Ty *common = type_get_common(left->ty, right->ty);
+			if(!common || !type_compatible(left->ty, common) || !type_compatible(right->ty, common)) {
+				printf("error: incompatible types: %s cannot perform arithmetric operation to %s\n", right->ty->name, left->ty->name);
 				exit(1);
 			}
 
-			if(left != common) {
+			if(left->ty != common) {
 				Node *cast_left = new_node(ND_CAST, NULL);
 				cast_left->body = node->left;
 				node->left = cast_left;
 			}
 
-			if(right != common) {
+			if(right->ty != common) {
 				Node *cast_right = new_node(ND_CAST, NULL);
 				cast_right->body = node->right;
 				node->right = cast_right;
 			}
 
-			node->computed_type = common;
+			node->ty = common;
 
-			return common;
+			return node;
 		}
 		break;
 		case ND_NEG:
 		case ND_NOT: {
-			node->computed_type = semantic_walk_expr(node->body);
-			return node->computed_type;
+			Node *body = semantic_walk_expr(node->body);
+			node->ty = body->ty;
+			return node;
 		}
 		break;
 		case ND_CAST: {
-			return semantic_walk_expr(node->body);
+			semantic_walk_expr(node->body);
+			return node;
 		}
 		break;
 		case ND_MEMBER: {
-			Ty *parent = semantic_walk_expr(node->body);
+			Node *parent = semantic_walk_expr(node->body);
 
-			TyVariable *variable = type_get_variable(parent, node->token->data);
+			TyVariable *variable = type_get_variable(parent->ty, node->token->data);
 			if(!variable) {
 				printf("unknown member %s\n", node->token->data);
 				exit(1);
 			}
 
 			node->offset = variable->offset;
+			node->ty = variable->type;
 
-			return variable->type;
+			return node;
 		}
 		break;
 		case ND_CALL: {
-			Ty *parent = semantic_walk_expr(node->body);
+			Node *parent = semantic_walk_expr(node->body);
 
 			char *signature = semantic_arg_signature(node->args);
 
-			TyMethod *method = type_get_method(parent, node->token->data, signature);
+			TyMethod *method = type_get_method(parent->ty, node->token->data, signature);
 			if(!method) {
 				printf("call to unknown member %s(%s)\n", node->token->data, signature);
 				exit(1);
@@ -384,8 +389,9 @@ Ty *semantic_walk_expr(Node *node) {
 			// semantic_arg(node->args);
 
 			node->method = method;
+			node->ty = method->type;
 
-			return method->type;
+			return node;
 		}
 		break;
 		case ND_VARIABLE: {
@@ -398,24 +404,29 @@ Ty *semantic_walk_expr(Node *node) {
 			}
 
 			node->offset = var ? var->offset : 0;
+			node->ty = var ? var->type : ty;
 
-			return var ? var->type : ty;
+			return node;
 		}
 		break;
 		case ND_NUMBER: {
-			return type_get("int");
+			node->ty = type_get("int");
+			return node;
 		}
 		break;
 		case ND_FLOAT: {
-			return type_get("float");
+			node->ty = type_get("float");
+			return node;
 		}
 		break;
 		case ND_CHAR: {
-			return type_get("char");
+			node->ty = type_get("char");
+			return node;
 		}
 		break;
 		case ND_STRING: {
-			return type_get("char");
+			node->ty = type_get("char");
+			return node;
 		}
 		break;
 		case ND_SYSCALL: {
@@ -428,7 +439,9 @@ Ty *semantic_walk_expr(Node *node) {
 
 			semantic_arg(node->args);
 
-			return ty;
+			node->ty = ty;
+
+			return node;
 		}
 		break;
 		case ND_NEW: {
@@ -452,8 +465,9 @@ Ty *semantic_walk_expr(Node *node) {
 
 			node->size   = type_size(ty);
 			node->method = method;
+			node->ty = ty;
 
-			return ty;
+			return node;
 		}
 		break;
 		case ND_NEWARRAY: {
@@ -466,12 +480,18 @@ Ty *semantic_walk_expr(Node *node) {
 
 			semantic_walk_expr(node->args);
 
-			return ty;
+			node->ty = ty;
+
+			return node;
 		}
 		break;
 		case ND_ARRAYMEMBER: {
 			semantic_walk_expr(node->index);
-			return semantic_walk_expr(node->body);
+			
+			Node *body = semantic_walk_expr(node->body);
+
+			node->ty = body->ty;
+			return node;
 		}
 		break;
 		default: {

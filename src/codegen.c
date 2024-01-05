@@ -302,6 +302,9 @@ static void gen_method(Node *node) {
 
 	gen_visitor(node->args);
 
+	/* this */
+	emit_op_left(OP_STORE, 0);
+
 	while(!list_empty(&node->bodylist)) {
 		Node *entry = (Node*)list_remove(list_begin(&node->bodylist));
 		gen_visitor(entry);
@@ -496,7 +499,7 @@ static void gen_binary(Node *node) {
 		}
 		break;
 		case ND_ADD: {
-			if(node->computed_type == type_get("float")) {
+			if(node->ty == type_get("float")) {
 				emit_op(OP_FADD);
 			} else {
 				emit_op(OP_ADD);
@@ -504,7 +507,7 @@ static void gen_binary(Node *node) {
 		}
 		break;
 		case ND_SUB: {
-			if(node->computed_type == type_get("float")) {
+			if(node->ty == type_get("float")) {
 				emit_op(OP_FSUB);
 			} else {
 				emit_op(OP_SUB);
@@ -512,7 +515,7 @@ static void gen_binary(Node *node) {
 		}
 		break;
 		case ND_MUL: {
-			if(node->computed_type == type_get("float")) {
+			if(node->ty == type_get("float")) {
 				emit_op(OP_FMUL);
 			} else {
 				emit_op(OP_MUL);
@@ -520,7 +523,7 @@ static void gen_binary(Node *node) {
 		}
 		break;
 		case ND_DIV: {
-			if(node->computed_type == type_get("float")) {
+			if(node->ty == type_get("float")) {
 				emit_op(OP_FDIV);
 			} else {
 				emit_op(OP_DIV);
@@ -528,7 +531,7 @@ static void gen_binary(Node *node) {
 		}
 		break;
 		case ND_MOD: {
-			if(node->computed_type == type_get("float")) {
+			if(node->ty == type_get("float")) {
 				emit_op(OP_FMOD);
 			} else {
 				emit_op(OP_MOD);
@@ -578,7 +581,7 @@ static void gen_binary(Node *node) {
 
 static void gen_neg(Node *node) {
 	gen_visitor(node->body);
-	if(node->computed_type == type_get("float")) {
+	if(node->ty == type_get("float")) {
 		emit_op(OP_FNEG);
 	} else {
 		emit_op(OP_NEG);

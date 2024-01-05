@@ -162,11 +162,13 @@ int64_t eval(int pc) {
 	clock_t begin;
 
 	/* stack */
-	Slot stack[128][1024] = {};
-	/* frame pointer */
-	int64_t fp = 0;
+	Slot stack[128 * 1024] = {0};
+	/* var pointer */
+	int64_t vp = 0;
 	/* stack pointer */
-	int64_t sp = 512;
+	int64_t sp = 65535;
+
+	PUSH_STACK(0);
 
 	while(pc < code_size) {
 		Op *current = codes[pc];
@@ -342,16 +344,13 @@ int64_t eval(int pc) {
 				for(int i = 0; i < arg_length; i++) {
 					args[i] = POP_STACK_SLOT();
 				}
-
 				Slot instance = POP_STACK_SLOT();
 
 				PUSH_FRAME(); 
 
-				// preserve SP
-
-				SET_VAR_SLOT(0, instance); // this
-
 				PUSH_STACK(pc);
+
+				PUSH_STACK_SLOT(instance);
 				for(int i = 0; i < arg_length; i++) {
 					PUSH_STACK_SLOT(args[i]);
 				}

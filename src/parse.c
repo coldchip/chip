@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
+#include "chip.h"
 #include "tokenize.h"
 #include "parse.h"
 
@@ -19,7 +20,7 @@ Node *new_node(NodeType type, Token *token) {
 	node->args = NULL;
 	node->array_depth = 0;
 
-	node->computed_type = NULL;
+	node->ty = NULL;
 
 	node->method = NULL;
 
@@ -43,6 +44,13 @@ Node *new_node_binary(NodeType type, Token *token, Node *left, Node *right) {
 	}
 
 	return node;
+}
+
+bool is_import(Token **current) {
+	if(equals_string(current, "import")) {
+		return true;
+	}
+	return false;
 }
 
 bool is_class(Token **current) {
@@ -102,8 +110,13 @@ bool is_declaration(Token **current) {
 static Node *parse_program(Token **current) {
 	Node *node = new_node(ND_PROGRAM, NULL);
 
-	while(is_class(current)) {
-		list_insert(list_end(&node->bodylist), parse_class(current));
+	while((*current)->type != TK_EOF) {
+		if(is_class(current)) {
+			list_insert(list_end(&node->bodylist), parse_class(current));
+		} else {
+			printf("error: class expected\n");
+			exit(1);
+		}
 	}
 
 	return node;
@@ -127,7 +140,7 @@ Node *parse_type(Token **current) {
 static Node *parse_class(Token **current) {
 	Node *node = new_node(ND_CLASS, NULL);
 
-	expect_type(current, TK_IDENTIFIER);
+	expect_string(current, "class");
 
 	node->token = *current;
 

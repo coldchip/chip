@@ -35,25 +35,25 @@ int FIND_OR_INSERT_CONST(char **constants, char *data) {
 	return 0;
 }
 
-#define SET_VAR_SLOT(k, v) (stack[fp][k] = v)
-#define GET_VAR_SLOT(k) (stack[fp][k])
+#define SET_VAR_SLOT(k, v) (stack[vp + k] = v)
+#define GET_VAR_SLOT(k) (stack[vp + k])
 
-#define TOP_STACK_SLOT() (stack[fp][sp-1])
+#define TOP_STACK_SLOT() (stack[sp-1])
 
-#define POP_STACK() (sp--, stack[fp][sp].value)
-#define PUSH_STACK(v) (stack[fp][sp].value = v, sp++)
+#define POP_STACK() (sp--, stack[sp].value)
+#define PUSH_STACK(v) (stack[sp].value = v, sp++)
 
-#define POP_STACK_DOUBLE() (sp--, stack[fp][sp].value_float)
-#define PUSH_STACK_DOUBLE(v) (stack[fp][sp].value_float = v, sp++)
+#define POP_STACK_DOUBLE() (sp--, stack[sp].value_float)
+#define PUSH_STACK_DOUBLE(v) (stack[sp].value_float = v, sp++)
 
-#define POP_FRAME() (fp--)
-#define PUSH_FRAME() (fp++)
+#define POP_FRAME() (vp-=512)
+#define PUSH_FRAME() (vp+=512)
 
-#define POP_STACK_OBJECT() (sp--, stack[fp][sp].is_ref = false, stack[fp][sp].ref)
-#define PUSH_STACK_OBJECT(v) (stack[fp][sp].ref = v, stack[fp][sp].is_ref = true, sp++)
+#define POP_STACK_OBJECT() (sp--, stack[sp].is_ref = false, stack[sp].ref)
+#define PUSH_STACK_OBJECT(v) (stack[sp].ref = v, stack[sp].is_ref = true, sp++)
 
-#define POP_STACK_SLOT() ({sp--; Slot a = stack[fp][sp]; stack[fp][sp].is_ref = false; a;})
-#define PUSH_STACK_SLOT(v) (stack[fp][sp] = v, sp++)
+#define POP_STACK_SLOT() ({sp--; Slot a = stack[sp]; stack[sp].is_ref = false; a;})
+#define PUSH_STACK_SLOT(v) (stack[sp] = v, sp++)
 
 
 int               load_file(const char *name);

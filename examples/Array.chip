@@ -1,0 +1,11 @@
+class Array {
+	method copy(char[] dst, int dstOffset, char[] src, int srcOffset, int length) returns void {
+		syscall(8000, dst, dstOffset, src, srcOffset, length) : void;
+		return;
+	}
+
+	method copy(char[] dst, char[] src, int length) returns void {
+		Array.copy(dst, 0, src, 0, length);
+		return;
+	}
+}

@@ -145,6 +145,18 @@ class List {
 
 }
 
+class Array {
+	method copy(char[] dst, int dstOffset, char[] src, int srcOffset, int length) returns void {
+		syscall(8000, dst, dstOffset, src, srcOffset, length) : void;
+		return;
+	}
+
+	method copy(char[] dst, char[] src, int length) returns void {
+		Array.copy(dst, 0, src, 0, length);
+		return;
+	}
+}
+
 class String {
 	char[] buffer;
 	int count;
@@ -170,7 +182,7 @@ class String {
         }
 
 		char[] newData = new char[](newCapacity);
-        syscall(8000, newData, 0, this.buffer, 0, this.buffer.count) : void;
+        Array.copy(newData, this.buffer, this.buffer.count);
         this.buffer = newData;
 	}
 
@@ -183,7 +195,7 @@ class String {
 
 	method append(char[] b, int length) returns void {
 		this.ensureCapacityInternal(this.count + length);
-		syscall(8000, this.buffer, this.count, b, 0, length) : void;
+		Array.copy(this.buffer, this.count, b, 0, length);
 
 		this.count = this.count + length;
 
@@ -202,7 +214,7 @@ class String {
 
 	method getBytes() returns char[] {
 		char[] finals = new char[](this.count);
-		syscall(8000, finals, 0, this.buffer, 0, this.count) : void;
+		Array.copy(finals, 0, this.buffer, 0, this.count);
 		return finals;
 	}
 
@@ -325,6 +337,11 @@ class CircularRef {
 
 class Main {
 	method main() : [static] returns void {
+		float ggg = 234567 + 0.2;
+
+		Console.write(Convert.string(ggg));
+		Console.write("\n");
+
 		Socket s = new Socket("0.0.0.0", 19132);
 		if(s.bind()) {
 			Console.write("http://0.0.0.0:19132\n");
@@ -340,17 +357,19 @@ class Main {
 
 
 				String body = new String("hello world\n");
-				int y = 0;
 
 				body.append(Art.triangle(13));
 				body.append("\n");
 				body.append(input, r);
 
-				while(y < 1024) {
+				int y = 0;
+				while(y < 128) {
 					float sqrt = Math.sqrt(y);
 					body.append(Convert.string(sqrt));
 					body.append(":");
 					body.append(Convert.string(y));
+					body.append(":");
+					body.append(Convert.string(1024 / 5.3456));
 					body.append(":");
 					body.append(Random.string(32));
 					body.append("\n");

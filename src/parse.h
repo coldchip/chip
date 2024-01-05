@@ -71,7 +71,7 @@ typedef struct _Node {
 
 	Modifier modifier;
 
-	Ty *computed_type;
+	Ty *ty;
 
 	Token *token;
 
@@ -84,6 +84,7 @@ typedef struct _Node {
 Node              *new_node(NodeType type, Token *token);
 Node              *new_node_binary(NodeType type, Token *token, Node *left, Node *right);
 
+bool               is_import(Token **current);
 bool               is_class(Token **current);
 bool               is_method(Token **current);
 bool               is_call(Token **current);
@@ -92,6 +93,7 @@ bool               is_declaration(Token **current);
 static Node       *parse_program(Token **current);
 Node              *parse_basetype(Token **current);
 Node              *parse_type(Token **current);
+static Node       *parse_import(Token **current);
 static Node       *parse_class(Token **current);
 static Node       *parse_method(Token **current);
 Node              *parse_class_declaration(Token **current);
