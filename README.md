@@ -94,7 +94,7 @@ This will generate the binary ```chip```
 
 
 # Running it
-```$ ./chip examples/socket.chip```<br />
+```$ ./chip examples/Main.chip```<br />
 This will compile and run the sample test code in the folder ```examples```
 
 # Data types
