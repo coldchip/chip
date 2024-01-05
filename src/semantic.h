@@ -4,6 +4,7 @@
 #include "parse.h"
 
 void semantic_peek_class(Node *node);
+void semantic_peek_method(Node *node);
 
 void semantic_program(Node *node);
 void semantic_class(Node *node);

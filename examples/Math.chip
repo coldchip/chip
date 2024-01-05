@@ -1,0 +1,44 @@
+class Math {
+	method min(int a, int b) : [static] returns int {
+		if(a < b) {
+			return a;
+		}
+		return b;
+	}
+	method max(int a, int b) : [static] returns int {
+		if(a > b) {
+			return a;
+		}
+		return b;
+	}
+	method sqrt(int n) : [static] returns float {
+		float lo = Math.min(1, n); 
+		float hi = Math.max(1, n);
+
+		while(100 * lo * lo < n) {
+			lo = lo * 10;
+		}
+		while(0.01 * hi * hi > n) {
+			hi = hi * 0.1;
+		}
+
+		float i = 0;
+		float mid = 0;
+		while(i < 100) {
+			mid = (lo + hi) / 2;
+
+			if(mid * mid == n) {
+				return mid;
+			}
+			if(mid * mid > n) {
+				hi = mid;
+			} else {
+				lo = mid;
+			}
+
+			i = i + 1;
+		}
+
+		return mid;
+	}
+}

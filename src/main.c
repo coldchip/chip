@@ -11,6 +11,7 @@ int main(int argc, char const *argv[]) {
 		char *input = read_file((char *)argv[1]);
 
 		List tokens;
+		list_clear(&tokens);
 		tokenize(input, &tokens);
 		
 		Node *nodes = parse(&tokens);

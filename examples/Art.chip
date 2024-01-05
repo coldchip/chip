@@ -1,0 +1,25 @@
+class Art {
+	method triangle(int n) : [static] returns String {
+		String output = new String();
+
+		int c1 = (n - 1) / 2;
+		int c2 = 3 * n / 2 - 1;
+
+		int i = 0;
+		while(i < n) {
+			int j = 0;
+			while(j < n) {
+				if(i + j == c1 || i - j == c1 || j - i == c1 || i + j == c2 || i == c1 || j == c1) {
+					output.append("*");
+				} else {
+					output.append(" ");
+				}
+				j = j + 1;
+			}
+			output.append("\n");
+			i = i + 1;
+		}
+
+		return output;
+	}
+}

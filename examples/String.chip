@@ -1,0 +1,76 @@
+class String {
+	char[] buffer;
+	int count;
+	method constructor() returns void {
+		this.buffer = new char[](16);
+		this.count = 0;
+	}
+
+	method constructor(char[] a) returns void {
+		this.constructor();
+		this.append(a);
+	}
+
+	method constructor(char[] a, int length) returns void {
+		this.constructor();
+		this.append(a, length);
+	}
+
+	method constructor(char[] a, int offset, int length) returns void {
+		this.constructor();
+		this.append(a, offset, length);
+	}
+
+	method expandCapacity(int minimumCapacity) returns int {
+		int newCapacity = this.buffer.count * 2 + 2;
+        if(newCapacity - minimumCapacity < 0) {
+            newCapacity = minimumCapacity;
+        }
+
+		char[] newData = new char[](newCapacity);
+        Array.copy(newData, this.buffer, this.buffer.count);
+        this.buffer = newData;
+	}
+
+	method ensureCapacityInternal(int minimumCapacity) returns void {
+		int oldCapacity = this.buffer.count;
+        if(minimumCapacity - oldCapacity > 0) {
+            this.expandCapacity(minimumCapacity);
+        }
+	}
+
+	method append(char[] b) returns void {
+		this.append(b, b.count);
+		return;
+	}
+
+	method append(char[] b, int length) returns void {
+		this.append(b, 0, length);
+
+		return;
+	}
+
+	method append(char[] b, int offset, int length) returns void {
+		this.ensureCapacityInternal(this.count + length);
+		Array.copy(this.buffer, this.count, b, offset, length);
+
+		this.count = this.count + length;
+
+		return;
+	}
+
+	method append(String bb) returns void {
+		this.append(bb.getBytes());
+		return;
+	}
+
+	method getBytes() returns char[] {
+		char[] finals = new char[](this.count);
+		Array.copy(finals, 0, this.buffer, 0, this.count);
+		return finals;
+	}
+
+	method length() returns int {
+		return this.count;
+	}
+}

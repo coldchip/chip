@@ -157,8 +157,6 @@ static bool is_joined_punctuation(char first, char second) {
 }
 
 void tokenize(char *input, List *tokens) {
-	list_clear(tokens);
-
 	int line = 1;
 
 	while(*input != '\0') {

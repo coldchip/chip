@@ -12,6 +12,7 @@ typedef enum {
 } Modifier;
 
 typedef enum {
+	ND_IMPORT,
 	ND_PROGRAM,
 	ND_CLASS,
 	ND_TYPE,
@@ -90,9 +91,8 @@ bool               is_method(Token **current);
 bool               is_call(Token **current);
 bool               is_declaration(Token **current);
 
-static Node       *parse_program(Token **current);
-Node              *parse_basetype(Token **current);
 Node              *parse_type(Token **current);
+static Node       *parse_program(Token **current);
 static Node       *parse_import(Token **current);
 static Node       *parse_class(Token **current);
 static Node       *parse_method(Token **current);

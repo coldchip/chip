@@ -109,16 +109,25 @@ static void emit_file(List *constants) {
 	}
 
 	FILE *prg = fopen("~prg.out", "wb");
+	if(!prg) {
+		printf("unable to open to ~prg.out\n");
+		exit(1);
+	}
 
 	char entry_label[256];
 	sprintf(entry_label, "SUB_%p_%s", m, m->name);
 	LabelEntry entry = emit_get_label(entry_label);
 
 	fwrite(&entry.line, sizeof(int), 1, prg);
-
 	fwrite(&code_counter, sizeof(int), 1, prg);
 
 	int pos = 0;
+
+	FILE *s = fopen("asm.S", "wb");
+	if(!s) {
+		printf("unable to open to asm.S\n");
+		exit(1);
+	}
 
 	for(int i = 0; i < code_counter; i++) {
 		Op *ins = codes[i];
@@ -130,45 +139,51 @@ static void emit_file(List *constants) {
 		uint8_t encoded_op   = (op << 2) | (width & 0x03);
 		int64_t encoded_left = (left);
 
-		printf("\033[1;30m");
-		printf("0x%02x", pos);
-		printf("\033[0m");
+		fprintf(s, "\033[1;30m");
+		fprintf(s, "0x%02x", pos);
+		fprintf(s, "\033[0m");
 
 		fwrite(&encoded_op, sizeof(uint8_t), 1, prg);
 		pos++;
 
-		printf("\t");
+		fprintf(s, "\t");
 
-		printf("\033[1;33m");
-		printf("%s", op_display[op]);
-		printf("\033[0m");
+		fprintf(s, "\033[1;33m");
+		fprintf(s, "%s", op_display[op]);
+		fprintf(s, "\033[0m");
 
-		printf(" ");
+		fprintf(s, " ");
 		if(op_size[op]) {
-			printf("\033[1;36m");
-			printf("i%i", 8 * (1 << width));
-			printf("\033[0m");
+			fprintf(s, "\033[1;36m");
+			fprintf(s, "i%i", 8 * (1 << width));
+			fprintf(s, "\033[0m");
 		}
-		printf(" ");
+		fprintf(s, " ");
 
 		if(op_size[op]) {
-			printf("\033[1;32m");
-			printf("0x");
+			fprintf(s, "\033[1;32m");
+			fprintf(s, "0x");
 			for(int i = 0; i < (1 << width); ++i) {
 				uint8_t bit = ((uint8_t*)&encoded_left)[i] & 0xFF;
-				printf("%02x", bit & 0xFF);
+				fprintf(s, "%02x", bit & 0xFF);
 				fwrite(&bit, sizeof(bit), 1, prg);
 				pos++;
 			}
-			printf("\033[0m");
+			fprintf(s, "\033[0m");
 		}
 
-		printf("\n");
+		fprintf(s, "\n");
 	}
+
+	fclose(s);
 
 	fclose(prg);
 
 	FILE *cst = fopen("~cst.out", "wb");
+	if(!cst) {
+		printf("unable to open to ~cst.out\n");
+		exit(1);
+	}
 
 	int constants_size = list_size(constants);
 	fwrite(&constants_size, sizeof(constants_size), 1, cst);
@@ -265,6 +280,10 @@ static void gen_program(Node *node) {
 	}
 }
 
+static void gen_import(Node *node) {
+	gen_visitor(node->body);
+}
+
 static void gen_class(Node *node) {
 	while(!list_empty(&node->bodylist)) {
 		Node *entry = (Node*)list_remove(list_begin(&node->bodylist));
@@ -356,8 +375,8 @@ static void gen_while(Node *node) {
 	// check
 	emit_label(body_label);
 	gen_visitor(node->condition);
-	emit_op_left(OP_PUSH, 1);
-	emit_op_left_label(OP_JNE, exit_label);
+	emit_op_left(OP_PUSH, 0);
+	emit_op_left_label(OP_JE, exit_label);
 
 	// body
 	gen_visitor(node->body);
@@ -596,7 +615,10 @@ static void gen_not(Node *node) {
 
 static void gen_cast(Node *node) {
 	gen_visitor(node->body);
-	emit_op(OP_I2F);
+
+	if(node->ty == type_get("float")) {
+		emit_op(OP_I2F);
+	}
 }
 
 static void gen_char(Node *node) {
@@ -664,6 +686,10 @@ static void gen_visitor(Node *node) {
 	switch(node->type) {
 		case ND_PROGRAM: {
 			gen_program(node);
+		}
+		break;
+		case ND_IMPORT: {
+			gen_import(node);
 		}
 		break;
 		case ND_CLASS: {

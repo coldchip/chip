@@ -107,21 +107,6 @@ bool is_declaration(Token **current) {
 	return false;
 }
 
-static Node *parse_program(Token **current) {
-	Node *node = new_node(ND_PROGRAM, NULL);
-
-	while((*current)->type != TK_EOF) {
-		if(is_class(current)) {
-			list_insert(list_end(&node->bodylist), parse_class(current));
-		} else {
-			printf("error: class expected\n");
-			exit(1);
-		}
-	}
-
-	return node;
-}
-
 /*
 	type?[]?...[]
 */
@@ -133,6 +118,43 @@ Node *parse_type(Token **current) {
 		node->array_depth++;
 		expect_string(current, "]");
 	}
+
+	return node;
+}
+
+static Node *parse_program(Token **current) {
+	Node *node = new_node(ND_PROGRAM, NULL);
+
+	while((*current)->type != TK_EOF) {
+		if(is_import(current)) {
+			list_insert(list_end(&node->bodylist), parse_import(current));
+		} else if(is_class(current)) {
+			list_insert(list_end(&node->bodylist), parse_class(current));
+		} else {
+			printf("error: import or class expected\n");
+			exit(1);
+		}
+	}
+
+	return node;
+}
+
+static Node *parse_import(Token **current) {
+	Node *node = new_node(ND_IMPORT, NULL);
+
+	expect_string(current, "import");
+	char *module = (*current)->data;
+	expect_type(current, TK_IDENTIFIER);
+	expect_string(current, ";");
+
+	char filename[1024];
+	sprintf(filename, "examples/%s.chip", module);
+
+	char *input = read_file(filename);
+	List tokens;
+	list_clear(&tokens);
+	tokenize(input, &tokens);
+	node->body = parse(&tokens);
 
 	return node;
 }

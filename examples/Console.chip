@@ -1,0 +1,21 @@
+class Console {
+	method write(char[] a) : [static] returns void {
+		int i = 0;
+		while(i < a.count) {
+			syscall(2, a[i]) : void;
+			i = i + 1;
+		}
+	}
+
+	method write(int num) : [static] returns void {
+		char[] a = Convert.string(num);
+
+		this.write(a);
+	}
+
+	method write(String str) : [static] returns void {
+		char[] a = str.getBytes();
+
+		this.write(a);
+	}
+}

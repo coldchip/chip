@@ -1,0 +1,79 @@
+class Client {
+	int fd;
+	method constructor(int fd) returns void {
+		this.fd = fd;
+	}
+
+	method read(char[] buffer, int size) returns int {
+		return syscall(63, this.fd, buffer, size) : int;
+	}
+
+	method write(char[] data, int size) returns int {
+		return syscall(64, this.fd, data, size) : int;
+	}
+
+	method write(String str) : [static] returns int {
+		char[] a = str.getBytes();
+		return this.write(a, a.count);
+	}
+
+	method close() returns void {
+		syscall(65, this.fd) : void;
+	}
+}
+
+class Socket {
+	char[] ip;
+	int port;
+	int fd;
+	method constructor(char[] ip, int port) returns void {
+		this.ip = ip;
+		this.port = port;
+		this.fd = syscall(60) : int;
+	}
+
+	method bind() returns int {
+		return syscall(61, this.fd, this.ip, this.port) : int;
+	}
+
+	method accept() returns Client {
+		int fd = syscall(62, this.fd) : int;
+		return new Client(fd);
+	}
+}
+
+class Header {
+	String buffer;
+	method constructor() returns void {
+		this.buffer = new String();
+		this.buffer.append("HTTP/1.0 200 OK\r\n");
+	}
+
+	method append(char[] k, char[] v) returns void {
+		this.buffer.append(k);
+		this.buffer.append(":");
+		this.buffer.append(v);
+		this.buffer.append("\r\n");
+	}
+
+	method append(char[] k, String v) returns void {
+		this.append(k, v.getBytes());
+	}
+
+	method append(String k, char[] v) returns void {
+		this.append(k.getBytes(), v);
+	}
+
+	method append(String k, String v) returns void {
+		this.append(k.getBytes(), v.getBytes());
+	}
+
+	method length() returns int {
+		return this.buffer.length();
+	}
+
+	method toString() returns String {
+		this.buffer.append("\r\n");
+		return this.buffer;
+	}
+}

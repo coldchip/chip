@@ -1,0 +1,47 @@
+class Convert {
+	method string(int i, int radix) : [static] returns String {
+		if(radix < 2 || radix > 36) {
+			radix = 10;
+		}
+
+		if(i == 0) {
+			return new String("0");
+		}
+
+		char[] digits = "0123456789abcdefghijklmnopqrstuvwxyz";
+
+		char[] result = new char[](32);
+
+		int k = result.count;
+
+		int negative = (i < 0);
+
+		if(negative) {
+			i = -i;
+		}
+
+		while(i > 0) {
+			result[k] = digits[i % radix];
+			i = i / radix;
+			k = k - 1;
+		}
+
+		if(negative) {
+			result[k] = '-';
+			k = k - 1;
+		}
+
+		return new String(result, k + 1, result.count - k);
+	}
+
+	method string(int i) : [static] returns String {
+		return Convert.string(i, 10);
+	}
+
+	method string(float a) returns String {
+		char[] buf = new char[](1024);
+		int length = syscall(49935, a, buf) : int;
+
+		return new String(buf, length);
+	}
+}

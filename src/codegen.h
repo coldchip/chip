@@ -16,7 +16,6 @@
 	X(OP_NOP, "nop", false) \
 	X(OP_LOAD, "load", true) \
 	X(OP_STORE, "store", true) \
-	X(OP_POP, "pop", false) \
 	X(OP_CMPEQ, "cmpeq", false) \
 	X(OP_CMPGT, "cmpgt", false) \
 	X(OP_CMPLT, "cmplt", false) \
@@ -35,6 +34,7 @@
 	X(OP_I2F, "i2f", false) \
 	X(OP_DUP, "dup", false) \
 	X(OP_PUSH,  "push", true) \
+	X(OP_POP, "pop", false) \
 	X(OP_LOAD_CONST, "loadconst", true) \
 	X(OP_LOAD_FIELD, "loadfield", true) \
 	X(OP_STORE_FIELD, "storefield", true) \
@@ -45,7 +45,6 @@
 	X(OP_LOAD_ARRAY, "loadarr", false) \
 	X(OP_STORE_ARRAY, "storearr", false) \
 	X(OP_JE, "je", true) \
-	X(OP_JNE, "jne", true) \
 	X(OP_JMP, "jmp", true) \
 	X(OP_RET, "ret", false)
 
@@ -101,6 +100,7 @@ static void       emit_file(List *constants);
 uint8_t           closest_container_size(int64_t number);
 
 static void       gen_program(Node *node);
+static void       gen_import(Node *node);
 static void       gen_class(Node *node);
 static int        gen_param(Node *node);
 static int        gen_arg(Node *node);

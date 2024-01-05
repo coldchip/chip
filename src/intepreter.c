@@ -518,16 +518,6 @@ int64_t eval(int pc) {
 				}
 			}
 			break;
-			case OP_JNE: {
-				int64_t a = POP_STACK();
-				int64_t b = POP_STACK();
-
-				if(a != b) {
-					pc = current->left - 1;
-					continue;
-				}
-			}
-			break;
 			case OP_JMP: {
 				pc = current->left - 1;
 

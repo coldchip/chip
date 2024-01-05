@@ -20,70 +20,98 @@ Ty *return_ty = NULL;
 void semantic_peek_class(Node *node) {
 	for(ListNode *c = list_begin(&node->bodylist); c != list_end(&node->bodylist); c = list_next(c)) {
 		Node *class = (Node*)c;
-		if(class->type != ND_CLASS) continue;
 
-		if(type_get(class->token->data)) {
-			printf("error, redefinition of class %s\n", class->token->data);
-			exit(1);
+		switch(class->type) {
+			case ND_IMPORT: {
+				semantic_peek_class(class->body);
+			}
+			break;
+			case ND_CLASS: {
+				if(type_get(class->token->data)) {
+					printf("error, redefinition of class %s\n", class->token->data);
+					exit(1);
+				}
+				type_insert(class->token->data, 8);
+			}
+			break;
 		}
-		type_insert(class->token->data, 8);
 	}
+}
 
-
+void semantic_peek_method(Node *node) {
 	for(ListNode *c = list_begin(&node->bodylist); c != list_end(&node->bodylist); c = list_next(c)) {
 		Node *class = (Node*)c;
-		if(class->type != ND_CLASS) continue;
 
-		Ty *class_ty = type_get(class->token->data);
-
-		for(ListNode *m = list_begin(&class->bodylist); m != list_end(&class->bodylist); m = list_next(m)) {
-			Node *method = (Node*)m;
-
-			switch(method->type) {
-				case ND_CLASS_DECL: {
-					Node *type = method->data_type;
-					Ty *ty = type_get(type->token->data);
-					if(!ty) {
-						printf("unknown declaration type: %s\n", type->token->data);
-						exit(1);
-					}
-
-					if(type_get_variable(class_ty, method->token->data)) {
-						printf("error, redefinition of class variable %s\n", method->token->data);
-						exit(1);
-					}
-
-					insert_variable(class_ty, method->token->data, ty);
-				}
-				break;
-				case ND_METHOD: {
-					Node *type = method->data_type;
-					Ty *ty = type_get(type->token->data);
-					if(!ty) {
-						printf("unknown return type: %s\n", type->token->data);
-						exit(1);
-					}
-
-					char *signature = semantic_param_signature(method->args);
-
-					if(type_get_method(class_ty, method->token->data, signature)) {
-						printf("error, redefinition of method %s(%s)\n", method->token->data, signature);
-						exit(1);
-					}
-
-					method->method = insert_method(class_ty, method->token->data, signature, ty);
-				}
-				break;
+		switch(class->type) {
+			case ND_IMPORT: {
+				semantic_peek_method(class->body);
 			}
+			break;
+			case ND_CLASS: {
+				Ty *class_ty = type_get(class->token->data);
+
+				for(ListNode *m = list_begin(&class->bodylist); m != list_end(&class->bodylist); m = list_next(m)) {
+					Node *method = (Node*)m;
+
+					switch(method->type) {
+						case ND_CLASS_DECL: {
+							Node *type = method->data_type;
+							Ty *ty = type_get(type->token->data);
+							if(!ty) {
+								printf("unknown declaration type: %s\n", type->token->data);
+								exit(1);
+							}
+
+							if(type_get_variable(class_ty, method->token->data)) {
+								printf("error, redefinition of class variable %s\n", method->token->data);
+								exit(1);
+							}
+
+							insert_variable(class_ty, method->token->data, ty);
+						}
+						break;
+						case ND_METHOD: {
+							Node *type = method->data_type;
+							Ty *ty = type_get(type->token->data);
+							if(!ty) {
+								printf("unknown return type: %s\n", type->token->data);
+								exit(1);
+							}
+
+							char *signature = semantic_param_signature(method->args);
+
+							if(type_get_method(class_ty, method->token->data, signature)) {
+								printf("error, redefinition of method %s(%s)\n", method->token->data, signature);
+								exit(1);
+							}
+
+							method->method = insert_method(class_ty, method->token->data, signature, ty);
+						}
+						break;
+					}
+				}
+			}
+			break;
 		}
 	}
+
 	printf("\n\n");
 }
 
 void semantic_program(Node *node) {
 	for(ListNode *n = list_begin(&node->bodylist); n != list_end(&node->bodylist); n = list_next(n)) {
 		Node *entry = (Node*)n;
-		semantic_class(entry);
+
+		switch(entry->type) {
+			case ND_IMPORT: {
+				semantic_program(entry->body);
+			}
+			break;
+			case ND_CLASS: {
+				semantic_class(entry);
+			}
+			break;
+		}
 	}
 }
 
@@ -264,7 +292,8 @@ void semantic_return(Node *node) {
 	}
 
 	if(ty != return_ty) {
-		printf("warning: returning type of: %s, expected: %s\n", ty->name, return_ty->name);
+		printf("error: returning type of: %s, expected: %s\n", ty->name, return_ty->name);
+		exit(1);
 	}
 }
 
@@ -306,6 +335,7 @@ Node *semantic_walk_expr(Node *node) {
 				}
 
 				Node *cast_right = new_node(ND_CAST, NULL);
+				cast_right->ty = left->ty;
 				cast_right->body = node->right;
 				node->right = cast_right;
 			}
@@ -333,12 +363,14 @@ Node *semantic_walk_expr(Node *node) {
 
 			if(left->ty != common) {
 				Node *cast_left = new_node(ND_CAST, NULL);
+				cast_left->ty = common;
 				cast_left->body = node->left;
 				node->left = cast_left;
 			}
 
 			if(right->ty != common) {
 				Node *cast_right = new_node(ND_CAST, NULL);
+				cast_right->ty = common;
 				cast_right->body = node->right;
 				node->right = cast_right;
 			}
@@ -507,5 +539,7 @@ void semantic(Node *node) {
 	varscope_clear();
 
 	semantic_peek_class(node);
+	semantic_peek_method(node);
+
 	semantic_program(node);
 }
