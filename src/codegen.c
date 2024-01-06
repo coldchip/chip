@@ -12,11 +12,38 @@ int label_counter = 0;
 static Op *codes[32768] = {};
 int code_counter = 0;
 
+static char raw[32768] = {};
+int raw_counter = 0;
+
 static List constants;
 
 static int rand_string() {
 	static int result = 0;
     return result++;
+}
+
+int testtest(int a) {
+	int cl = 0;
+	for(int i = 0; i < code_counter; i++) {
+		Op *current = codes[i];
+
+		if(i == a) {
+			return cl;
+		}
+
+		uint8_t op    = current->op;
+		int64_t left  = current->left;
+		uint8_t width = closest_container_size(current->left);
+
+		if(op_jmp[op]) {
+			width = 2;
+		}
+
+		cl++;
+		if(op_size[op]) {
+			cl += (1 << width);
+		}
+	}
 }
 
 void emit_label_to_address() {
@@ -25,9 +52,38 @@ void emit_label_to_address() {
 
 		if(ins->left_label) {
 			LabelEntry label = emit_get_label(ins->left_label);
-			ins->left = label.line;
+			ins->left = testtest(label.line);
 		}
 	}
+
+	for(int i = 0; i < code_counter; ++i) {
+		Op *current = codes[i];
+
+		uint8_t op    = current->op;
+		int64_t left  = current->left;
+		uint8_t width = closest_container_size(left);
+
+		if(op_jmp[op]) {
+			width = 2;
+		}
+
+		uint8_t encoded_op   = (op << 2) | (width & 0x03);
+		int64_t encoded_left = (left);
+
+		raw[raw_counter] = encoded_op;
+		raw_counter++;
+
+		if(op_size[op]) {
+			for(int i = 0; i < (1 << width); ++i) {
+				uint8_t bit = ((uint8_t*)&encoded_left)[i] & 0xFF;
+				
+				raw[raw_counter] = bit;
+				raw_counter++;
+			}
+		}
+	}
+
+	printf("code size %i\n", raw_counter);
 }
 
 LabelEntry emit_get_label(const char *name) {
@@ -92,7 +148,7 @@ static int emit_constant(List *list, char *data, bool obfuscated) {
 }
 
 static int emit_op_get_counter() {
-	return code_counter + 1;
+	return code_counter;
 }
 
 static void emit_file(List *constants) {
@@ -108,134 +164,44 @@ static void emit_file(List *constants) {
 		exit(1);
 	}
 
-	FILE *prg = fopen("~prg.out", "wb");
+	FILE *prg = fopen("a.out", "wb");
 	if(!prg) {
 		printf("unable to open to ~prg.out\n");
 		exit(1);
 	}
 
+	char magic[8] = "CHIP";
+	fwrite(magic, sizeof(char), 8, prg);
+	fwrite(&raw_counter, sizeof(raw_counter), 1, prg);
+
 	char entry_label[256];
 	sprintf(entry_label, "SUB_%p_%s", m, m->name);
 	LabelEntry entry = emit_get_label(entry_label);
 
-	fwrite(&entry.line, sizeof(int), 1, prg);
-	fwrite(&code_counter, sizeof(int), 1, prg);
+	uint32_t e = testtest(entry.line);
+
+	fwrite(&e, sizeof(e), 1, prg);
 
 	int pos = 0;
 
-	FILE *s = fopen("asm.S", "wb");
-	if(!s) {
-		printf("unable to open to asm.S\n");
-		exit(1);
-	}
-
-	for(int i = 0; i < code_counter; i++) {
-		Op *ins = codes[i];
-
-		uint8_t op    = ins->op;
-		int64_t left  = ins->left;
-		uint8_t width = closest_container_size(left);
-
-		uint8_t encoded_op   = (op << 2) | (width & 0x03);
-		int64_t encoded_left = (left);
-
-		fprintf(s, "\033[1;30m");
-		fprintf(s, "0x%02x", pos);
-		fprintf(s, "\033[0m");
-
-		fwrite(&encoded_op, sizeof(uint8_t), 1, prg);
-		pos++;
-
-		fprintf(s, "\t");
-
-		fprintf(s, "\033[1;33m");
-		fprintf(s, "%s", op_display[op]);
-		fprintf(s, "\033[0m");
-
-		fprintf(s, " ");
-		if(op_size[op]) {
-			fprintf(s, "\033[1;36m");
-			fprintf(s, "i%i", 8 * (1 << width));
-			fprintf(s, "\033[0m");
-		}
-		fprintf(s, " ");
-
-		if(op_size[op]) {
-			fprintf(s, "\033[1;32m");
-			fprintf(s, "0x");
-			for(int i = 0; i < (1 << width); ++i) {
-				uint8_t bit = ((uint8_t*)&encoded_left)[i] & 0xFF;
-				fprintf(s, "%02x", bit & 0xFF);
-				fwrite(&bit, sizeof(bit), 1, prg);
-				pos++;
-			}
-			fprintf(s, "\033[0m");
-		}
-
-		fprintf(s, "\n");
-	}
-
-	fclose(s);
-
-	fclose(prg);
-
-	FILE *cst = fopen("~cst.out", "wb");
-	if(!cst) {
-		printf("unable to open to ~cst.out\n");
-		exit(1);
+	for(int i = 0; i < raw_counter; i++) {
+		fwrite(&raw[i], sizeof(char), 1, prg);
 	}
 
 	int constants_size = list_size(constants);
-	fwrite(&constants_size, sizeof(constants_size), 1, cst);
+	fwrite(&constants_size, sizeof(constants_size), 1, prg);
 
 	for(ListNode *c = list_begin(constants); c != list_end(constants); c = list_next(c)) {
 		Constant *constant = (Constant*)c;
 	
 		int constant_size = strlen(constant->data);
 
-		fwrite(&constant_size, sizeof(constant_size), 1, cst);
-		fwrite(constant->data, sizeof(char), constant_size, cst);
+		fwrite(&constant_size, sizeof(constant_size), 1, prg);
+		fwrite(constant->data, sizeof(char), constant_size, prg);
 		
 	}
 
-	fclose(cst);
-
-	FILE *fp = fopen("a.out", "wb");
-
-	char magic[8] = "CHIP";
-	fwrite(magic, sizeof(char), 8, fp);
-
-	prg = fopen("~prg.out", "rb");
-	fseek(prg, 0, SEEK_END);
-	int prg_size = ftell(prg);
-	fseek(prg, 0, SEEK_SET);
-
-	fwrite(&prg_size, sizeof(prg_size), 1, fp);
-
-	for(int i = 0; i < prg_size; ++i) {
-		char ch = fgetc(prg);
-		fputc(ch, fp);
-	}
-
 	fclose(prg);
-
-	cst = fopen("~cst.out", "rb");
-	fseek(cst, 0, SEEK_END);
-	int cst_size = ftell(cst);
-	fseek(cst, 0, SEEK_SET);
-
-	fwrite(&cst_size, sizeof(cst_size), 1, fp);
-
-	for(int i = 0; i < cst_size; ++i) {
-		char ch = fgetc(cst);
-		fputc(ch, fp);
-	}
-
-	fclose(cst);
-	fclose(fp);
-
-	unlink("~prg.out");
-	unlink("~cst.out");
 }
 
 void emit_asm() {
@@ -244,13 +210,13 @@ void emit_asm() {
 
 		for(int i = 0; i < label_counter; ++i) {
 			if((labels[i].line - 1) == pc) {
-				printf("%s:\n", labels[i].name);
+				printf("%i:%s:\n", testtest(labels[i].line), labels[i].name);
 				break;
 			}
 		}
 
 		if(ins->left_label) {
-			printf("\t%s\t%s\n", op_display[ins->op], ins->left_label);
+			printf("\t%s\t%s@0x%02x\n", op_display[ins->op], ins->left_label, ins->left);
 		} else {
 			if(op_size[ins->op]) {
 				printf("\t%s\t%li\n", op_display[ins->op], ins->left);
@@ -814,9 +780,8 @@ void gen(Node *node) {
 
 	optimize_peephole(codes, code_counter);
 
-	// emit_asm();
-
 	emit_label_to_address();
+	emit_asm();
 
 	emit_file(&constants);
 }

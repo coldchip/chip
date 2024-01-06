@@ -2,6 +2,7 @@ import Array;
 import Art;
 import Console;
 import Convert;
+import GC;
 import Math;
 import Random;
 import Socket;
@@ -34,7 +35,8 @@ class Main {
 					body.append(Convert.string(input[u] + 0, 16));
 					u = u + 1;
 				}
-				body.append("\n");
+				
+				body.append("\n\n\n");
 
 				int y = 0;
 				while(y < 128) {
@@ -69,7 +71,7 @@ class Main {
 
 				Console.write(Art.triangle(27));
 
-				syscall(34555) : void;
+				GC.collect();
 			}
 		} else {
 			Console.write("unable to bind\n");

@@ -17,13 +17,13 @@ Ty *return_ty = NULL;
 	process class & method types without statements 
 */
 
-void semantic_peek_class(Node *node) {
+void semantic_firstpass_class(Node *node) {
 	for(ListNode *c = list_begin(&node->bodylist); c != list_end(&node->bodylist); c = list_next(c)) {
 		Node *class = (Node*)c;
 
 		switch(class->type) {
 			case ND_IMPORT: {
-				semantic_peek_class(class->body);
+				semantic_firstpass_class(class->body);
 			}
 			break;
 			case ND_CLASS: {
@@ -38,13 +38,13 @@ void semantic_peek_class(Node *node) {
 	}
 }
 
-void semantic_peek_method(Node *node) {
+void semantic_firstpass_method(Node *node) {
 	for(ListNode *c = list_begin(&node->bodylist); c != list_end(&node->bodylist); c = list_next(c)) {
 		Node *class = (Node*)c;
 
 		switch(class->type) {
 			case ND_IMPORT: {
-				semantic_peek_method(class->body);
+				semantic_firstpass_method(class->body);
 			}
 			break;
 			case ND_CLASS: {
@@ -538,8 +538,8 @@ void semantic(Node *node) {
 	type_clear();
 	varscope_clear();
 
-	semantic_peek_class(node);
-	semantic_peek_method(node);
+	semantic_firstpass_class(node);
+	semantic_firstpass_method(node);
 
 	semantic_program(node);
 }

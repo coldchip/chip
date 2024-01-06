@@ -24,7 +24,7 @@ static char *constants[8192] = {};
 
 List objects;
 
-static Op *codes[32768] = {};
+static char codes[32768] = {};
 int code_size = 0;
 
 int load_file(const char *name) {
@@ -40,7 +40,13 @@ int load_file(const char *name) {
 	int pgm_size = 0;
 	fread(&pgm_size, sizeof(pgm_size), 1, fp);
 
-	fseek(fp, pgm_size + 4, SEEK_CUR);
+	int entry = 0;
+	fread(&entry, sizeof(entry), 1, fp);
+
+	for(int i = 0; i < pgm_size; i++) {
+		fread(&codes[code_size], sizeof(char), 1, fp);
+		code_size++;
+	}
 
 	int constants_count = 0;
 	fread(&constants_count, sizeof(constants_count), 1, fp);
@@ -57,33 +63,6 @@ int load_file(const char *name) {
 		constant_data[sizeof(constant_data) - 1] = '\0';
 
 		SET_CONST(z, strdup(constant_data));
-	}
-
-	fseek(fp, sizeof(magic) + 4, SEEK_SET);
-
-	int entry = 0;
-	fread(&entry, sizeof(entry), 1, fp);
-
-	int code_count = 0;
-	fread(&code_count, sizeof(code_count), 1, fp);
-
-	for(int i = 0; i < code_count; i++) {
-		uint8_t  encoded_op = 0;
-		fread(&encoded_op, sizeof(encoded_op), 1, fp);
-
-		uint8_t op      = (encoded_op >> 2) & 0x3F;
-		uint8_t width   = (encoded_op >> 0) & 0x03;
-		int64_t op_left = 0;
-
-		if(op_size[op]) {
-			fread(&op_left, sizeof(char), 1 << width, fp);
-		}
-
-		Op *ins = malloc(sizeof(Op));
-		ins->op = op;
-		ins->left = op_left;
-
-		codes[code_size++] = ins;
 	}
 
 	fclose(fp);
@@ -171,20 +150,43 @@ int64_t eval(int pc) {
 	PUSH_STACK(0);
 
 	while(pc < code_size) {
-		Op *current = codes[pc];
-		switch(current->op) {
+		uint8_t op      = (codes[pc] >> 2) & 0x3F;
+		uint8_t width   = (codes[pc] >> 0) & 0x03;
+		int64_t left    = (*(int64_t*)&codes[pc + 1]) & 0xFFFFFFFFFFFFFFFF;
+
+		if(op_size[op]) {
+			if(width == 0) {
+				left &= 0x00000000000000FF;
+			}
+			if(width == 1) {
+				left &= 0x000000000000FFFF;
+			}
+			if(width == 2) {
+				left &= 0x00000000FFFFFFFF;
+			}
+			if(width == 3) {
+				left &= 0xFFFFFFFFFFFFFFFF;
+			}
+		}
+
+		pc++;
+		if(op_size[op]) {
+			pc += 1 << width;
+		}
+
+		switch(op) {
 			case OP_NOP: {
 
 			}
 			break;
 			case OP_LOAD: {
-				Slot var = GET_VAR_SLOT(current->left);
+				Slot var = GET_VAR_SLOT(left);
 				PUSH_STACK_SLOT(var);
 			}
 			break;
 			case OP_STORE: {
 				Slot var = POP_STACK_SLOT();
-				SET_VAR_SLOT(current->left, var);
+				SET_VAR_SLOT(left, var);
 			}
 			break;
 			case OP_DUP: {
@@ -193,13 +195,13 @@ int64_t eval(int pc) {
 			}
 			break;
 			case OP_PUSH: {
-				PUSH_STACK((int64_t)current->left);
+				PUSH_STACK((int64_t)left);
 			}
 			break;
 			case OP_LOAD_CONST: {
 				Object *o = new_object(1);
 			
-				char *str  = GET_CONST(current->left);
+				char *str  = GET_CONST(left);
 				int   size = strlen(str);
 
 				o->array = malloc(sizeof(char) * size);
@@ -216,14 +218,14 @@ int64_t eval(int pc) {
 			break;
 			case OP_LOAD_FIELD: {
 				Object *instance = POP_STACK_OBJECT();
-				Slot var = instance->varlist[current->left];
+				Slot var = instance->varlist[left];
 				PUSH_STACK_SLOT(var);
 			}
 			break;
 			case OP_STORE_FIELD: {
 				Object *instance = POP_STACK_OBJECT();
 				Slot var = POP_STACK_SLOT();
-				instance->varlist[current->left] = var;
+				instance->varlist[left] = var;
 			}
 			break;
 			case OP_POP: {
@@ -355,7 +357,7 @@ int64_t eval(int pc) {
 					PUSH_STACK_SLOT(args[i]);
 				}
 
-				pc = (uint32_t)current->left - 1;
+				pc = (uint32_t)left;
 
 				continue;
 			}
@@ -473,7 +475,7 @@ int64_t eval(int pc) {
 			}
 			break;
 			case OP_NEWO: {
-				Object *o = new_object((int)current->left);
+				Object *o = new_object((int)left);
 				PUSH_STACK_OBJECT(o);
 			}
 			break;
@@ -513,13 +515,13 @@ int64_t eval(int pc) {
 				int64_t b = POP_STACK();
 
 				if(a == b) {
-					pc = current->left - 1;
+					pc = left;
 					continue;
 				}
 			}
 			break;
 			case OP_JMP: {
-				pc = current->left - 1;
+				pc = left;
 
 				continue;
 			}
@@ -532,18 +534,17 @@ int64_t eval(int pc) {
 
 				PUSH_STACK_SLOT(ret_data);
 
-				pc = ret_addr + 1;
+				pc = ret_addr;
 
 				continue;
 			}
 			break;
 			default: {
-				printf("illegal instruction %i\n", current->op);
+				printf("illegal instruction %s\n", op_display[op]);
 				exit(1);
 			}
 			break;
 		}
-		pc++;
 	}
 
 	return 0;
@@ -557,5 +558,5 @@ void intepreter(const char *input) {
 
 	int entry = load_file(input);
 
-	eval(entry - 1);
+	eval(entry);
 }
