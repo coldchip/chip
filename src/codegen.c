@@ -22,53 +22,62 @@ static int rand_string() {
     return result++;
 }
 
-int testtest(int a) {
-	int cl = 0;
+int line2addr(int line) {
+	int addr = 0;
 	for(int i = 0; i < code_counter; i++) {
 		Op *current = codes[i];
 
-		if(i == a) {
-			return cl;
+		if(i == line) {
+			return addr;
 		}
 
 		uint8_t op    = current->op;
 		int64_t left  = current->left;
-		uint8_t width = closest_container_size(current->left);
+		uint8_t width = current->width;
 
-		if(op_jmp[op]) {
-			width = 2;
-		}
-
-		cl++;
+		addr++;
 		if(op_size[op]) {
-			cl += (1 << width);
+			addr += (1 << width);
 		}
 	}
 }
 
 void emit_label_to_address() {
-	for(int i = 0; i < code_counter; i++) {
-		Op *ins = codes[i];
+	int passes = 0;
+	int done = 1;
+	while(done > 0) {
+		done = 0;
+		for(int i = 0; i < code_counter; i++) {
+			Op *current = codes[i];
 
-		if(ins->left_label) {
-			LabelEntry label = emit_get_label(ins->left_label);
-			ins->left = testtest(label.line);
+			uint8_t op = current->op;
+
+			if(op_size[op]) {
+				if(current->label) {
+					LabelEntry label = emit_get_label(current->label);
+					current->left = line2addr(label.line);
+				}
+
+				if(current->width != closest_container_size(current->left)) {
+					current->width = closest_container_size(current->left);
+					done = 1;
+				}
+			}
 		}
+		passes++;
 	}
+
+	printf("passes %i\n", passes);
 
 	for(int i = 0; i < code_counter; ++i) {
 		Op *current = codes[i];
 
 		uint8_t op    = current->op;
 		int64_t left  = current->left;
-		uint8_t width = closest_container_size(left);
-
-		if(op_jmp[op]) {
-			width = 2;
-		}
+		uint8_t width = current->width;
 
 		uint8_t encoded_op   = (op << 2) | (width & 0x03);
-		int64_t encoded_left = (left);
+		int64_t encoded_left = (left & 0xFFFFFFFFFFFFFFFF);
 
 		raw[raw_counter] = encoded_op;
 		raw_counter++;
@@ -83,6 +92,15 @@ void emit_label_to_address() {
 		}
 	}
 
+	// for(ListNode *c = list_begin(&constants); c != list_end(&constants); c = list_next(c)) {
+	// 	Constant *constant = (Constant*)c;
+	
+	// 	for(int i = 0; i < strlen(constant->data); i++) {
+	// 		raw[raw_counter] = constant->data[i];
+	// 		raw_counter++;
+	// 	}
+	// }
+
 	printf("code size %i\n", raw_counter);
 }
 
@@ -96,7 +114,7 @@ LabelEntry emit_get_label(const char *name) {
 
 LabelEntry emit_label(const char *name) {
 	LabelEntry label = {
-		.line = emit_op_get_counter(),
+		.line = code_counter,
 	};
 	strcpy(label.name, name);
 
@@ -113,7 +131,7 @@ static Op *emit_op_left(OpType op, uint64_t left) {
 	Op *ins = malloc(sizeof(Op));
 	ins->op = op;
 	ins->left = left;
-	ins->left_label = NULL;
+	ins->label = NULL;
 
 	codes[code_counter++] = ins;
 
@@ -123,7 +141,7 @@ static Op *emit_op_left(OpType op, uint64_t left) {
 static Op *emit_op_left_label(OpType op, const char *left) {
 	Op *ins = malloc(sizeof(Op));
 	ins->op = op;
-	ins->left_label = strdup(left);
+	ins->label = strdup(left);
 
 	codes[code_counter++] = ins;
 
@@ -145,10 +163,6 @@ static int emit_constant(List *list, char *data, bool obfuscated) {
 	constant->obfuscated = obfuscated;
 	list_insert(list_end(list), constant);
 	return list_size(list) - 1;
-}
-
-static int emit_op_get_counter() {
-	return code_counter;
 }
 
 static void emit_file(List *constants) {
@@ -178,7 +192,7 @@ static void emit_file(List *constants) {
 	sprintf(entry_label, "SUB_%p_%s", m, m->name);
 	LabelEntry entry = emit_get_label(entry_label);
 
-	uint32_t e = testtest(entry.line);
+	uint32_t e = line2addr(entry.line);
 
 	fwrite(&e, sizeof(e), 1, prg);
 
@@ -198,7 +212,6 @@ static void emit_file(List *constants) {
 
 		fwrite(&constant_size, sizeof(constant_size), 1, prg);
 		fwrite(constant->data, sizeof(char), constant_size, prg);
-		
 	}
 
 	fclose(prg);
@@ -210,20 +223,25 @@ void emit_asm() {
 
 		for(int i = 0; i < label_counter; ++i) {
 			if((labels[i].line - 1) == pc) {
-				printf("%i:%s:\n", testtest(labels[i].line), labels[i].name);
+				printf("\033[1;34m0x%02x:%s:\033[0m\n", line2addr(labels[i].line), labels[i].name);
 				break;
 			}
 		}
 
-		if(ins->left_label) {
-			printf("\t%s\t%s@0x%02lx\n", op_display[ins->op], ins->left_label, ins->left);
-		} else {
-			if(op_size[ins->op]) {
-				printf("\t%s\t%li\n", op_display[ins->op], ins->left);
-			} else {
-				printf("\t%s\n", op_display[ins->op]);
-			}
+		printf("\t\033[1;33m%s\033[0m ", op_display[ins->op]);
+
+		if(op_size[ins->op]) {
+			printf("\033[1;36mi%i\033[0m ", 8 * (1 << ins->width));
+
+			printf("\033[1;32m0x%02lx\033[0m", ins->left);
 		}
+
+		if(ins->label) {
+			printf("\t\033[1;35m// %s\033[0m", ins->label);
+		}
+
+
+		printf("\n");
 	}
 }
 
@@ -611,10 +629,7 @@ static void gen_string(Node *node) {
 	// emit_op_left(OP_STORE, 128);
 
 	// for(int i = 0; i < strlen(node->token->data); i++) {
-	// 	emit_op_left(OP_PUSH, (char)node->token->data[i] - 20);
-	// 	emit_op_left(OP_PUSH, 20);
-	// 	emit_op(OP_ADD);
-
+	// 	emit_op_left(OP_PUSH, (char)node->token->data[i]);
 	// 	emit_op_left(OP_LOAD, 128);
 	// 	emit_op_left(OP_PUSH, i);
 	// 	emit_op(OP_STORE_ARRAY);

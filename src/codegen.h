@@ -13,63 +13,58 @@
 #endif
 
 #define LIST_OF_OPS \
-	X(OP_NOP, "nop", false, false) \
-	X(OP_LOAD, "load", true, false) \
-	X(OP_STORE, "store", true, false) \
-	X(OP_CMPEQ, "cmpeq", false, false) \
-	X(OP_CMPGT, "cmpgt", false, false) \
-	X(OP_CMPLT, "cmplt", false, false) \
-	X(OP_ADD, "add", false, false) \
-	X(OP_SUB, "sub", false, false) \
-	X(OP_MUL, "mul", false, false) \
-	X(OP_DIV, "div", false, false) \
-	X(OP_NEG, "neg", false, false) \
-	X(OP_MOD, "mod", false, false) \
-	X(OP_FADD, "fadd", false, false) \
-	X(OP_FSUB, "fsub", false, false) \
-	X(OP_FMUL, "fmul", false, false) \
-	X(OP_FDIV, "fdiv", false, false) \
-	X(OP_FNEG, "fneg", false, false) \
-	X(OP_FMOD, "fmod", false, false) \
-	X(OP_I2F, "i2f", false, false) \
-	X(OP_DUP, "dup", false, false) \
-	X(OP_PUSH,  "push", true, false) \
-	X(OP_POP, "pop", false, false) \
-	X(OP_LOAD_CONST, "loadconst", true, false) \
-	X(OP_LOAD_FIELD, "loadfield", true, false) \
-	X(OP_STORE_FIELD, "storefield", true, false) \
-	X(OP_CALL, "call", true, true) \
-	X(OP_SYSCALL, "syscall", false, false) \
-	X(OP_NEWO, "newo", true, false) \
-	X(OP_NEW_ARRAY, "newarr", false, false) \
-	X(OP_LOAD_ARRAY, "loadarr", false, false) \
-	X(OP_STORE_ARRAY, "storearr", false, false) \
-	X(OP_JE, "je", true, true) \
-	X(OP_JMP, "jmp", true, true) \
-	X(OP_RET, "ret", false, false)
+	X(OP_NOP, "nop", false) \
+	X(OP_LOAD, "load", true) \
+	X(OP_STORE, "store", true) \
+	X(OP_CMPEQ, "cmpeq", false) \
+	X(OP_CMPGT, "cmpgt", false) \
+	X(OP_CMPLT, "cmplt", false) \
+	X(OP_ADD, "add", false) \
+	X(OP_SUB, "sub", false) \
+	X(OP_MUL, "mul", false) \
+	X(OP_DIV, "div", false) \
+	X(OP_NEG, "neg", false) \
+	X(OP_MOD, "mod", false) \
+	X(OP_FADD, "fadd", false) \
+	X(OP_FSUB, "fsub", false) \
+	X(OP_FMUL, "fmul", false) \
+	X(OP_FDIV, "fdiv", false) \
+	X(OP_FNEG, "fneg", false) \
+	X(OP_FMOD, "fmod", false) \
+	X(OP_I2F, "i2f", false) \
+	X(OP_DUP, "dup", false) \
+	X(OP_PUSH,  "push", true) \
+	X(OP_POP, "pop", false) \
+	X(OP_LOAD_CONST, "loadconst", true) \
+	X(OP_LOAD_FIELD, "loadfield", true) \
+	X(OP_STORE_FIELD, "storefield", true) \
+	X(OP_CALL, "call", true) \
+	X(OP_SYSCALL, "syscall", false) \
+	X(OP_NEWO, "newo", true) \
+	X(OP_NEW_ARRAY, "newarr", false) \
+	X(OP_LOAD_ARRAY, "loadarr", false) \
+	X(OP_STORE_ARRAY, "storearr", false) \
+	X(OP_JE, "je", true) \
+	X(OP_JMP, "jmp", true) \
+	X(OP_RET, "ret", false)
 
-
-#define X(name, display, left, jmp) name,
+/* ops */
+#define X(name, display, left) name,
 typedef enum {
 	LIST_OF_OPS
 } OpType;
 #undef X
 
-#define X(name, display, left, jmp) display,
+/* mnemonic names for ops */
+#define X(name, display, left) display,
 static char *op_display[] = {
 	LIST_OF_OPS
 };
 #undef X
 
-#define X(name, display, left, jmp) left,
+/* ops that has a left oprand */
+#define X(name, display, left) left,
 static bool op_size[] = {
-	LIST_OF_OPS
-};
-#undef X
-
-/* ops that hold an address on its oprand */
-#define X(name, display, left, jmp) jmp,
-static bool op_jmp[] = {
 	LIST_OF_OPS
 };
 #undef X
@@ -89,7 +84,8 @@ typedef struct {
 typedef struct _Op {
 	OpType op;
 	uint64_t left;
-	char *left_label;
+	char *label;
+	int width;
 } Op;
 
 static int        rand_string();
@@ -101,7 +97,6 @@ static Op *       emit_op(OpType op);
 static Op *       emit_op_left(OpType op, uint64_t left);
 static Op        *emit_op_left_label(OpType op, const char *left);
 static int        emit_constant(List *list, char *data, bool obfuscated);
-static int        emit_op_get_counter();
 static void       emit_file(List *constants);
 
 uint8_t           closest_container_size(int64_t number);

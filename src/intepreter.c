@@ -173,11 +173,12 @@ int64_t eval(int pc) {
 	while(pc < code_size) {
 		uint8_t op      = (codes[pc] >> 2) & 0x3F;
 		uint8_t width   = (codes[pc] >> 0) & 0x03;
-		int64_t left    = (*(int64_t*)&codes[pc + 1]) & 0xFFFFFFFFFFFFFFFF;
+		int64_t left    = 0;
 
 		pc++;
 
 		if(op_size[op]) {
+			left = (*(int64_t*)&codes[pc]) & 0xFFFFFFFFFFFFFFFF;
 			if(width == 0) {
 				left &= 0x00000000000000FF;
 			}

@@ -32,7 +32,7 @@ class Main {
 
 				int u = 0;
 				while(u < r) {
-					body.append(Convert.string(input[u] + 0, 16));
+					body.append(Convert.string(input[u] + 0, 36));
 					u = u + 1;
 				}
 				
