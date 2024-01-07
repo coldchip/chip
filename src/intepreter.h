@@ -24,16 +24,6 @@ typedef struct _Slot {
 
 #define GET_CONST(i) (constants[(int)i])
 #define SET_CONST(i, v) (constants[(int)i] = v)
-int FIND_OR_INSERT_CONST(char **constants, char *data) {
-	for(int i = 0; i < 8192; i++) {
-		char *current = GET_CONST(i);
-		if(current && strcmp(current, data) == 0) {
-			return i;
-		}
-	}
-
-	return 0;
-}
 
 #define SET_VAR_SLOT(k, v) (stack[vp + k] = v)
 #define GET_VAR_SLOT(k) (stack[vp + k])

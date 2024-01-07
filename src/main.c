@@ -4,6 +4,7 @@
 #include "parse.h"
 #include "codegen.h"
 #include "semantic.h"
+#include "intepreter.h"
 
 int main(int argc, char const *argv[]) {
 	/* code */

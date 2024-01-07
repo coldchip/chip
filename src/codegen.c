@@ -216,7 +216,7 @@ void emit_asm() {
 		}
 
 		if(ins->left_label) {
-			printf("\t%s\t%s@0x%02x\n", op_display[ins->op], ins->left_label, ins->left);
+			printf("\t%s\t%s@0x%02lx\n", op_display[ins->op], ins->left_label, ins->left);
 		} else {
 			if(op_size[ins->op]) {
 				printf("\t%s\t%li\n", op_display[ins->op], ins->left);

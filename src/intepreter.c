@@ -7,9 +7,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <netdb.h>
+#include <math.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <arpa/inet.h>
 #include <signal.h>
 #include <unistd.h>
 #include <stdint.h>
@@ -19,11 +21,9 @@
 #include "optimize.h"
 #include "intepreter.h"
 
-Object *globals[8192] = {}; // generate instances of all classes to allow static invoking
-static char *constants[8192] = {};
-
 List objects;
 
+static char *constants[8192] = {};
 static char codes[32768] = {};
 int code_size = 0;
 
@@ -35,30 +35,51 @@ int load_file(const char *name) {
 	}
 
 	char magic[8];
-	fread(magic, sizeof(char), 8, fp);
+	if(fread(magic, sizeof(char), 8, fp) != 8) {
+		printf("unable to read file\n");
+		exit(1);
+	}
 
 	int pgm_size = 0;
-	fread(&pgm_size, sizeof(pgm_size), 1, fp);
+	if(fread(&pgm_size, sizeof(pgm_size), 1, fp) != 1) {
+		printf("unable to read file\n");
+		exit(1);
+	}
 
 	int entry = 0;
-	fread(&entry, sizeof(entry), 1, fp);
+	if(fread(&entry, sizeof(entry), 1, fp) != 1) {
+		printf("unable to read file\n");
+		exit(1);
+	}
 
 	for(int i = 0; i < pgm_size; i++) {
-		fread(&codes[code_size], sizeof(char), 1, fp);
+		if(fread(&codes[code_size], sizeof(char), 1, fp) != 1) {
+			printf("unable to read file\n");
+			exit(1);
+		}
 		code_size++;
 	}
 
 	int constants_count = 0;
-	fread(&constants_count, sizeof(constants_count), 1, fp);
+	if(fread(&constants_count, sizeof(constants_count), 1, fp) != 1) {
+		printf("unable to read file\n");
+		exit(1);
+	}
 
 	for(int z = 0; z < constants_count; z++) {
 		int constant_length = 0;
-		fread(&constant_length, sizeof(constant_length), 1, fp);
+		if(fread(&constant_length, sizeof(constant_length), 1, fp) != 1) {
+			printf("unable to read file\n");
+			exit(1);
+		}
 
 		char constant_data[constant_length + 1];
 		memset(constant_data, 0, sizeof(constant_data));
 
-		fread(&constant_data, sizeof(char), constant_length, fp);
+		if(fread(&constant_data, sizeof(char), constant_length, fp) != constant_length) {
+			printf("unable to read file\n");
+			exit(1);
+		}
 
 		constant_data[sizeof(constant_data) - 1] = '\0';
 
@@ -154,6 +175,8 @@ int64_t eval(int pc) {
 		uint8_t width   = (codes[pc] >> 0) & 0x03;
 		int64_t left    = (*(int64_t*)&codes[pc + 1]) & 0xFFFFFFFFFFFFFFFF;
 
+		pc++;
+
 		if(op_size[op]) {
 			if(width == 0) {
 				left &= 0x00000000000000FF;
@@ -167,10 +190,6 @@ int64_t eval(int pc) {
 			if(width == 3) {
 				left &= 0xFFFFFFFFFFFFFFFF;
 			}
-		}
-
-		pc++;
-		if(op_size[op]) {
 			pc += 1 << width;
 		}
 
@@ -522,7 +541,6 @@ int64_t eval(int pc) {
 			break;
 			case OP_JMP: {
 				pc = left;
-
 				continue;
 			}
 			break;
@@ -540,7 +558,7 @@ int64_t eval(int pc) {
 			}
 			break;
 			default: {
-				printf("illegal instruction %s\n", op_display[op]);
+				printf("illegal instruction %i\n", op);
 				exit(1);
 			}
 			break;
