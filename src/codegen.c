@@ -226,7 +226,7 @@ void emit_asm() {
 				printf("\033[1;34m0x%02x:%s:\033[0m\n", line2addr(labels[i].line), labels[i].name);
 				break;
 			}
-		}
+		} 
 
 		printf("\t\033[1;33m%s\033[0m ", op_display[ins->op]);
 
