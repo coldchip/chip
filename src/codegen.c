@@ -44,9 +44,9 @@ int line2addr(int line) {
 
 void emit_label_to_address() {
 	int passes = 0;
-	int done = 1;
-	while(done > 0) {
-		done = 0;
+	int done = false;
+	while(done != true) {
+		done = true;
 		for(int i = 0; i < code_counter; i++) {
 			Op *current = codes[i];
 
@@ -60,7 +60,7 @@ void emit_label_to_address() {
 
 				if(current->width != closest_container_size(current->left)) {
 					current->width = closest_container_size(current->left);
-					done = 1;
+					done = false;
 				}
 			}
 		}
@@ -166,18 +166,6 @@ static int emit_constant(List *list, char *data, bool obfuscated) {
 }
 
 static void emit_file(List *constants) {
-	Ty *c = type_get("Main");
-	if(!c) {
-		printf("entry point class Main not found\n");
-		exit(1);
-	}
-
-	TyMethod *m = type_get_method(c, "main", "void;");
-	if(!m) {
-		printf("entry point method main not found\n");
-		exit(1);
-	}
-
 	FILE *prg = fopen("a.out", "wb");
 	if(!prg) {
 		printf("unable to open to ~prg.out\n");
@@ -186,17 +174,8 @@ static void emit_file(List *constants) {
 
 	char magic[8] = "CHIP";
 	fwrite(magic, sizeof(char), 8, prg);
+
 	fwrite(&raw_counter, sizeof(raw_counter), 1, prg);
-
-	char entry_label[256];
-	sprintf(entry_label, "SUB_%p_%s", m, m->name);
-	LabelEntry entry = emit_get_label(entry_label);
-
-	uint32_t e = line2addr(entry.line);
-
-	fwrite(&e, sizeof(e), 1, prg);
-
-	int pos = 0;
 
 	for(int i = 0; i < raw_counter; i++) {
 		fwrite(&raw[i], sizeof(char), 1, prg);
@@ -222,7 +201,7 @@ void emit_asm() {
 		Op *ins = codes[pc];
 
 		for(int i = 0; i < label_counter; ++i) {
-			if((labels[i].line - 1) == pc) {
+			if((labels[i].line) == pc) {
 				printf("\033[1;34m0x%02x:%s:\033[0m\n", line2addr(labels[i].line), labels[i].name);
 				break;
 			}
@@ -791,6 +770,28 @@ static void gen_visitor(Node *node) {
 
 void gen(Node *node) {
 	list_clear(&constants);
+
+	Ty *c = type_get("Main");
+	if(!c) {
+		printf("entry point class Main not found\n");
+		exit(1);
+	}
+
+	TyMethod *m = type_get_method(c, "main", "void;");
+	if(!m) {
+		printf("entry point method main not found\n");
+		exit(1);
+	}
+
+	char entry_label[256];
+	sprintf(entry_label, "SUB_%p_%s", m, m->name);
+
+	emit_label("entry_point");
+	emit_op_left(OP_PUSH, 0);
+	emit_op_left_label(OP_CALL, entry_label);
+	emit_op_left(OP_PUSH, 0);
+	emit_op(OP_HALT);
+
 	gen_visitor(node);
 
 	optimize_peephole(codes, code_counter);

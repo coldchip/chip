@@ -45,9 +45,9 @@ class Main {
 					body.append(":");
 					body.append(Convert.string(y));
 					body.append(":");
-					body.append(Random.string(8192));
+					body.append(Random.string(32));
 					body.append("\n");
-					body.append(Art.triangle(9));
+					body.append(Art.triangle(27));
 					body.append("\n");
 					body.append(input, r);
 					body.append("\n");

@@ -46,12 +46,6 @@ int load_file(const char *name) {
 		exit(1);
 	}
 
-	int entry = 0;
-	if(fread(&entry, sizeof(entry), 1, fp) != 1) {
-		printf("unable to read file\n");
-		exit(1);
-	}
-
 	for(int i = 0; i < pgm_size; i++) {
 		if(fread(&codes[code_size], sizeof(char), 1, fp) != 1) {
 			printf("unable to read file\n");
@@ -88,7 +82,7 @@ int load_file(const char *name) {
 
 	fclose(fp);
 
-	return entry;
+	return 1;
 }
 
 int allocs = 0;
@@ -167,8 +161,6 @@ int64_t eval(int pc) {
 	int64_t vp = 0;
 	/* stack pointer */
 	int64_t sp = 65535;
-
-	PUSH_STACK(0);
 
 	while(pc < code_size) {
 		uint8_t op      = (codes[pc] >> 2) & 0x3F;
@@ -558,6 +550,11 @@ int64_t eval(int pc) {
 				continue;
 			}
 			break;
+			case OP_HALT: {
+				int64_t ret_code = POP_STACK();
+				exit(ret_code);
+			}
+			break;
 			default: {
 				printf("illegal instruction %i\n", op);
 				exit(1);
@@ -575,7 +572,7 @@ void intepreter(const char *input) {
 
 	list_clear(&objects);
 
-	int entry = load_file(input);
+	load_file(input);
 
-	eval(entry);
+	eval(0);
 }

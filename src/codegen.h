@@ -46,7 +46,8 @@
 	X(OP_STORE_ARRAY, "storearr", false) \
 	X(OP_JE, "je", true) \
 	X(OP_JMP, "jmp", true) \
-	X(OP_RET, "ret", false)
+	X(OP_RET, "ret", false) \
+	X(OP_HALT, "halt", false)
 
 /* ops */
 #define X(name, display, left) name,
