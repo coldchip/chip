@@ -3,6 +3,8 @@
 
 #include "codegen.h"
 
+#define CHIP_VERSION 0x00000001
+
 typedef struct _Object {
 	ListNode node;
 

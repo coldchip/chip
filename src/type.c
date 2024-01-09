@@ -19,11 +19,18 @@ void type_clear() {
 }
 
 bool type_compatible(Ty *from, Ty *to) {
-	if(type_get_common(from, to) == to) {
+	if(from == to) {
+		return true;
+	}
+	if(type_is_primitive(from) && type_is_primitive(to) && type_get_common(from, to) == to) {
 		return true;
 	}
 
 	return false;
+}
+
+bool type_is_primitive(Ty *type) {
+	return type == type_get("float") || type == type_get("int") || type == type_get("char");
 }
 
 Ty *type_get_common(Ty *left, Ty *right) {

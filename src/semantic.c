@@ -328,12 +328,12 @@ Node *semantic_walk_expr(Node *node) {
 			Node *left  = semantic_walk_expr(node->left);
 			Node *right = semantic_walk_expr(node->right);
 
-			if(left->ty != right->ty) {
-				if(!type_compatible(right->ty, left->ty)) {
-					printf("error: incompatible types: cannot assign %s to %s\n", right->ty->name, left->ty->name);
-					exit(1);
-				}
+			if(!type_compatible(right->ty, left->ty)) {
+				printf("error: incompatible types: cannot assign %s to %s\n", right->ty->name, left->ty->name);
+				exit(1);
+			}
 
+			if(left->ty != right->ty) {
 				Node *cast_right = new_node(ND_CAST, NULL);
 				cast_right->ty = left->ty;
 				cast_right->body = node->right;

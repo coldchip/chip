@@ -34,19 +34,18 @@ int load_file(const char *name) {
 		exit(1);
 	}
 
-	char magic[8];
-	if(fread(magic, sizeof(char), 8, fp) != 8) {
+	chip_hdr_t hdr;
+	if(fread(&hdr, sizeof(hdr), 1, fp) != 1) {
 		printf("unable to read file\n");
 		exit(1);
 	}
 
-	int pgm_size = 0;
-	if(fread(&pgm_size, sizeof(pgm_size), 1, fp) != 1) {
-		printf("unable to read file\n");
+	if(ntohl(hdr.version) != CHIP_VERSION) {
+		printf("incorrect chip executable version\n");
 		exit(1);
 	}
 
-	for(int i = 0; i < pgm_size; i++) {
+	for(int i = 0; i < ntohll(hdr.code_size); i++) {
 		if(fread(&codes[code_size], sizeof(char), 1, fp) != 1) {
 			printf("unable to read file\n");
 			exit(1);
@@ -54,13 +53,7 @@ int load_file(const char *name) {
 		code_size++;
 	}
 
-	int constants_count = 0;
-	if(fread(&constants_count, sizeof(constants_count), 1, fp) != 1) {
-		printf("unable to read file\n");
-		exit(1);
-	}
-
-	for(int z = 0; z < constants_count; z++) {
+	for(int z = 0; z < ntohll(hdr.const_size); z++) {
 		int constant_length = 0;
 		if(fread(&constant_length, sizeof(constant_length), 1, fp) != 1) {
 			printf("unable to read file\n");
@@ -82,7 +75,7 @@ int load_file(const char *name) {
 
 	fclose(fp);
 
-	return 1;
+	return ntohll(hdr.entry);
 }
 
 int allocs = 0;
@@ -170,7 +163,7 @@ int64_t eval(int pc) {
 		pc++;
 
 		if(op_size[op]) {
-			left = (*(int64_t*)&codes[pc]) & 0xFFFFFFFFFFFFFFFF;
+			left = *(int64_t*)&codes[pc];
 			if(width == 0) {
 				left &= 0x00000000000000FF;
 			}
@@ -210,12 +203,11 @@ int64_t eval(int pc) {
 				PUSH_STACK((int64_t)left);
 			}
 			break;
-			case OP_LOAD_CONST: {
-				Object *o = new_object(1);
-			
+			case OP_LOAD_CONST: {			
 				char *str  = GET_CONST(left);
 				int   size = strlen(str);
 
+				Object *o = new_object(size);
 				o->array = malloc(sizeof(char) * size);
 
 				for(int i = 0; i < size; i++) {
@@ -474,9 +466,16 @@ int64_t eval(int pc) {
 					PUSH_STACK(rand());
 				} else if(name == 49935) {
 					double  number = POP_STACK_DOUBLE();
-					Object *buf    = POP_STACK_OBJECT();
-					int length = sprintf(buf->array, "%f", number);
+					Object *buffer    = POP_STACK_OBJECT();
+					int length = sprintf(buffer->array, "%f", number);
 					PUSH_STACK(length);
+				} else if(name == 34569) {
+					Object *buffer = POP_STACK_OBJECT();
+					int64_t size = POP_STACK();
+
+					int r = read(STDIN_FILENO, buffer->array, size);
+
+					PUSH_STACK(r - 1);
 				} else if(name == 34555) {
 					gc(stack, 128 * 1024);
 					PUSH_STACK(0);
@@ -494,7 +493,7 @@ int64_t eval(int pc) {
 			case OP_NEW_ARRAY: {
 				int64_t size = POP_STACK();
 
-				Object *instance = new_object(1);
+				Object *instance = new_object(size);
 				instance->array = malloc(sizeof(char) * size);
 
 				memset(instance->array, 0, sizeof(char) * size);
@@ -509,6 +508,11 @@ int64_t eval(int pc) {
 				int64_t index = POP_STACK();
 				Object *instance = POP_STACK_OBJECT();
 
+				if(index > instance->size - 1) {
+					printf("array out of bound access read error %li %i\n", index, instance->size - 1);
+					exit(1);
+				}
+
 				int64_t item = (int64_t)instance->array[index];
 
 				PUSH_STACK(item);
@@ -518,6 +522,11 @@ int64_t eval(int pc) {
 				int64_t index = POP_STACK();
 				Object *instance = POP_STACK_OBJECT();
 				int64_t value = POP_STACK();
+
+				if(index > instance->size - 1) {
+					printf("array out of bound access write error %li %i\n", index, instance->size - 1);
+					exit(1);
+				}
 
 				instance->array[index] = (char)value;
 			}
@@ -572,7 +581,7 @@ void intepreter(const char *input) {
 
 	list_clear(&objects);
 
-	load_file(input);
+	uint64_t entry = load_file(input);
 
-	eval(0);
+	eval(entry);
 }

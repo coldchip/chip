@@ -12,9 +12,6 @@ int label_counter = 0;
 static Op *codes[32768] = {};
 int code_counter = 0;
 
-static char raw[32768] = {};
-int raw_counter = 0;
-
 static List constants;
 
 static int rand_string() {
@@ -68,40 +65,6 @@ void emit_label_to_address() {
 	}
 
 	printf("passes %i\n", passes);
-
-	for(int i = 0; i < code_counter; ++i) {
-		Op *current = codes[i];
-
-		uint8_t op    = current->op;
-		int64_t left  = current->left;
-		uint8_t width = current->width;
-
-		uint8_t encoded_op   = (op << 2) | (width & 0x03);
-		int64_t encoded_left = (left & 0xFFFFFFFFFFFFFFFF);
-
-		raw[raw_counter] = encoded_op;
-		raw_counter++;
-
-		if(op_size[op]) {
-			for(int i = 0; i < (1 << width); ++i) {
-				uint8_t bit = ((uint8_t*)&encoded_left)[i] & 0xFF;
-				
-				raw[raw_counter] = bit;
-				raw_counter++;
-			}
-		}
-	}
-
-	// for(ListNode *c = list_begin(&constants); c != list_end(&constants); c = list_next(c)) {
-	// 	Constant *constant = (Constant*)c;
-	
-	// 	for(int i = 0; i < strlen(constant->data); i++) {
-	// 		raw[raw_counter] = constant->data[i];
-	// 		raw_counter++;
-	// 	}
-	// }
-
-	printf("code size %i\n", raw_counter);
 }
 
 LabelEntry emit_get_label(const char *name) {
@@ -165,26 +128,48 @@ static int emit_constant(List *list, char *data, bool obfuscated) {
 	return list_size(list) - 1;
 }
 
-static void emit_file(List *constants) {
+static void emit_file() {
 	FILE *prg = fopen("a.out", "wb");
 	if(!prg) {
 		printf("unable to open to ~prg.out\n");
 		exit(1);
 	}
 
-	char magic[8] = "CHIP";
-	fwrite(magic, sizeof(char), 8, prg);
+	uint64_t code_size = line2addr(code_counter - 1) + 1;
+	uint64_t const_size = list_size(&constants);
 
-	fwrite(&raw_counter, sizeof(raw_counter), 1, prg);
+	chip_hdr_t hdr = {
+		.magic      = { 0x7F, 0x43, 0x48, 0x49, 0x50 },
+		.version    = htonl(0x00000001),
+		.code_size  = htonll(code_size),
+		.const_size = htonll(const_size),
+		.entry      = htonll(0l)
+	};
 
-	for(int i = 0; i < raw_counter; i++) {
-		fwrite(&raw[i], sizeof(char), 1, prg);
+	fwrite(&hdr, sizeof(hdr), 1, prg);
+
+	for(int i = 0; i < code_counter; ++i) {
+		Op *current = codes[i];
+
+		uint8_t op    = current->op;
+		int64_t left  = current->left;
+		uint8_t width = current->width;
+
+		uint8_t encoded_op   = (op << 2) | (width & 0x03);
+		int64_t encoded_left = (left & 0xFFFFFFFFFFFFFFFF);
+
+		fwrite(&encoded_op, sizeof(encoded_op), 1, prg);
+
+		if(op_size[op]) {
+			for(int i = 0; i < (1 << width); ++i) {
+				uint8_t bit = ((uint8_t*)&encoded_left)[i] & 0xFF;
+
+				fwrite(&bit, sizeof(bit), 1, prg);
+			}
+		}
 	}
 
-	int constants_size = list_size(constants);
-	fwrite(&constants_size, sizeof(constants_size), 1, prg);
-
-	for(ListNode *c = list_begin(constants); c != list_end(constants); c = list_next(c)) {
+	for(ListNode *c = list_begin(&constants); c != list_end(&constants); c = list_next(c)) {
 		Constant *constant = (Constant*)c;
 	
 		int constant_size = strlen(constant->data);
@@ -200,23 +185,25 @@ void emit_asm() {
 	for(int pc = 0; pc < code_counter; pc++) {
 		Op *ins = codes[pc];
 
+		printf(COLOR_WHITE "0x%02x" COLOR_RESET, line2addr(pc));
+
 		for(int i = 0; i < label_counter; ++i) {
 			if((labels[i].line) == pc) {
-				printf("\033[1;34m0x%02x:%s:\033[0m\n", line2addr(labels[i].line), labels[i].name);
+				printf("\t" COLOR_BLUE "%s:" COLOR_RESET "\n", labels[i].name);
 				break;
 			}
 		} 
 
-		printf("\t\033[1;33m%s\033[0m ", op_display[ins->op]);
+		printf("\t\t" COLOR_YELLOW "%s" COLOR_RESET " ", op_display[ins->op]);
 
 		if(op_size[ins->op]) {
-			printf("\033[1;36mi%i\033[0m ", 8 * (1 << ins->width));
+			printf(COLOR_CYAN "i%i" COLOR_RESET " ", 8 * (1 << ins->width));
 
-			printf("\033[1;32m0x%02lx\033[0m", ins->left);
+			printf(COLOR_GREEN "0x%02lx" COLOR_RESET, ins->left);
 		}
 
 		if(ins->label) {
-			printf("\t\033[1;35m// %s\033[0m", ins->label);
+			printf("\t" COLOR_MAGENTA " # %s" COLOR_RESET, ins->label);
 		}
 
 
@@ -799,5 +786,5 @@ void gen(Node *node) {
 	emit_label_to_address();
 	emit_asm();
 
-	emit_file(&constants);
+	emit_file();
 }

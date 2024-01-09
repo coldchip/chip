@@ -28,6 +28,7 @@ typedef struct {
 
 void                 type_clear();
 bool                 type_compatible(Ty *from, Ty *to);
+bool                 type_is_primitive(Ty *type);
 Ty                  *type_get_common(Ty *left, Ty *right);
 Ty                  *type_insert(char *name, int size);
 Ty                  *type_get(char *name);

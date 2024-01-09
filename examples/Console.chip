@@ -8,7 +8,7 @@ class Console {
 	}
 
 	method write(int num) : [static] returns void {
-		char[] a = Convert.string(num);
+		String a = Convert.string(num);
 
 		this.write(a);
 	}
@@ -17,5 +17,11 @@ class Console {
 		char[] a = str.getBytes();
 
 		this.write(a);
+	}
+
+	method read() : [static] returns String {
+		char[] input = new char[](8192);
+		int r = syscall(34569, input, input.count) : int;
+		return new String(input, r);
 	}
 }

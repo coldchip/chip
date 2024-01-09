@@ -10,9 +10,16 @@ import String;
 
 class Main {
 	method main() : [static] returns void {
-		Socket s = new Socket("0.0.0.0", 19132);
+		Console.write("Enter port to bind: \n");
+
+		char[] ip = "0.0.0.0";
+		int port = Convert.integer(Console.read());
+
+		Socket s = new Socket(ip, port);
 		if(s.bind()) {
-			Console.write("http://0.0.0.0:19132\n");
+			Console.write("http://0.0.0.0:");
+			Console.write(port);
+			Console.write("\n");
 
 			while(1) {
 				Client c = s.accept();

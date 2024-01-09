@@ -21,7 +21,7 @@ class Convert {
 		}
 
 		while(i > 0) {
-			result[k] = digits[i % radix];
+			result[k - 1] = digits[i % radix];
 			i = i / radix;
 			k = k - 1;
 		}
@@ -31,7 +31,7 @@ class Convert {
 			k = k - 1;
 		}
 
-		return new String(result, k + 1, result.count - k);
+		return new String(result, k, result.count - k);
 	}
 
 	method string(int i) : [static] returns String {
@@ -43,5 +43,23 @@ class Convert {
 		int length = syscall(49935, a, buf) : int;
 
 		return new String(buf, length);
+	}
+
+	method integer(char[] a) returns int {
+		int result = 0;
+
+		int i = 0;
+		while(i < a.count) {
+			result = result * 10;
+			result = result + (a[i] - 48);
+
+			i = i + 1;
+		}
+
+		return result;
+	}
+
+	method integer(String a) returns int {
+		return Convert.integer(a.getBytes());
 	}
 }

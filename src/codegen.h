@@ -3,6 +3,7 @@
 
 #include "parse.h"
 #include <stdint.h>
+#include <arpa/inet.h>
 
 #if __BIG_ENDIAN__
 # define htonll(x) (x)
@@ -89,6 +90,14 @@ typedef struct _Op {
 	int width;
 } Op;
 
+typedef struct __attribute__((__packed__)) {
+	char magic[8];
+	uint32_t version;
+	uint64_t code_size;
+	uint64_t const_size;
+	uint64_t entry;
+} chip_hdr_t;
+
 static int        rand_string();
 
 void              emit_label_to_address();
@@ -98,7 +107,7 @@ static Op *       emit_op(OpType op);
 static Op *       emit_op_left(OpType op, uint64_t left);
 static Op        *emit_op_left_label(OpType op, const char *left);
 static int        emit_constant(List *list, char *data, bool obfuscated);
-static void       emit_file(List *constants);
+static void       emit_file();
 
 uint8_t           closest_container_size(int64_t number);
 
