@@ -31,10 +31,43 @@ static Node *parse_or(Token **current) {
 }
 
 static Node *parse_and(Token **current) {
-	Node *node = parse_equality(current);
+	Node *node = parse_bitor(current);
 	for(;;) {
 		if(consume_string(current, "&&")) {
-			node = new_node_binary(ND_AND, NULL, node, parse_equality(current));
+			node = new_node_binary(ND_AND, NULL, node, parse_bitor(current));
+			continue;
+		}
+		return node;
+	}
+}
+
+static Node *parse_bitor(Token **current) {
+	Node *node = parse_bitxor(current);
+	for(;;) {
+		if(consume_string(current, "|")) {
+			node = new_node_binary(ND_BITOR, NULL, node, parse_bitor(current));
+			continue;
+		}
+		return node;
+	}
+}
+
+static Node *parse_bitxor(Token **current) {
+	Node *node = parse_bitand(current);
+	for(;;) {
+		if(consume_string(current, "^")) {
+			node = new_node_binary(ND_BITXOR, NULL, node, parse_bitor(current));
+			continue;
+		}
+		return node;
+	}
+}
+
+static Node *parse_bitand(Token **current) {
+	Node *node = parse_equality(current);
+	for(;;) {
+		if(consume_string(current, "&")) {
+			node = new_node_binary(ND_BITAND, NULL, node, parse_bitor(current));
 			continue;
 		}
 		return node;
@@ -109,6 +142,11 @@ static Node *parse_unary(Token **current) {
 	}
 	if(consume_string(current, "!")) {
 		Node *node = new_node(ND_NOT, NULL);
+		node->body = parse_postfix(current);
+		return node;
+	}
+	if(consume_string(current, "~")) {
+		Node *node = new_node(ND_BITNOT, NULL);
 		node->body = parse_postfix(current);
 		return node;
 	}

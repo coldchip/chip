@@ -7,6 +7,22 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#if __BIG_ENDIAN__
+# define HTONS(x) (x)
+# define NTOHS(x) (x)
+# define HTONL(x) (x)
+# define NTOHL(x) (x)
+# define HTONLL(x) (x)
+# define NTOHLL(x) (x)
+#else
+# define HTONS(x) (htons(x))
+# define NTOHS(x) (ntohs(x))
+# define HTONL(x) (htonl(x))
+# define NTOHL(x) (ntohl(x))
+# define HTONLL(x) (((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
+# define NTOHLL(x) (((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
+#endif
+
 #define COLOR_BLACK "\033[1;30m"
 #define COLOR_RED "\033[1;31m"
 #define COLOR_GREEN "\033[1;32m"

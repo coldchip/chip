@@ -1,0 +1,54 @@
+import Console;
+import String;
+import Convert;
+import Array;
+
+class MD5 {
+	method f(int x, int y, int z) returns int {
+		return (x & y) | ((~x) & z);
+	}
+
+	method g(int x, int y, int z) returns int {
+		return (x & z) | (y & (~z));
+	}
+
+	method h(int x, int y, int z) returns int {
+		return (x ^ y ^ z);
+	}
+
+	method i(int x, int y, int z) returns int {
+		return (y ^ (x | (~z)));
+	}
+
+	method ff(int a, int b, int c, int d, int x, int s, int ac) returns int {
+		return (a + this.f(b, c, d) + x + ac) + b;
+	}
+
+	method gg(int a, int b, int c, int d, int x, int s, int ac) returns int {
+		return (a + this.g(b, c, d) + x + ac) + b;
+	}
+
+	method hh(int a, int b, int c, int d, int x, int s, int ac) returns int {
+		return (a + this.h(b, c, d) + x + ac) + b;
+	}
+
+	method ii(int a, int b, int c, int d, int x, int s, int ac) returns int {
+		return (a + this.i(b, c, d) + x + ac) + b;
+	}
+}
+
+class Main {
+
+	
+
+	method main() : [static] returns void {
+		MD5 md5 = new MD5();
+
+		int a = md5.ff(87624, 77777, 87653, 1323, 876543, 332, 2);
+
+		Console.write(a);
+		Console.write("\n");
+
+		return;
+	}
+}

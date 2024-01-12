@@ -352,7 +352,10 @@ Node *semantic_walk_expr(Node *node) {
 		case ND_DIV:
 		case ND_MOD:
 		case ND_OR:
-		case ND_AND: {
+		case ND_AND:
+		case ND_BITOR:
+		case ND_BITXOR:
+		case ND_BITAND: {
 			Node *left  = semantic_walk_expr(node->left);
 			Node *right = semantic_walk_expr(node->right);
 			Ty *common = type_get_common(left->ty, right->ty);
@@ -381,7 +384,8 @@ Node *semantic_walk_expr(Node *node) {
 		}
 		break;
 		case ND_NEG:
-		case ND_NOT: {
+		case ND_NOT:
+		case ND_BITNOT: {
 			Node *body = semantic_walk_expr(node->body);
 			node->ty = body->ty;
 			return node;

@@ -1,0 +1,24 @@
+import Console;
+import String;
+import Convert;
+import Array;
+
+class Main {
+	method main() : [static] returns void {
+		int n = 100;
+		int firstTerm = 0;
+		int secondTerm = 1;
+
+		int i = 0;
+		while(i < n) {
+			int nextTerm = firstTerm + secondTerm;
+			firstTerm = secondTerm;
+			secondTerm = nextTerm;
+
+			Console.write(nextTerm);
+			Console.write("\n");
+
+			i = i + 1;
+		}
+	}
+}

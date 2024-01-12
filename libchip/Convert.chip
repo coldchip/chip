@@ -27,7 +27,7 @@ class Convert {
 		}
 
 		if(negative) {
-			result[k] = '-';
+			result[k - 1] = '-';
 			k = k - 1;
 		}
 

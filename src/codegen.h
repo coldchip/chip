@@ -5,14 +5,6 @@
 #include <stdint.h>
 #include <arpa/inet.h>
 
-#if __BIG_ENDIAN__
-# define htonll(x) (x)
-# define ntohll(x) (x)
-#else
-# define htonll(x) (((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
-# define ntohll(x) (((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
-#endif
-
 #define LIST_OF_OPS \
 	X(OP_NOP, "nop", false) \
 	X(OP_LOAD, "load", true) \
@@ -26,6 +18,10 @@
 	X(OP_DIV, "div", false) \
 	X(OP_NEG, "neg", false) \
 	X(OP_MOD, "mod", false) \
+	X(OP_NOT, "not", false) \
+	X(OP_OR, "or", false) \
+	X(OP_XOR, "xor", false) \
+	X(OP_AND, "and", false) \
 	X(OP_FADD, "fadd", false) \
 	X(OP_FSUB, "fsub", false) \
 	X(OP_FMUL, "fmul", false) \
@@ -127,6 +123,7 @@ static void       gen_new_array(Node *node);
 static void       gen_array_member(Node *node);
 static void       gen_expr(Node *node);
 static void       gen_neg(Node *node);
+static void       gen_bitnot(Node *node);
 static void       gen_not(Node *node);
 static void       gen_cast(Node *node);
 static void       gen_decl(Node *node);

@@ -140,10 +140,10 @@ static void emit_file() {
 
 	chip_hdr_t hdr = {
 		.magic      = { 0x7F, 0x43, 0x48, 0x49, 0x50 },
-		.version    = htonl(0x00000001),
-		.code_size  = htonll(code_size),
-		.const_size = htonll(const_size),
-		.entry      = htonll(0l)
+		.version    = HTONL(0x00000001),
+		.code_size  = HTONLL(code_size),
+		.const_size = HTONLL(const_size),
+		.entry      = HTONLL(0l)
 	};
 
 	fwrite(&hdr, sizeof(hdr), 1, prg);
@@ -161,10 +161,21 @@ static void emit_file() {
 		fwrite(&encoded_op, sizeof(encoded_op), 1, prg);
 
 		if(op_size[op]) {
-			for(int i = 0; i < (1 << width); ++i) {
-				uint8_t bit = ((uint8_t*)&encoded_left)[i] & 0xFF;
-
-				fwrite(&bit, sizeof(bit), 1, prg);
+			if(width == 0) {
+				int8_t left8 = encoded_left & 0xFF;
+				fwrite(&left8, sizeof(left8), 1, prg);
+			}
+			if(width == 1) {
+				int16_t left16 = HTONS(encoded_left & 0xFFFF);
+				fwrite(&left16, sizeof(left16), 1, prg);
+			}
+			if(width == 2) {
+				int32_t left32 = HTONL(encoded_left & 0xFFFFFFFF);
+				fwrite(&left32, sizeof(left32), 1, prg);
+			}
+			if(width == 3) {
+				int64_t left64 = HTONLL(encoded_left & 0xFFFFFFFFFFFFFFFF);
+				fwrite(&left64, sizeof(left64), 1, prg);
 			}
 		}
 	}
@@ -545,6 +556,18 @@ static void gen_binary(Node *node) {
 			emit_label(exit_label);
 		}
 		break;
+		case ND_BITOR: {
+			emit_op(OP_OR);
+		}
+		break;
+		case ND_BITXOR: {
+			emit_op(OP_XOR);
+		}
+		break;
+		case ND_BITAND: {
+			emit_op(OP_AND);
+		}
+		break;
 	}
 }
 
@@ -555,6 +578,11 @@ static void gen_neg(Node *node) {
 	} else {
 		emit_op(OP_NEG);
 	}
+}
+
+static void gen_bitnot(Node *node) {
+	gen_visitor(node->body);
+	emit_op(OP_NOT);
 }
 
 static void gen_not(Node *node) {
@@ -708,12 +736,19 @@ static void gen_visitor(Node *node) {
 		case ND_DIV:
 		case ND_MOD:
 		case ND_OR:
-		case ND_AND: {
+		case ND_AND:
+		case ND_BITOR:
+		case ND_BITXOR:
+		case ND_BITAND: {
 			gen_binary(node);
 		}
 		break;
 		case ND_NEG: {
 			gen_neg(node);
+		}
+		break;
+		case ND_BITNOT: {
+			gen_bitnot(node);
 		}
 		break;
 		case ND_NOT: {

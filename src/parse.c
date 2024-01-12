@@ -148,7 +148,7 @@ static Node *parse_import(Token **current) {
 	expect_string(current, ";");
 
 	char filename[1024];
-	sprintf(filename, "examples/%s.chip", module);
+	sprintf(filename, "libchip/%s.chip", module);
 
 	char *input = read_file(filename);
 	List tokens;

@@ -40,12 +40,12 @@ int load_file(const char *name) {
 		exit(1);
 	}
 
-	if(ntohl(hdr.version) != CHIP_VERSION) {
+	if(NTOHL(hdr.version) != CHIP_VERSION) {
 		printf("incorrect chip executable version\n");
 		exit(1);
 	}
 
-	for(int i = 0; i < ntohll(hdr.code_size); i++) {
+	for(int i = 0; i < NTOHLL(hdr.code_size); i++) {
 		if(fread(&codes[code_size], sizeof(char), 1, fp) != 1) {
 			printf("unable to read file\n");
 			exit(1);
@@ -53,7 +53,7 @@ int load_file(const char *name) {
 		code_size++;
 	}
 
-	for(int z = 0; z < ntohll(hdr.const_size); z++) {
+	for(int z = 0; z < NTOHLL(hdr.const_size); z++) {
 		int constant_length = 0;
 		if(fread(&constant_length, sizeof(constant_length), 1, fp) != 1) {
 			printf("unable to read file\n");
@@ -75,7 +75,7 @@ int load_file(const char *name) {
 
 	fclose(fp);
 
-	return ntohll(hdr.entry);
+	return NTOHLL(hdr.entry);
 }
 
 int allocs = 0;
@@ -165,16 +165,16 @@ int64_t eval(int pc) {
 		if(op_size[op]) {
 			left = *(int64_t*)&codes[pc];
 			if(width == 0) {
-				left &= 0x00000000000000FF;
+				left = left & 0xFF;
 			}
 			if(width == 1) {
-				left &= 0x000000000000FFFF;
+				left = NTOHS(left & 0xFFFF);
 			}
 			if(width == 2) {
-				left &= 0x00000000FFFFFFFF;
+				left = NTOHL(left & 0xFFFFFFFF);
 			}
 			if(width == 3) {
-				left &= 0xFFFFFFFFFFFFFFFF;
+				left = NTOHLL(left & 0xFFFFFFFFFFFFFFFF);
 			}
 			pc += 1 << width;
 		}
@@ -288,6 +288,29 @@ int64_t eval(int pc) {
 			case OP_NEG: {
 				int64_t a = POP_STACK();
 				PUSH_STACK(-a);
+			}
+			break;
+			case OP_NOT: {
+				int64_t a = POP_STACK();
+				PUSH_STACK(~a);
+			}
+			break;
+			case OP_OR: {
+				int64_t a = POP_STACK();
+				int64_t b = POP_STACK();
+				PUSH_STACK(a | b);
+			}
+			break;
+			case OP_XOR: {
+				int64_t a = POP_STACK();
+				int64_t b = POP_STACK();
+				PUSH_STACK(a ^ b);
+			}
+			break;
+			case OP_AND: {
+				int64_t a = POP_STACK();
+				int64_t b = POP_STACK();
+				PUSH_STACK(a & b);
 			}
 			break;
 			case OP_MOD: {
@@ -494,7 +517,7 @@ int64_t eval(int pc) {
 				int64_t size = POP_STACK();
 
 				Object *instance = new_object(size);
-				instance->array = malloc(sizeof(char) * size);
+				instance->array  = malloc(sizeof(char) * size);
 
 				memset(instance->array, 0, sizeof(char) * size);
 
@@ -505,7 +528,7 @@ int64_t eval(int pc) {
 			}
 			break;
 			case OP_LOAD_ARRAY: {
-				int64_t index = POP_STACK();
+				int64_t index    = POP_STACK();
 				Object *instance = POP_STACK_OBJECT();
 
 				if(index > instance->size - 1) {
