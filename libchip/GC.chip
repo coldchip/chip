@@ -1,5 +1,5 @@
 class GC {
-	method collect() : [static] returns void {
+	method collect() : void {
 		syscall(34555) : void;
 	}
 }

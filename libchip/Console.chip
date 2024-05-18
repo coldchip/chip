@@ -1,5 +1,5 @@
 class Console {
-	method write(char[] a) : [static] returns void {
+	method write(char[] a) :  void {
 		int i = 0;
 		while(i < a.count) {
 			syscall(2, a[i]) : void;
@@ -7,19 +7,19 @@ class Console {
 		}
 	}
 
-	method write(int num) : [static] returns void {
+	method write(int num) :  void {
 		String a = Convert.string(num);
 
 		this.write(a);
 	}
 
-	method write(String str) : [static] returns void {
+	method write(String str) :  void {
 		char[] a = str.getBytes();
 
 		this.write(a);
 	}
 
-	method read() : [static] returns String {
+	method read() :  String {
 		char[] input = new char[](8192);
 		int r = syscall(34569, input, input.count) : int;
 		return new String(input, r);

@@ -12,6 +12,8 @@
 	X(OP_CMPEQ, "cmpeq", false) \
 	X(OP_CMPGT, "cmpgt", false) \
 	X(OP_CMPLT, "cmplt", false) \
+	X(OP_SHR, "shr", false) \
+	X(OP_SHL, "shl", false) \
 	X(OP_ADD, "add", false) \
 	X(OP_SUB, "sub", false) \
 	X(OP_MUL, "mul", false) \

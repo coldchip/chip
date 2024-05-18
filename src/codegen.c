@@ -478,6 +478,14 @@ static void gen_binary(Node *node) {
 			emit_op(OP_CMPLT);
 		}
 		break;
+		case ND_SHR: {
+			emit_op(OP_SHR);
+		}
+		break;
+		case ND_SHL: {
+			emit_op(OP_SHL);
+		}
+		break;
 		case ND_ADD: {
 			if(node->ty == type_get("float")) {
 				emit_op(OP_FADD);
@@ -730,6 +738,8 @@ static void gen_visitor(Node *node) {
 		case ND_EQ:
 		case ND_GT:
 		case ND_LT:
+		case ND_SHR:
+		case ND_SHL:
 		case ND_ADD:
 		case ND_SUB:
 		case ND_MUL:

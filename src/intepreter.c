@@ -85,6 +85,7 @@ Object *new_object(int size) {
 	o->array = NULL;
 	o->varlist = malloc(sizeof(Slot) * size);
 	o->size = size;
+	o->type = 1;
 	o->is_marked = false;
 
 	for(int x = 0; x < size; x++) {
@@ -207,7 +208,7 @@ int64_t eval(int pc) {
 				char *str  = GET_CONST(left);
 				int   size = strlen(str);
 
-				Object *o = new_object(size);
+				Object *o = new_object(size + 1);
 				o->array = malloc(sizeof(char) * size);
 
 				for(int i = 0; i < size; i++) {
@@ -254,6 +255,20 @@ int64_t eval(int pc) {
 				int64_t a = POP_STACK();
 				int64_t b = POP_STACK();
 				int64_t c = b < a;
+				PUSH_STACK(c);
+			}
+			break;
+			case OP_SHR: {
+				int64_t a = POP_STACK();
+				int64_t b = POP_STACK();
+				int64_t c = b >> a;
+				PUSH_STACK(c);
+			}
+			break;
+			case OP_SHL: {
+				int64_t a = POP_STACK();
+				int64_t b = POP_STACK();
+				int64_t c = b << a;
 				PUSH_STACK(c);
 			}
 			break;
@@ -412,7 +427,7 @@ int64_t eval(int pc) {
 					int64_t  src_offset = POP_STACK();
 					int64_t  b          = POP_STACK();
 
-					memcpy(dst->array + dst_offset, src->array + src_offset, b);
+					memcpy(dst->array + (dst_offset * 8), src->array + (src_offset * 8), b * 8);
 
 					PUSH_STACK(0);
 				} else if(name == 2) {
@@ -516,13 +531,18 @@ int64_t eval(int pc) {
 			case OP_NEW_ARRAY: {
 				int64_t size = POP_STACK();
 
+				size *= 8;
+
 				Object *instance = new_object(size);
-				instance->array  = malloc(sizeof(char) * size);
+				instance->type = 54;
+
+
+				instance->array = malloc(sizeof(char) * size);
 
 				memset(instance->array, 0, sizeof(char) * size);
 
 				instance->varlist[0].is_ref = false;
-				instance->varlist[0].value  = size;
+				instance->varlist[0].value  = (size / 8);
 
 				PUSH_STACK_OBJECT(instance);
 			}
@@ -531,14 +551,23 @@ int64_t eval(int pc) {
 				int64_t index    = POP_STACK();
 				Object *instance = POP_STACK_OBJECT();
 
-				if(index > instance->size - 1) {
-					printf("array out of bound access read error %li %i\n", index, instance->size - 1);
-					exit(1);
+				if(instance->type == 54) {
+					if(index > (instance->size / 8) - 1) {
+						printf("array out of bound access read error %li %i\n", index, instance->size - 1);
+						exit(1);
+					}
+
+					int64_t item = (int64_t)instance->array_i[index];
+					PUSH_STACK(item);
+				} else {
+					if(index > instance->size - 1) {
+						printf("array out of bound access read error %li %i\n", index, instance->size - 1);
+						exit(1);
+					}
+
+					int64_t item = (char)instance->array[index];
+					PUSH_STACK(item);
 				}
-
-				int64_t item = (int64_t)instance->array[index];
-
-				PUSH_STACK(item);
 			}
 			break;
 			case OP_STORE_ARRAY: {
@@ -546,12 +575,21 @@ int64_t eval(int pc) {
 				Object *instance = POP_STACK_OBJECT();
 				int64_t value = POP_STACK();
 
-				if(index > instance->size - 1) {
-					printf("array out of bound access write error %li %i\n", index, instance->size - 1);
-					exit(1);
-				}
+				if(instance->type == 54) {
+					if(index > (instance->size / 8) - 1) {
+						printf("array out of bound access write error %li %i\n", index, instance->size - 1);
+						exit(1);
+					}
 
-				instance->array[index] = (char)value;
+					instance->array_i[index] = value;
+				} else {
+					if(index > instance->size - 1) {
+						printf("array out of bound access write error %li %i\n", index, instance->size - 1);
+						exit(1);
+					}
+
+					instance->array[index] = (char)value;
+				}
 			}
 			break;
 			case OP_JE: {

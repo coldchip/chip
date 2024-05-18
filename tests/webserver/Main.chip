@@ -9,7 +9,7 @@ import Socket;
 import String;
 
 class Main {
-	method main() : [static] returns void {
+	method main() :  void {
 		Console.write("Enter port to bind: \n");
 
 		char[] ip = "0.0.0.0";

@@ -1,27 +1,27 @@
 class String {
 	char[] buffer;
 	int count;
-	method constructor() returns void {
+	method constructor() : void {
 		this.buffer = new char[](16);
 		this.count = 0;
 	}
 
-	method constructor(char[] a) returns void {
+	method constructor(char[] a) : void {
 		this.constructor();
 		this.append(a);
 	}
 
-	method constructor(char[] a, int length) returns void {
+	method constructor(char[] a, int length) : void {
 		this.constructor();
 		this.append(a, length);
 	}
 
-	method constructor(char[] a, int offset, int length) returns void {
+	method constructor(char[] a, int offset, int length) : void {
 		this.constructor();
 		this.append(a, offset, length);
 	}
 
-	method expandCapacity(int minimumCapacity) returns int {
+	method expandCapacity(int minimumCapacity) : int {
 		int newCapacity = this.buffer.count * 2 + 2;
         if(newCapacity - minimumCapacity < 0) {
             newCapacity = minimumCapacity;
@@ -32,25 +32,25 @@ class String {
         this.buffer = newData;
 	}
 
-	method ensureCapacityInternal(int minimumCapacity) returns void {
+	method ensureCapacityInternal(int minimumCapacity) : void {
 		int oldCapacity = this.buffer.count;
         if(minimumCapacity - oldCapacity > 0) {
             this.expandCapacity(minimumCapacity);
         }
 	}
 
-	method append(char[] b) returns void {
+	method append(char[] b) : void {
 		this.append(b, b.count);
 		return;
 	}
 
-	method append(char[] b, int length) returns void {
+	method append(char[] b, int length) : void {
 		this.append(b, 0, length);
 
 		return;
 	}
 
-	method append(char[] b, int offset, int length) returns void {
+	method append(char[] b, int offset, int length) : void {
 		this.ensureCapacityInternal(this.count + length);
 		Array.copy(this.buffer, this.count, b, offset, length);
 
@@ -59,18 +59,18 @@ class String {
 		return;
 	}
 
-	method append(String bb) returns void {
+	method append(String bb) : void {
 		this.append(bb.getBytes());
 		return;
 	}
 
-	method getBytes() returns char[] {
+	method getBytes() : char[] {
 		char[] finals = new char[](this.count);
 		Array.copy(finals, 0, this.buffer, 0, this.count);
 		return finals;
 	}
 
-	method length() returns int {
+	method length() : int {
 		return this.count;
 	}
 }

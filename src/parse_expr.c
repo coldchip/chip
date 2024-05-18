@@ -86,14 +86,29 @@ static Node *parse_equality(Token **current) {
 }
 
 static Node *parse_relational(Token **current) {
-	Node *node = parse_add_sub(current);
+	Node *node = parse_shift(current);
 	for(;;) {
 		if(consume_string(current, ">")) {
-			node = new_node_binary(ND_GT, NULL, node, parse_add_sub(current));
+			node = new_node_binary(ND_GT, NULL, node, parse_shift(current));
 			continue;
 		}
 		if(consume_string(current, "<")) {
-			node = new_node_binary(ND_LT, NULL, node, parse_add_sub(current));
+			node = new_node_binary(ND_LT, NULL, node, parse_shift(current));
+			continue;
+		}
+		return node;
+	}
+}
+
+static Node *parse_shift(Token **current) {
+	Node *node = parse_add_sub(current);
+	for(;;) {
+		if(consume_string(current, ">>")) {
+			node = new_node_binary(ND_SHR, NULL, node, parse_add_sub(current));
+			continue;
+		}
+		if(consume_string(current, "<<")) {
+			node = new_node_binary(ND_SHL, NULL, node, parse_add_sub(current));
 			continue;
 		}
 		return node;
@@ -148,6 +163,13 @@ static Node *parse_unary(Token **current) {
 	if(consume_string(current, "~")) {
 		Node *node = new_node(ND_BITNOT, NULL);
 		node->body = parse_postfix(current);
+		return node;
+	}
+	if(consume_string(current, "<")) {
+		Node *node = new_node(ND_CAST, NULL);
+		node->data_type = parse_type(current);
+		expect_string(current, ">");
+		node->body = parse_unary(current);
 		return node;
 	}
 	return parse_postfix(current);

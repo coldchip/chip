@@ -46,6 +46,8 @@ typedef enum {
 	ND_BITOR,
 	ND_BITXOR,
 	ND_BITAND,
+	ND_SHR,
+	ND_SHL,
 	ND_NOT,
 	ND_CAST,
 	ND_NUMBER,
@@ -125,6 +127,7 @@ static Node       *parse_bitxor(Token **current);
 static Node       *parse_bitand(Token **current);
 static Node       *parse_equality(Token **current);
 static Node       *parse_relational(Token **current);
+static Node       *parse_shift(Token **current);
 static Node       *parse_add_sub(Token **current);
 static Node       *parse_mul_div(Token **current);
 static Node       *parse_unary(Token **current);

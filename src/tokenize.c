@@ -154,7 +154,9 @@ static bool is_joined_punctuation(char first, char second) {
 	return (
 		(first == '=' && second == '=') ||
 		(first == '|' && second == '|') ||
-		(first == '&' && second == '&')
+		(first == '&' && second == '&') ||
+		(first == '>' && second == '>') ||
+		(first == '<' && second == '<')
 	);
 }
 

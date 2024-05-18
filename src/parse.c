@@ -210,17 +210,7 @@ static Node *parse_method(Token **current) {
 	node->args = parse_params(current);
 	expect_string(current, ")");
 
-	if(consume_string(current, ":")) {
-		expect_string(current, "[");
-		if(consume_string(current, "static")) {
-			node->modifier = MOD_STATIC;
-		} else {
-			printf("unknown type modifier\n");
-		}
-		expect_string(current, "]");
-	}
-
-	expect_string(current, "returns");
+	expect_string(current, ":");
 
 	node->data_type = parse_type(current);
 

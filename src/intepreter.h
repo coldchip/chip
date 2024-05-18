@@ -8,7 +8,11 @@
 typedef struct _Object {
 	ListNode node;
 
-	char *array;
+	union {
+		char *array;
+		int64_t *array_i;
+	};
+	int type;
 	struct _Slot *varlist;
 	int size;
 

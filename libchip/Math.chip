@@ -1,17 +1,17 @@
 class Math {
-	method min(int a, int b) : [static] returns int {
+	method min(int a, int b) :  int {
 		if(a < b) {
 			return a;
 		}
 		return b;
 	}
-	method max(int a, int b) : [static] returns int {
+	method max(int a, int b) :  int {
 		if(a > b) {
 			return a;
 		}
 		return b;
 	}
-	method sqrt(int n) : [static] returns float {
+	method sqrt(int n) :  float {
 		float lo = Math.min(1, n); 
 		float hi = Math.max(1, n);
 

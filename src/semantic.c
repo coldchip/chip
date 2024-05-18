@@ -346,6 +346,8 @@ Node *semantic_walk_expr(Node *node) {
 		case ND_EQ:
 		case ND_GT:
 		case ND_LT:
+		case ND_SHR:
+		case ND_SHL:
 		case ND_ADD:
 		case ND_SUB:
 		case ND_MUL:
@@ -392,7 +394,17 @@ Node *semantic_walk_expr(Node *node) {
 		}
 		break;
 		case ND_CAST: {
-			semantic_walk_expr(node->body);
+			Node *body = semantic_walk_expr(node->body);
+
+			Node *type = node->data_type;
+			Ty *ty = type_get(type->token->data);
+			if(!ty) {
+				printf("unknown type %s\n", type->token->data);
+				exit(1);
+			}
+			
+			node->ty = ty;
+
 			return node;
 		}
 		break;
@@ -431,8 +443,8 @@ Node *semantic_walk_expr(Node *node) {
 		}
 		break;
 		case ND_VARIABLE: {
-			Var *var = varscope_get(node->token->data);
-			Ty  *ty  = type_get(node->token->data);
+			Var *var = varscope_get(node->token->data); // normal variable
+			Ty  *ty  = type_get(node->token->data); // static call
 
 			if(!var && !ty) {
 				printf("undefined variable %s\n", node->token->data);

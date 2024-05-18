@@ -1,5 +1,5 @@
 class Art {
-	method triangle(int n) : [static] returns String {
+	method triangle(int n) : String {
 		String output = new String();
 
 		int c1 = (n - 1) / 2;

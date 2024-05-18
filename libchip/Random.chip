@@ -1,9 +1,9 @@
 class Random {
-	method integer() returns int {
+	method integer() : int {
 		return syscall(33) : int;
 	}
 
-	method string(int length) returns String {
+	method string(int length) : String {
 		char[] set = "abcdef0123456789";
 
 		char[] result = new char[](length);

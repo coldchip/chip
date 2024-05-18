@@ -4,50 +4,246 @@ import Convert;
 import Array;
 
 class MD5 {
-	method f(int x, int y, int z) returns int {
-		return (x & y) | ((~x) & z);
+	int[] state;
+	int[] data;
+	int dataLength;
+	int bitlen;
+
+	method constructor() : void {
+		this.state = new int[](4);
+		this.state[0] = 1732584193;
+		this.state[1] = 4023233417;
+		this.state[2] = 2562383102;
+		this.state[3] = 271733878;
+
+		this.data = new int[](64);
+		this.dataLength = 0;
+		this.bitlen = 0;
 	}
 
-	method g(int x, int y, int z) returns int {
-		return (x & z) | (y & (~z));
+	method leftRotate(int a, int s) : int {
+    	s = s % 32;
+		a = a & 4294967295;
+        return (a << s) | (a >> (32-s));
+    }
+
+	method f(int x, int y, int z) : int {
+		return ((x & y) | ((~x) & z)) & 4294967295;
 	}
 
-	method h(int x, int y, int z) returns int {
-		return (x ^ y ^ z);
+	method g(int x, int y, int z) : int {
+		return ((x & z) | (y & (~z))) & 4294967295;
 	}
 
-	method i(int x, int y, int z) returns int {
-		return (y ^ (x | (~z)));
+	method h(int x, int y, int z) : int {
+		return ((x ^ y ^ z)) & 4294967295;
 	}
 
-	method ff(int a, int b, int c, int d, int x, int s, int ac) returns int {
-		return (a + this.f(b, c, d) + x + ac) + b;
+	method i(int x, int y, int z) : int {
+		return ((y ^ (x | (~z)))) & 4294967295;
 	}
 
-	method gg(int a, int b, int c, int d, int x, int s, int ac) returns int {
-		return (a + this.g(b, c, d) + x + ac) + b;
+	method ff(int a, int b, int c, int d, int x, int s, int ac) : int {
+		return this.leftRotate(a + this.f(b, c, d) + x + ac, s) + b;
 	}
 
-	method hh(int a, int b, int c, int d, int x, int s, int ac) returns int {
-		return (a + this.h(b, c, d) + x + ac) + b;
+	method gg(int a, int b, int c, int d, int x, int s, int ac) : int {
+		return this.leftRotate(a + this.g(b, c, d) + x + ac, s) + b;
 	}
 
-	method ii(int a, int b, int c, int d, int x, int s, int ac) returns int {
-		return (a + this.i(b, c, d) + x + ac) + b;
+	method hh(int a, int b, int c, int d, int x, int s, int ac) : int {
+		return this.leftRotate(a + this.h(b, c, d) + x + ac, s) + b;
+	}
+
+	method ii(int a, int b, int c, int d, int x, int s, int ac) : int {
+		return this.leftRotate(a + this.i(b, c, d) + x + ac, s) + b;
+	}
+
+	method memset(int buf, int bit, int len) : void {
+		int i = 0;
+		while(i < len) {
+			buf[i] = bit;
+			i = i + 1;
+		}
+	}
+
+	method hashBlock(int[] block) : void {
+		int[] x = new int[](16);
+
+		int l = 0;
+		int j = 0;
+		while(l < 16) {
+			x[l] = (block[j]) + (block[j + 1] << 8) + (block[j + 2] << 16) + (block[j + 3] << 24);
+			l = l + 1;
+			j = j + 4;
+		}
+
+		int a = this.state[0];
+		int b = this.state[1];
+		int c = this.state[2];
+		int d = this.state[3];
+
+		a = this.ff(a, b, c, d, x[ 0],  7, 3614090360);
+	    d = this.ff(d, a, b, c, x[ 1], 12, 3905402710);
+	    c = this.ff(c, d, a, b, x[ 2], 17, 606105819);
+	    b = this.ff(b, c, d, a, x[ 3], 22, 3250441966);
+
+	    
+
+	    a = this.ff(a, b, c, d, x[ 4],  7, 4118548399);
+	    d = this.ff(d, a, b, c, x[ 5], 12, 1200080426);
+	    c = this.ff(c, d, a, b, x[ 6], 17, 2821735955);
+	    b = this.ff(b, c, d, a, x[ 7], 22, 4249261313);
+	    a = this.ff(a, b, c, d, x[ 8],  7, 1770035416);
+	    d = this.ff(d, a, b, c, x[ 9], 12, 2336552879); 
+	    c = this.ff(c, d, a, b, x[10], 17, 4294925233); 
+	    b = this.ff(b, c, d, a, x[11], 22, 2304563134); 
+	    a = this.ff(a, b, c, d, x[12],  7, 1804603682); 
+	    d = this.ff(d, a, b, c, x[13], 12, 4254626195); 
+	    c = this.ff(c, d, a, b, x[14], 17, 2792965006); 
+	    b = this.ff(b, c, d, a, x[15], 22, 1236535329); 
+
+	    a = this.gg(a, b, c, d, x[ 1],  5, 4129170786); 
+	    d = this.gg(d, a, b, c, x[ 6],  9, 3225465664); 
+	    c = this.gg(c, d, a, b, x[11], 14, 643717713); 
+	    b = this.gg(b, c, d, a, x[ 0], 20, 3921069994); 
+	    a = this.gg(a, b, c, d, x[ 5],  5, 3593408605); 
+	    d = this.gg(d, a, b, c, x[10],  9,  38016083); 
+	    c = this.gg(c, d, a, b, x[15], 14, 3634488961); 
+	    b = this.gg(b, c, d, a, x[ 4], 20, 3889429448); 
+	    a = this.gg(a, b, c, d, x[ 9],  5, 568446438); 
+	    d = this.gg(d, a, b, c, x[14],  9, 3275163606); 
+	    c = this.gg(c, d, a, b, x[ 3], 14, 4107603335); 
+	    b = this.gg(b, c, d, a, x[ 8], 20, 1163531501); 
+	    a = this.gg(a, b, c, d, x[13],  5, 2850285829); 
+	    d = this.gg(d, a, b, c, x[ 2],  9, 4243563512); 
+	    c = this.gg(c, d, a, b, x[ 7], 14, 1735328473); 
+	    b = this.gg(b, c, d, a, x[12], 20, 2368359562); 
+
+	    a = this.hh(a, b, c, d, x[ 5],  4, 4294588738); 
+	    d = this.hh(d, a, b, c, x[ 8], 11, 2272392833); 
+	    c = this.hh(c, d, a, b, x[11], 16, 1839030562); 
+	    b = this.hh(b, c, d, a, x[14], 23, 4259657740); 
+	    a = this.hh(a, b, c, d, x[ 1],  4, 2763975236); 
+	    d = this.hh(d, a, b, c, x[ 4], 11, 1272893353); 
+	    c = this.hh(c, d, a, b, x[ 7], 16, 4139469664); 
+	    b = this.hh(b, c, d, a, x[10], 23, 3200236656); 
+	    a = this.hh(a, b, c, d, x[13],  4, 681279174); 
+	    d = this.hh(d, a, b, c, x[ 0], 11, 3936430074); 
+	    c = this.hh(c, d, a, b, x[ 3], 16, 3572445317); 
+	    b = this.hh(b, c, d, a, x[ 6], 23,  76029189); 
+	    a = this.hh(a, b, c, d, x[ 9],  4, 3654602809); 
+	    d = this.hh(d, a, b, c, x[12], 11, 3873151461); 
+	    c = this.hh(c, d, a, b, x[15], 16, 530742520); 
+	    b = this.hh(b, c, d, a, x[ 2], 23, 3299628645); 
+
+	    a = this.ii(a, b, c, d, x[ 0],  6, 4096336452); 
+	    d = this.ii(d, a, b, c, x[ 7], 10, 1126891415); 
+	    c = this.ii(c, d, a, b, x[14], 15, 2878612391); 
+	    b = this.ii(b, c, d, a, x[ 5], 21, 4237533241); 
+	    a = this.ii(a, b, c, d, x[12],  6, 1700485571); 
+	    d = this.ii(d, a, b, c, x[ 3], 10, 2399980690); 
+	    c = this.ii(c, d, a, b, x[10], 15, 4293915773); 
+	    b = this.ii(b, c, d, a, x[ 1], 21, 2240044497); 
+	    a = this.ii(a, b, c, d, x[ 8],  6, 1873313359); 
+	    d = this.ii(d, a, b, c, x[15], 10, 4264355552); 
+	    c = this.ii(c, d, a, b, x[ 6], 15, 2734768916); 
+	    b = this.ii(b, c, d, a, x[13], 21, 1309151649); 
+	    a = this.ii(a, b, c, d, x[ 4],  6, 4149444226); 
+	    d = this.ii(d, a, b, c, x[11], 10, 3174756917); 
+	    c = this.ii(c, d, a, b, x[ 2], 15, 718787259); 
+	    b = this.ii(b, c, d, a, x[ 9], 21, 3951481745); 
+
+	    this.state[0] = this.state[0] + a;
+		this.state[1] = this.state[1] + b;
+		this.state[2] = this.state[2] + c;
+		this.state[3] = this.state[3] + d;
+	}
+
+	method update(int[] data, int len) : void {
+		int i = 0;
+		while(i < len) {
+			this.data[this.dataLength] = data[i];
+			this.dataLength = this.dataLength + 1;
+			if (this.dataLength == 64) {
+				this.hashBlock(this.data);
+				this.bitlen = this.bitlen + 512;
+				this.dataLength = 0;
+			}
+
+			i = i + 1;
+		}
+	}
+
+	method final() : void {
+		int i = this.dataLength;
+
+		if (this.dataLength < 56) {
+			this.data[i] = 128;
+			i = i + 1;
+
+			while (i < 56) {
+				this.data[i] = 0;
+				i = i + 1;
+			}
+		} 
+		if (this.dataLength > 56) {
+			this.data[i] = 128;
+			i = i + 1;
+
+			while (i < 64) {
+				this.data[i] = 0;
+				i = i + 1;
+			}
+
+			this.hashBlock(this.data);
+			this.memset(this.data, 0, 56);
+		}
+
+		this.bitlen = this.bitlen + (this.dataLength * 8);
+		this.data[56] = this.bitlen;
+		this.data[57] = this.bitlen >> 8;
+		this.data[58] = this.bitlen >> 16;
+		this.data[59] = this.bitlen >> 24;
+		this.data[60] = this.bitlen >> 32;
+		this.data[61] = this.bitlen >> 40;
+		this.data[62] = this.bitlen >> 48;
+		this.data[63] = this.bitlen >> 56;
+		this.hashBlock(this.data);
+
+
+		int[] hash = new int[](16);
+
+		int j = 0;
+		while(j < 4) {
+			hash[j]      = (this.state[0] >> (j * 8)) & 255;
+			hash[j + 4]  = (this.state[1] >> (j * 8)) & 255;
+			hash[j + 8]  = (this.state[2] >> (j * 8)) & 255;
+			hash[j + 12] = (this.state[3] >> (j * 8)) & 255;
+			j = j + 1;
+		}
+
+		int h = 0;
+		while(h < hash.count) {
+			String r = Convert.string(hash[h] & 255, 16);
+			if(r.count == 1) {
+				Console.write("0");
+			}
+			Console.write(r);
+			h = h + 1;
+		}
+		Console.write("\n");
 	}
 }
 
 class Main {
-
-	
-
-	method main() : [static] returns void {
+	method main() : void {
 		MD5 md5 = new MD5();
 
-		int a = md5.ff(87624, 77777, 87653, 1323, 876543, 332, 2);
+		char[] data = "ss";
 
-		Console.write(a);
-		Console.write("\n");
+		md5.update(<int[]>data, data.count);
+		md5.final();
 
 		return;
 	}
