@@ -12,7 +12,7 @@ void type_clear() {
 	/* built-in types */
 	Ty *int_type = type_insert("int", 8);
 	insert_variable(int_type, "count", int_type);
-	Ty *char_type = type_insert("char", 8);
+	Ty *char_type = type_insert("char", 1);
 	insert_variable(char_type, "count", int_type);
 	type_insert("float", 8);
 	type_insert("void", 8);

@@ -12,7 +12,7 @@ Fibonacci in Chip
 
 ```
 class Main {
-	method main() : [static] returns void {
+	method main() :  void {
 		int n1 = 0;
 		int n2 = 1;
 		int n3;

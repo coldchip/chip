@@ -402,7 +402,7 @@ Node *semantic_walk_expr(Node *node) {
 				printf("unknown type %s\n", type->token->data);
 				exit(1);
 			}
-			
+
 			node->ty = ty;
 
 			return node;
@@ -511,7 +511,6 @@ Node *semantic_walk_expr(Node *node) {
 				exit(1);
 			}
 
-			node->size   = type_size(ty);
 			node->method = method;
 			node->ty = ty;
 
@@ -526,7 +525,7 @@ Node *semantic_walk_expr(Node *node) {
 				exit(1);
 			}
 
-			semantic_walk_expr(node->args);
+			semantic_walk_expr(node->args); // array size
 
 			node->ty = ty;
 

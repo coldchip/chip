@@ -2,10 +2,11 @@ import Console;
 import String;
 import Convert;
 import Array;
+import Random;
 
 class MD5 {
 	int[] state;
-	int[] data;
+	char[] data;
 	int dataLength;
 	int bitlen;
 
@@ -16,7 +17,7 @@ class MD5 {
 		this.state[2] = 2562383102;
 		this.state[3] = 271733878;
 
-		this.data = new int[](64);
+		this.data = new char[](64);
 		this.dataLength = 0;
 		this.bitlen = 0;
 	}
@@ -59,7 +60,7 @@ class MD5 {
 		return this.leftRotate(a + this.i(b, c, d) + x + ac, s) + b;
 	}
 
-	method memset(int buf, int bit, int len) : void {
+	method memset(char[] buf, char bit, int len) : void {
 		int i = 0;
 		while(i < len) {
 			buf[i] = bit;
@@ -67,7 +68,7 @@ class MD5 {
 		}
 	}
 
-	method hashBlock(int[] block) : void {
+	method hashBlock(char[] block) : void {
 		int[] x = new int[](16);
 
 		int l = 0;
@@ -160,7 +161,7 @@ class MD5 {
 		this.state[3] = this.state[3] + d;
 	}
 
-	method update(int[] data, int len) : void {
+	method update(char[] data, int len) : void {
 		int i = 0;
 		while(i < len) {
 			this.data[this.dataLength] = data[i];
@@ -175,53 +176,86 @@ class MD5 {
 		}
 	}
 
-	method final() : void {
+	method final() : char[] {
 		int i = this.dataLength;
 
 		if (this.dataLength < 56) {
-			this.data[i] = 128;
+			this.data[i] = <char>128;
 			i = i + 1;
 
 			while (i < 56) {
-				this.data[i] = 0;
+				this.data[i] = <char>0;
 				i = i + 1;
 			}
 		} 
 		if (this.dataLength > 56) {
-			this.data[i] = 128;
+			this.data[i] = <char>128;
 			i = i + 1;
 
 			while (i < 64) {
-				this.data[i] = 0;
+				this.data[i] = <char>0;
 				i = i + 1;
 			}
 
 			this.hashBlock(this.data);
-			this.memset(this.data, 0, 56);
+			this.memset(this.data, <char>0, 56);
 		}
 
 		this.bitlen = this.bitlen + (this.dataLength * 8);
-		this.data[56] = this.bitlen;
-		this.data[57] = this.bitlen >> 8;
-		this.data[58] = this.bitlen >> 16;
-		this.data[59] = this.bitlen >> 24;
-		this.data[60] = this.bitlen >> 32;
-		this.data[61] = this.bitlen >> 40;
-		this.data[62] = this.bitlen >> 48;
-		this.data[63] = this.bitlen >> 56;
+		this.data[56] = <char>this.bitlen;
+		this.data[57] = <char>(this.bitlen >> 8);
+		this.data[58] = <char>(this.bitlen >> 16);
+		this.data[59] = <char>(this.bitlen >> 24);
+		this.data[60] = <char>(this.bitlen >> 32);
+		this.data[61] = <char>(this.bitlen >> 40);
+		this.data[62] = <char>(this.bitlen >> 48);
+		this.data[63] = <char>(this.bitlen >> 56);
 		this.hashBlock(this.data);
 
 
-		int[] hash = new int[](16);
+		char[] hash = new char[](16);
 
 		int j = 0;
 		while(j < 4) {
-			hash[j]      = (this.state[0] >> (j * 8)) & 255;
-			hash[j + 4]  = (this.state[1] >> (j * 8)) & 255;
-			hash[j + 8]  = (this.state[2] >> (j * 8)) & 255;
-			hash[j + 12] = (this.state[3] >> (j * 8)) & 255;
+			hash[j]      = <char>((this.state[0] >> (j * 8)) & 255);
+			hash[j + 4]  = <char>((this.state[1] >> (j * 8)) & 255);
+			hash[j + 8]  = <char>((this.state[2] >> (j * 8)) & 255);
+			hash[j + 12] = <char>((this.state[3] >> (j * 8)) & 255);
 			j = j + 1;
 		}
+
+		return hash;
+	}
+}
+
+class Main {
+	method main() : void {
+		int j = 0;
+		while(j < 9999) {
+			MD5 md51 = new MD5();
+			md51.update(Random.string(32).getBytes(), 32);
+			char[] hash1 = md51.final();
+
+			int h1 = 0;
+			while(h1 < hash1.count) {
+				String r1 = Convert.string(hash1[h1] & 255, 16);
+				if(r1.count == 1) {
+					Console.write("0");
+				}
+				Console.write(r1);
+				h1 = h1 + 1;
+			}
+			Console.write("\n");
+
+			j = j + 1;
+		}
+
+		MD5 md5 = new MD5();
+
+		Console.write("enter payload: \n");
+		String input = Console.read();
+		md5.update(input.getBytes(), input.count);
+		char[] hash = md5.final();
 
 		int h = 0;
 		while(h < hash.count) {
@@ -233,17 +267,6 @@ class MD5 {
 			h = h + 1;
 		}
 		Console.write("\n");
-	}
-}
-
-class Main {
-	method main() : void {
-		MD5 md5 = new MD5();
-
-		char[] data = "ss";
-
-		md5.update(<int[]>data, data.count);
-		md5.final();
 
 		return;
 	}

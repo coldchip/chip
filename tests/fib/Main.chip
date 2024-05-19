@@ -4,7 +4,7 @@ import Convert;
 import Array;
 
 class Main {
-	method main() : [static] returns void {
+	method main() : void {
 		int n = 100;
 		int firstTerm = 0;
 		int secondTerm = 1;

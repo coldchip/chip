@@ -366,7 +366,7 @@ static void gen_member(Node *node) {
 }
 
 static void gen_new(Node *node) {
-	emit_op_left(OP_NEWO, node->size);
+	emit_op_left(OP_NEWO, node->ty->size);
 
 	if(node->method) {
 		emit_op(OP_DUP);
@@ -386,8 +386,7 @@ static void gen_new(Node *node) {
 
 static void gen_new_array(Node *node) {
 	gen_visitor(node->args);
-
-	emit_op(OP_NEW_ARRAY);
+	emit_op_left(OP_NEW_ARRAY, node->ty->size);
 }
 
 static void gen_array_member(Node *node) {

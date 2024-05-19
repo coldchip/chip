@@ -84,7 +84,6 @@ typedef struct _Node {
 
 	TyMethod *method;
 
-	int size;
 	int offset;
 } Node;
 

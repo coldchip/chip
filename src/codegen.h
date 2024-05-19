@@ -40,7 +40,7 @@
 	X(OP_CALL, "call", true) \
 	X(OP_SYSCALL, "syscall", false) \
 	X(OP_NEWO, "newo", true) \
-	X(OP_NEW_ARRAY, "newarr", false) \
+	X(OP_NEW_ARRAY, "newarr", true) \
 	X(OP_LOAD_ARRAY, "loadarr", false) \
 	X(OP_STORE_ARRAY, "storearr", false) \
 	X(OP_JE, "je", true) \

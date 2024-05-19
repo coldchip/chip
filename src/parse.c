@@ -24,7 +24,6 @@ Node *new_node(NodeType type, Token *token) {
 
 	node->method = NULL;
 
-	node->size = 0;
 	node->offset = 0;
 
 	list_clear(&node->bodylist);
