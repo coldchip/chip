@@ -16,6 +16,7 @@ void         semantic_method(Node *node);
 void         semantic_stmt(Node *node);
 void         semantic_if(Node *node);
 void         semantic_while(Node *node);
+void         semantic_for(Node *node);
 void         semantic_return(Node *node);
 void         semantic_decl(Node *node);
 void         semantic_assign(Node *node);

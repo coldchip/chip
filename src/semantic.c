@@ -249,11 +249,17 @@ void semantic_stmt(Node *node) {
 			semantic_while(node);
 		}
 		break;
+		case ND_FOR: {
+			semantic_for(node);
+		}
+		break;
 		case ND_BLOCK: {
+			varscope_push();
 			for(ListNode *s = list_begin(&node->bodylist); s != list_end(&node->bodylist); s = list_next(s)) {
 				Node *stmt = (Node*)s;
 				semantic_stmt(stmt);
 			}
+			varscope_pop();
 		}
 		break;
 		case ND_RETURN: {
@@ -266,6 +272,11 @@ void semantic_stmt(Node *node) {
 		break;
 		case ND_EXPR: {
 			semantic_expr(node);
+		}
+		break;
+		default: {
+			printf("unknown node in stmt %i\n", node->type);
+			exit(1);
 		}
 		break;
 	}
@@ -281,6 +292,13 @@ void semantic_if(Node *node) {
 
 void semantic_while(Node *node) {
 	semantic_walk_expr(node->condition);
+	semantic_stmt(node->body);
+}
+
+void semantic_for(Node *node) {
+	semantic_decl(node->init);
+	semantic_walk_expr(node->condition);
+	semantic_walk_expr(node->increment);
 	semantic_stmt(node->body);
 }
 
@@ -542,7 +560,7 @@ Node *semantic_walk_expr(Node *node) {
 		}
 		break;
 		default: {
-			printf("unknown node %i\n", node->type);
+			printf("unknown node in expr %i\n", node->type);
 			exit(1);
 		}
 		break;

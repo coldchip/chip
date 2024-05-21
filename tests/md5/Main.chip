@@ -71,11 +71,9 @@ class MD5 {
 	method hashBlock(char[] block) : void {
 		int[] x = new int[](16);
 
-		int l = 0;
 		int j = 0;
-		while(l < 16) {
+		for(int l = 0; l < 16; l = l + 1) {
 			x[l] = (block[j]) + (block[j + 1] << 8) + (block[j + 2] << 16) + (block[j + 3] << 24);
-			l = l + 1;
 			j = j + 4;
 		}
 
@@ -162,8 +160,7 @@ class MD5 {
 	}
 
 	method update(char[] data, int len) : void {
-		int i = 0;
-		while(i < len) {
+		for(int i = 0; i < len; i = i + 1) {
 			this.data[this.dataLength] = data[i];
 			this.dataLength = this.dataLength + 1;
 			if (this.dataLength == 64) {
@@ -171,8 +168,6 @@ class MD5 {
 				this.bitlen = this.bitlen + 512;
 				this.dataLength = 0;
 			}
-
-			i = i + 1;
 		}
 	}
 
@@ -230,25 +225,27 @@ class MD5 {
 
 class Main {
 	method main() : void {
-		int j = 0;
-		while(j < 9999) {
-			MD5 md51 = new MD5();
-			md51.update(Random.string(32).getBytes(), 32);
+		MD5 md51 = new MD5();
+
+		String buffer = new String();
+
+		for(int j = 0; j < 8192 * 2; j = j + 1) {
+			String random = Random.string(3);
+			md51.update(random.getBytes(), random.count);
 			char[] hash1 = md51.final();
 
-			int h1 = 0;
-			while(h1 < hash1.count) {
+			for(int h1 = 0; h1 < hash1.count; h1 = h1 + 1) {
 				String r1 = Convert.string(hash1[h1] & 255, 16);
 				if(r1.count == 1) {
-					Console.write("0");
+					buffer.append("0");
 				}
-				Console.write(r1);
-				h1 = h1 + 1;
+				buffer.append(r1);
 			}
-			Console.write("\n");
-
-			j = j + 1;
+			buffer.append("\n");
 		}
+
+		buffer.append("-----------------------------------");
+		buffer.append("\n\n\n");
 
 		MD5 md5 = new MD5();
 
@@ -257,16 +254,16 @@ class Main {
 		md5.update(input.getBytes(), input.count);
 		char[] hash = md5.final();
 
-		int h = 0;
-		while(h < hash.count) {
+		for(int h = 0; h < hash.count; h = h + 1) {
 			String r = Convert.string(hash[h] & 255, 16);
 			if(r.count == 1) {
-				Console.write("0");
+				buffer.append("0");
 			}
-			Console.write(r);
-			h = h + 1;
+			buffer.append(r);
 		}
-		Console.write("\n");
+		buffer.append("\n");
+
+		Console.write(buffer);
 
 		return;
 	}

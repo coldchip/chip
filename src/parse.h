@@ -26,6 +26,7 @@ typedef enum {
 	ND_BLOCK,
 	ND_IF,
 	ND_WHILE,
+	ND_FOR,
 	ND_VARIABLE,
 	ND_EXPR,
 	ND_CLASS_DECL,
@@ -67,7 +68,9 @@ typedef struct _Node {
 	struct _Node *left;
 	struct _Node *right;
 	struct _Node *args;
+	struct _Node *init; // for loop init
 	struct _Node *condition;
+	struct _Node *increment; // for loop increment
 	struct _Node *index;
 	struct _Node *body;
 	struct _Node *alternate;
@@ -106,12 +109,10 @@ Node              *parse_param(Token **current);
 Node              *parse_params(Token **current);
 Node              *parse_arg(Token **current);
 Node              *parse_args(Token **current);
+static Node       *parse_declaration(Token **current);
 static Node       *parse_stmt(Token **current);
 
 Node              *parse(List *tokens);
-
-Ty                *unfold_member_type(Node *node);
-void               normalize_type(Node *node);
 
 /*
 	parse_expr.c

@@ -24,7 +24,11 @@ void varscope_pop() {
 }
 
 int varscope_size() {
-	return (int)list_size(&varscope[sp]);
+	int size = 0;
+	for(int i = 0; i <= sp; i++) {
+		size += (int)list_size(&varscope[i]);
+	}
+	return size;
 }
 
 Var *varscope_add(char *name, Ty *type) {

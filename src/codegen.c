@@ -128,8 +128,8 @@ static int emit_constant(List *list, char *data, bool obfuscated) {
 	return list_size(list) - 1;
 }
 
-static void emit_file() {
-	FILE *prg = fopen("a.out", "wb");
+static void emit_file(const char *file) {
+	FILE *prg = fopen(file, "wb");
 	if(!prg) {
 		printf("unable to open to ~prg.out\n");
 		exit(1);
@@ -210,7 +210,7 @@ void emit_asm() {
 		if(op_size[ins->op]) {
 			printf(COLOR_CYAN "i%i" COLOR_RESET " ", 8 * (1 << ins->width));
 
-			printf(COLOR_GREEN "0x%02lx" COLOR_RESET, ins->left);
+			printf(COLOR_GREEN "[0x%02lx]" COLOR_RESET, ins->left);
 		}
 
 		if(ins->label) {
@@ -341,6 +341,36 @@ static void gen_while(Node *node) {
 
 	// body
 	gen_visitor(node->body);
+	emit_op_left_label(OP_JMP, body_label);
+
+	// exit
+	emit_label(exit_label);
+}
+
+static void gen_for(Node *node) {
+	char body_label[256];
+	sprintf(body_label, "FB_%i", rand_string());
+
+	char exit_label[256];
+	sprintf(exit_label, "FE_%i", rand_string());
+
+	// init
+	gen_visitor(node->init);
+	// remember to pop
+
+	// check
+	emit_label(body_label);
+	gen_visitor(node->condition);
+	emit_op_left(OP_PUSH, 0);
+	emit_op_left_label(OP_JE, exit_label);
+
+	// body
+	gen_visitor(node->body);
+
+	// increment
+	gen_visitor(node->increment);
+	emit_op(OP_POP);
+
 	emit_op_left_label(OP_JMP, body_label);
 
 	// exit
@@ -698,6 +728,10 @@ static void gen_visitor(Node *node) {
 			gen_while(node);
 		}
 		break;
+		case ND_FOR: {
+			gen_for(node);
+		}
+		break;
 		case ND_BLOCK: {
 			gen_block(node);
 		}
@@ -724,6 +758,10 @@ static void gen_visitor(Node *node) {
 		break;
 		case ND_EXPR: {
 			gen_expr(node);
+		}
+		break;
+		case ND_CLASS_DECL: {
+			// nothing
 		}
 		break;
 		case ND_DECL: {
@@ -796,10 +834,15 @@ static void gen_visitor(Node *node) {
 			gen_syscall(node);
 		}
 		break;
+		default: {
+			printf("unknown node in codegen %i\n", node->type);
+			exit(1);
+		}
+		break;
 	}
 }
 
-void gen(Node *node) {
+void gen(Node *node, const char *file) {
 	list_clear(&constants);
 
 	Ty *c = type_get("Main");
@@ -830,5 +873,5 @@ void gen(Node *node) {
 	emit_label_to_address();
 	emit_asm();
 
-	emit_file();
+	emit_file(file);
 }

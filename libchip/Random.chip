@@ -4,7 +4,7 @@ class Random {
 	}
 
 	method string(int length) : String {
-		char[] set = "abcdef0123456789";
+		char[] set = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
 		char[] result = new char[](length);
 

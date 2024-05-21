@@ -166,7 +166,7 @@ int64_t eval(int pc) {
 		if(op_size[op]) {
 			left = *(int64_t*)&codes[pc];
 			if(width == 0) {
-				left = left & 0xFF;
+				left = (left) & 0xFF;
 			}
 			if(width == 1) {
 				left = NTOHS(left & 0xFFFF);
@@ -190,9 +190,29 @@ int64_t eval(int pc) {
 				PUSH_STACK_SLOT(var);
 			}
 			break;
+			case OP_LOAD_0:
+			case OP_LOAD_1:
+			case OP_LOAD_2:
+			case OP_LOAD_3:
+			case OP_LOAD_4:
+			case OP_LOAD_5: {
+				Slot var = GET_VAR_SLOT(op - OP_LOAD_0);
+				PUSH_STACK_SLOT(var);
+			}
+			break;
 			case OP_STORE: {
 				Slot var = POP_STACK_SLOT();
 				SET_VAR_SLOT(left, var);
+			}
+			break;
+			case OP_STORE_0:
+			case OP_STORE_1:
+			case OP_STORE_2:
+			case OP_STORE_3:
+			case OP_STORE_4:
+			case OP_STORE_5: {
+				Slot var = POP_STACK_SLOT();
+				SET_VAR_SLOT(op - OP_STORE_0, var);
 			}
 			break;
 			case OP_DUP: {
@@ -202,6 +222,15 @@ int64_t eval(int pc) {
 			break;
 			case OP_PUSH: {
 				PUSH_STACK((int64_t)left);
+			}
+			break;
+			case OP_PUSH_0:
+			case OP_PUSH_1:
+			case OP_PUSH_2:
+			case OP_PUSH_3:
+			case OP_PUSH_4:
+			case OP_PUSH_5: {
+				PUSH_STACK((int64_t)op - OP_PUSH_0);
 			}
 			break;
 			case OP_LOAD_CONST: {			
@@ -621,6 +650,7 @@ int64_t eval(int pc) {
 
 void intepreter(const char *input) {
 	/* code */
+	srand(time(NULL));
 	signal(SIGPIPE, SIG_IGN);
 
 	list_clear(&objects);

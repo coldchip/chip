@@ -8,7 +8,19 @@
 #define LIST_OF_OPS \
 	X(OP_NOP, "nop", false) \
 	X(OP_LOAD, "load", true) \
+	X(OP_LOAD_0, "load_0", false) \
+	X(OP_LOAD_1, "load_1", false) \
+	X(OP_LOAD_2, "load_2", false) \
+	X(OP_LOAD_3, "load_3", false) \
+	X(OP_LOAD_4, "load_4", false) \
+	X(OP_LOAD_5, "load_5", false) \
 	X(OP_STORE, "store", true) \
+	X(OP_STORE_0, "store_0", false) \
+	X(OP_STORE_1, "store_1", false) \
+	X(OP_STORE_2, "store_2", false) \
+	X(OP_STORE_3, "store_3", false) \
+	X(OP_STORE_4, "store_4", false) \
+	X(OP_STORE_5, "store_5", false) \
 	X(OP_CMPEQ, "cmpeq", false) \
 	X(OP_CMPGT, "cmpgt", false) \
 	X(OP_CMPLT, "cmplt", false) \
@@ -33,6 +45,12 @@
 	X(OP_I2F, "i2f", false) \
 	X(OP_DUP, "dup", false) \
 	X(OP_PUSH,  "push", true) \
+	X(OP_PUSH_0,  "push_0", false) \
+	X(OP_PUSH_1,  "push_1", false) \
+	X(OP_PUSH_2,  "push_2", false) \
+	X(OP_PUSH_3,  "push_3", false) \
+	X(OP_PUSH_4,  "push_4", false) \
+	X(OP_PUSH_5,  "push_5", false) \
 	X(OP_POP, "pop", false) \
 	X(OP_LOAD_CONST, "loadconst", true) \
 	X(OP_LOAD_FIELD, "loadfield", true) \
@@ -105,7 +123,7 @@ static Op *       emit_op(OpType op);
 static Op *       emit_op_left(OpType op, uint64_t left);
 static Op        *emit_op_left_label(OpType op, const char *left);
 static int        emit_constant(List *list, char *data, bool obfuscated);
-static void       emit_file();
+static void       emit_file(const char *file);
 
 uint8_t           closest_container_size(int64_t number);
 
@@ -117,6 +135,7 @@ static int        gen_arg(Node *node);
 static void       gen_method(Node *node);
 static void       gen_if(Node *node);
 static void       gen_while(Node *node);
+static void       gen_for(Node *node);
 static void       gen_block(Node *node);
 static void       gen_variable(Node *node);
 static void       gen_member(Node *node);
@@ -140,6 +159,6 @@ static void       gen_return(Node *node);
 static void       gen_call(Node *node);
 static void       gen_syscall(Node *node);
 static void       gen_visitor(Node *node);
-void              gen(Node *node);
+void              gen(Node *node, const char *file);
 
 #endif

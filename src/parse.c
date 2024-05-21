@@ -16,7 +16,9 @@ Node *new_node(NodeType type, Token *token) {
 	node->index = NULL;
 	node->body  = NULL;
 	node->alternate = NULL;
+	node->init = NULL;
 	node->condition = NULL;
+	node->increment = NULL;
 	node->args = NULL;
 	node->array_depth = 0;
 
@@ -280,6 +282,22 @@ Node *parse_args(Token **current) {
 	return node;
 }
 
+static Node *parse_declaration(Token **current) {
+	Node *type = parse_type(current);
+
+	Node *node = new_node(ND_DECL, *current);
+	node->data_type = type;
+
+	expect_type(current, TK_IDENTIFIER);
+
+	if(equals_string(current, "=")) {
+		prev(current);
+		node->body = parse_expr(current);
+	}
+
+	return node;
+}
+
 static Node *parse_stmt(Token **current) {
 	if(consume_string(current, "if")) {
 		Node *node = new_node(ND_IF, NULL);
@@ -296,6 +314,24 @@ static Node *parse_stmt(Token **current) {
 
 		expect_string(current, "(");
 		node->condition = parse_expr(current);
+		expect_string(current, ")");
+		node->body = parse_stmt(current);
+		return node;
+	} else if(consume_string(current, "for")) {
+		Node *node = new_node(ND_FOR, NULL);
+
+		expect_string(current, "(");
+
+		node->init = parse_declaration(current);
+
+		expect_string(current, ";");
+		
+		node->condition = parse_expr(current);
+
+		expect_string(current, ";");
+
+		node->increment = parse_expr(current);
+
 		expect_string(current, ")");
 		node->body = parse_stmt(current);
 		return node;
@@ -317,20 +353,8 @@ static Node *parse_stmt(Token **current) {
 		expect_string(current, ";");
 		return node;
 	} else if(is_declaration(current)) {
-		Node *type = parse_type(current);
-
-		Node *node = new_node(ND_DECL, *current);
-		node->data_type = type;
-
-		expect_type(current, TK_IDENTIFIER);
-
-		if(equals_string(current, "=")) {
-			prev(current);
-			node->body = parse_expr(current);
-		}
-
+		Node *node = parse_declaration(current);
 		expect_string(current, ";");
-
 		return node;
 	} else {
 		Node *node = new_node(ND_EXPR, NULL);
