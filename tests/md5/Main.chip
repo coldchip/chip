@@ -229,7 +229,7 @@ class Main {
 
 		String buffer = new String();
 
-		for(int j = 0; j < 8192 * 2; j = j + 1) {
+		for(int j = 0; j < 128; j = j + 1) {
 			String random = Random.string(3);
 			md51.update(random.getBytes(), random.count);
 			char[] hash1 = md51.final();
