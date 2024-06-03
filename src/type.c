@@ -5,6 +5,7 @@
 #include "chip.h"
 
 List types;
+List generics;
 
 void type_clear() {
 	list_clear(&types);
@@ -16,6 +17,10 @@ void type_clear() {
 	insert_variable(char_type, "count", int_type);
 	type_insert("float", 8);
 	type_insert("void", 8);
+}
+
+void type_generic_clear() {
+	list_clear(&generics);
 }
 
 bool type_compatible(Ty *from, Ty *to) {
@@ -58,6 +63,15 @@ Ty *type_insert(char *name, int size) {
 	list_clear(&type->methods);
 
 	list_insert(list_end(&types), type);
+
+	return type;
+}
+
+Ty *type_generic_insert(char *name) {
+	Ty *type = malloc(sizeof(Ty));
+	type->name = strdup(name);
+
+	list_insert(list_end(&generics), type);
 
 	return type;
 }

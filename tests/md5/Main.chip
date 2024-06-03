@@ -2,6 +2,7 @@ import Console;
 import String;
 import Convert;
 import Array;
+import List;
 import Random;
 
 class MD5 {
@@ -61,10 +62,8 @@ class MD5 {
 	}
 
 	method memset(char[] buf, char bit, int len) : void {
-		int i = 0;
-		while(i < len) {
+		for(int i = 0; i < len; i = i + 1) {
 			buf[i] = bit;
-			i = i + 1;
 		}
 	}
 
@@ -212,7 +211,7 @@ class MD5 {
 
 		int j = 0;
 		while(j < 4) {
-			hash[j]      = <char>((this.state[0] >> (j * 8)) & 255);
+			hash[j + 0]  = <char>((this.state[0] >> (j * 8)) & 255);
 			hash[j + 4]  = <char>((this.state[1] >> (j * 8)) & 255);
 			hash[j + 8]  = <char>((this.state[2] >> (j * 8)) & 255);
 			hash[j + 12] = <char>((this.state[3] >> (j * 8)) & 255);
@@ -230,19 +229,23 @@ class Main {
 		String buffer = new String();
 
 		for(int j = 0; j < 128; j = j + 1) {
-			String random = Random.string(3);
-			md51.update(random.getBytes(), random.count);
-			char[] hash1 = md51.final();
-
-			for(int h1 = 0; h1 < hash1.count; h1 = h1 + 1) {
-				String r1 = Convert.string(hash1[h1] & 255, 16);
-				if(r1.count == 1) {
-					buffer.append("0");
-				}
-				buffer.append(r1);
-			}
+			String random = Random.string(16);
+			buffer.append(random);
 			buffer.append("\n");
+
+			md51.update(random.getBytes(), random.count);
 		}
+
+		char[] hash1 = md51.final();
+
+		for(int h1 = 0; h1 < hash1.count; h1 = h1 + 1) {
+			String r1 = Convert.string(hash1[h1] & 255, 16);
+			if(r1.count == 1) {
+				buffer.append("0");
+			}
+			buffer.append(r1);
+		}
+		buffer.append("\n");
 
 		buffer.append("-----------------------------------");
 		buffer.append("\n\n\n");
@@ -262,8 +265,19 @@ class Main {
 			buffer.append(r);
 		}
 		buffer.append("\n");
-
 		Console.write(buffer);
+
+		List<String> l = new List<String>();
+		for(int d = 0; d < 128; d = d + 1) {
+			String random = Random.string(16);
+			l.add(random);
+		}
+		for(int i = 0; i < l.size(); i = i + 1) {
+			Console.write(i);
+			Console.write("\t");
+			Console.write(l.get(i));
+			Console.write("\n");
+		}
 
 		return;
 	}

@@ -6,86 +6,86 @@
 #include <arpa/inet.h>
 
 #define LIST_OF_OPS \
-	X(OP_NOP, "nop", false) \
-	X(OP_LOAD, "load", true) \
-	X(OP_LOAD_0, "load_0", false) \
-	X(OP_LOAD_1, "load_1", false) \
-	X(OP_LOAD_2, "load_2", false) \
-	X(OP_LOAD_3, "load_3", false) \
-	X(OP_LOAD_4, "load_4", false) \
-	X(OP_LOAD_5, "load_5", false) \
-	X(OP_STORE, "store", true) \
-	X(OP_STORE_0, "store_0", false) \
-	X(OP_STORE_1, "store_1", false) \
-	X(OP_STORE_2, "store_2", false) \
-	X(OP_STORE_3, "store_3", false) \
-	X(OP_STORE_4, "store_4", false) \
-	X(OP_STORE_5, "store_5", false) \
-	X(OP_CMPEQ, "cmpeq", false) \
-	X(OP_CMPGT, "cmpgt", false) \
-	X(OP_CMPLT, "cmplt", false) \
-	X(OP_SHR, "shr", false) \
-	X(OP_SHL, "shl", false) \
-	X(OP_ADD, "add", false) \
-	X(OP_SUB, "sub", false) \
-	X(OP_MUL, "mul", false) \
-	X(OP_DIV, "div", false) \
-	X(OP_NEG, "neg", false) \
-	X(OP_MOD, "mod", false) \
-	X(OP_NOT, "not", false) \
-	X(OP_OR, "or", false) \
-	X(OP_XOR, "xor", false) \
-	X(OP_AND, "and", false) \
-	X(OP_FADD, "fadd", false) \
-	X(OP_FSUB, "fsub", false) \
-	X(OP_FMUL, "fmul", false) \
-	X(OP_FDIV, "fdiv", false) \
-	X(OP_FNEG, "fneg", false) \
-	X(OP_FMOD, "fmod", false) \
-	X(OP_I2F, "i2f", false) \
-	X(OP_DUP, "dup", false) \
-	X(OP_PUSH,  "push", true) \
-	X(OP_PUSH_0,  "push_0", false) \
-	X(OP_PUSH_1,  "push_1", false) \
-	X(OP_PUSH_2,  "push_2", false) \
-	X(OP_PUSH_3,  "push_3", false) \
-	X(OP_PUSH_4,  "push_4", false) \
-	X(OP_PUSH_5,  "push_5", false) \
-	X(OP_POP, "pop", false) \
-	X(OP_LOAD_CONST, "loadconst", true) \
-	X(OP_LOAD_FIELD, "loadfield", true) \
-	X(OP_STORE_FIELD, "storefield", true) \
-	X(OP_CALL, "call", true) \
-	X(OP_SYSCALL, "syscall", false) \
-	X(OP_NEWO, "newo", true) \
-	X(OP_NEW_ARRAY, "newarr", true) \
-	X(OP_LOAD_ARRAY, "loadarr", false) \
-	X(OP_STORE_ARRAY, "storearr", false) \
-	X(OP_JE, "je", true) \
-	X(OP_JMP, "jmp", true) \
-	X(OP_RET, "ret", false) \
-	X(OP_HALT, "halt", false)
+	DEFINE_OP(OP_NOP, "nop", false) \
+	DEFINE_OP(OP_LOAD, "load", true) \
+	DEFINE_OP(OP_LOAD_0, "load_0", false) \
+	DEFINE_OP(OP_LOAD_1, "load_1", false) \
+	DEFINE_OP(OP_LOAD_2, "load_2", false) \
+	DEFINE_OP(OP_LOAD_3, "load_3", false) \
+	DEFINE_OP(OP_LOAD_4, "load_4", false) \
+	DEFINE_OP(OP_LOAD_5, "load_5", false) \
+	DEFINE_OP(OP_STORE, "store", true) \
+	DEFINE_OP(OP_STORE_0, "store_0", false) \
+	DEFINE_OP(OP_STORE_1, "store_1", false) \
+	DEFINE_OP(OP_STORE_2, "store_2", false) \
+	DEFINE_OP(OP_STORE_3, "store_3", false) \
+	DEFINE_OP(OP_STORE_4, "store_4", false) \
+	DEFINE_OP(OP_STORE_5, "store_5", false) \
+	DEFINE_OP(OP_CMPEQ, "cmpeq", false) \
+	DEFINE_OP(OP_CMPGT, "cmpgt", false) \
+	DEFINE_OP(OP_CMPLT, "cmplt", false) \
+	DEFINE_OP(OP_SHR, "shr", false) \
+	DEFINE_OP(OP_SHL, "shl", false) \
+	DEFINE_OP(OP_ADD, "add", false) \
+	DEFINE_OP(OP_SUB, "sub", false) \
+	DEFINE_OP(OP_MUL, "mul", false) \
+	DEFINE_OP(OP_DIV, "div", false) \
+	DEFINE_OP(OP_NEG, "neg", false) \
+	DEFINE_OP(OP_MOD, "mod", false) \
+	DEFINE_OP(OP_NOT, "not", false) \
+	DEFINE_OP(OP_OR, "or", false) \
+	DEFINE_OP(OP_XOR, "xor", false) \
+	DEFINE_OP(OP_AND, "and", false) \
+	DEFINE_OP(OP_FADD, "fadd", false) \
+	DEFINE_OP(OP_FSUB, "fsub", false) \
+	DEFINE_OP(OP_FMUL, "fmul", false) \
+	DEFINE_OP(OP_FDIV, "fdiv", false) \
+	DEFINE_OP(OP_FNEG, "fneg", false) \
+	DEFINE_OP(OP_FMOD, "fmod", false) \
+	DEFINE_OP(OP_I2F, "i2f", false) \
+	DEFINE_OP(OP_DUP, "dup", false) \
+	DEFINE_OP(OP_PUSH,  "push", true) \
+	DEFINE_OP(OP_PUSH_0,  "push_0", false) \
+	DEFINE_OP(OP_PUSH_1,  "push_1", false) \
+	DEFINE_OP(OP_PUSH_2,  "push_2", false) \
+	DEFINE_OP(OP_PUSH_3,  "push_3", false) \
+	DEFINE_OP(OP_PUSH_4,  "push_4", false) \
+	DEFINE_OP(OP_PUSH_5,  "push_5", false) \
+	DEFINE_OP(OP_POP, "pop", false) \
+	DEFINE_OP(OP_LOAD_CONST, "loadconst", true) \
+	DEFINE_OP(OP_LOAD_FIELD, "loadfield", true) \
+	DEFINE_OP(OP_STORE_FIELD, "storefield", true) \
+	DEFINE_OP(OP_CALL, "call", true) \
+	DEFINE_OP(OP_SYSCALL, "syscall", false) \
+	DEFINE_OP(OP_ALLOC, "alloc", true) \
+	DEFINE_OP(OP_NEW_ARRAY, "newarr", true) \
+	DEFINE_OP(OP_LOAD_ARRAY, "loadarr", false) \
+	DEFINE_OP(OP_STORE_ARRAY, "storearr", false) \
+	DEFINE_OP(OP_JE, "je", true) \
+	DEFINE_OP(OP_JMP, "jmp", true) \
+	DEFINE_OP(OP_RET, "ret", false) \
+	DEFINE_OP(OP_HALT, "halt", false)
 
 /* ops */
-#define X(name, display, left) name,
+#define DEFINE_OP(name, display, left) name,
 typedef enum {
 	LIST_OF_OPS
 } OpType;
-#undef X
+#undef DEFINE_OP
 
 /* mnemonic names for ops */
-#define X(name, display, left) display,
+#define DEFINE_OP(name, display, left) display,
 static char *op_display[] = {
 	LIST_OF_OPS
 };
-#undef X
+#undef DEFINE_OP
 
 /* ops that has a left oprand */
-#define X(name, display, left) left,
+#define DEFINE_OP(name, display, left) left,
 static bool op_size[] = {
 	LIST_OF_OPS
 };
-#undef X
+#undef DEFINE_OP
 
 typedef struct _Constant {
 	ListNode node;

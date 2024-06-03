@@ -1,0 +1,25 @@
+import Console;
+import String;
+import Convert;
+import Array;
+import Random;
+import List;
+
+class Main {
+	method main() : void {
+		List list = new List();
+
+		for(int i = 0; i < 999; i = i + 1) {
+			list.add(new String("jeremy"));
+			list.add(new String(Convert.string(i)));
+		}
+
+		ListNode first = list.head.next;
+		while(<int>first) {
+			Console.write(first.item);
+			first = first.next;
+		}
+
+		return;
+	}
+}

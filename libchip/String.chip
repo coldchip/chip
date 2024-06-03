@@ -6,6 +6,11 @@ class String {
 		this.count = 0;
 	}
 
+	method constructor(String a) : void {
+		this.constructor();
+		this.append(a.getBytes());
+	}
+
 	method constructor(char[] a) : void {
 		this.constructor();
 		this.append(a);
@@ -37,6 +42,23 @@ class String {
         if(minimumCapacity - oldCapacity > 0) {
             this.expandCapacity(minimumCapacity);
         }
+	}
+
+	method split(char delim) : String[] {
+		String[] result = new String[](8192);
+
+		int j = 0;
+		int pos = 0;
+		for(int i = 0; i < this.buffer.count; i = i + 1) {
+			if(this.buffer[i] == delim || i == this.buffer.count - 1) {
+				int length = i - pos;
+				result[j] = new String(this.buffer, pos, length);
+				j = j + 1;
+				pos = i + 1;
+			}
+		}
+
+		return result;
 	}
 
 	method append(char[] b) : void {

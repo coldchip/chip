@@ -396,7 +396,7 @@ static void gen_member(Node *node) {
 }
 
 static void gen_new(Node *node) {
-	emit_op_left(OP_NEWO, node->ty->size);
+	emit_op_left(OP_ALLOC, type_size(node->ty)); // sizeof(class) * num_of_var
 
 	if(node->method) {
 		emit_op(OP_DUP);
@@ -868,7 +868,7 @@ void gen(Node *node, const char *file) {
 
 	gen_visitor(node);
 
-	optimize_peephole(codes, code_counter);
+	optimize(codes, code_counter);
 
 	emit_label_to_address();
 	emit_asm();

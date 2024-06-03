@@ -118,6 +118,8 @@ void semantic_program(Node *node) {
 void semantic_class(Node *node) {
 	printf(" - class %s\n", node->token->data);
 
+	type_generic_clear();
+
 	Ty *ty = type_get(node->token->data);
 
 	for(ListNode *n = list_begin(&node->bodylist); n != list_end(&node->bodylist); n = list_next(n)) {
@@ -310,7 +312,7 @@ void semantic_return(Node *node) {
 	}
 
 	if(ty != return_ty) {
-		printf("error: returning type of: %s, expected: %s\n", ty->name, return_ty->name);
+		printf("error: returning type of: %s, expected: %s on line %i\n", ty->name, return_ty->name, node->token->line);
 		exit(1);
 	}
 }
@@ -319,12 +321,12 @@ void semantic_decl(Node *node) {
 	Node *type = node->data_type;
 	Ty *left = type_get(type->token->data);
 	if(!left) {
-		printf("unknown type %s in declaration\n", type->token->data);
+		printf("unknown type %s in declaration on line %i\n", type->token->data, type->token->line);
 		exit(1);
 	}
 
 	if(varscope_get(node->token->data)) {
-		printf("error, redefinition of variable %s\n", node->token->data);
+		printf("error, redefinition of variable %s on line %i\n", node->token->data, node->token->line);
 		exit(1);
 	}
 
@@ -347,7 +349,7 @@ Node *semantic_walk_expr(Node *node) {
 			Node *right = semantic_walk_expr(node->right);
 
 			if(!type_compatible(right->ty, left->ty)) {
-				printf("error: incompatible types: cannot assign %s to %s\n", right->ty->name, left->ty->name);
+				printf("error: incompatible types: cannot assign %s to %s on line %i\n", right->ty->name, left->ty->name, node->token->line);
 				exit(1);
 			}
 
@@ -379,8 +381,9 @@ Node *semantic_walk_expr(Node *node) {
 			Node *left  = semantic_walk_expr(node->left);
 			Node *right = semantic_walk_expr(node->right);
 			Ty *common = type_get_common(left->ty, right->ty);
+
 			if(!common || !type_compatible(left->ty, common) || !type_compatible(right->ty, common)) {
-				printf("error: incompatible types: %s cannot perform arithmetric operation to %s\n", right->ty->name, left->ty->name);
+				printf("error: incompatible types: %s cannot perform arithmetric operation to %s on line %i\n", right->ty->name, left->ty->name, node->token->line);
 				exit(1);
 			}
 
@@ -417,7 +420,7 @@ Node *semantic_walk_expr(Node *node) {
 			Node *type = node->data_type;
 			Ty *ty = type_get(type->token->data);
 			if(!ty) {
-				printf("unknown type %s\n", type->token->data);
+				printf("unknown type %s on line %i\n", type->token->data, type->token->line);
 				exit(1);
 			}
 
@@ -431,7 +434,7 @@ Node *semantic_walk_expr(Node *node) {
 
 			TyVariable *variable = type_get_variable(parent->ty, node->token->data);
 			if(!variable) {
-				printf("unknown member %s\n", node->token->data);
+				printf("unknown member %s on line %i\n", node->token->data, node->token->line);
 				exit(1);
 			}
 
@@ -448,7 +451,7 @@ Node *semantic_walk_expr(Node *node) {
 
 			TyMethod *method = type_get_method(parent->ty, node->token->data, signature);
 			if(!method) {
-				printf("call to unknown member %s(%s)\n", node->token->data, signature);
+				printf("call to unknown member %s(%s) on line %i\n", node->token->data, signature, node->token->line);
 				exit(1);
 			}
 
@@ -465,7 +468,7 @@ Node *semantic_walk_expr(Node *node) {
 			Ty  *ty  = type_get(node->token->data); // static call
 
 			if(!var && !ty) {
-				printf("undefined variable %s\n", node->token->data);
+				printf("undefined variable %s on line %i\n", node->token->data, node->token->line);
 				exit(1);
 			}
 
@@ -521,7 +524,6 @@ Node *semantic_walk_expr(Node *node) {
 			semantic_arg(node->args);
 
 			char *signature = semantic_arg_signature(node->args);
-			
 			TyMethod *method = type_get_method(ty, "constructor", signature);
 
 			if(!method && !strcmp(signature, "void;") == 0) {

@@ -1,0 +1,37 @@
+class ListNode<L> {
+	String item;
+	ListNode next;
+}
+
+class List<L> {
+	ListNode head;
+	ListNode current;
+	int size;
+	method constructor() : void {
+		this.head = new ListNode();
+		this.current = this.head;
+		this.size = 0;
+	}
+
+	method add(String o) : void {
+		ListNode<String> ln = new ListNode<String>();
+		ln.item = o;
+		this.current.next = ln;
+		this.current = ln;
+		this.size = this.size + 1;
+	}
+
+	method get(int i) : String {
+		ListNode start = this.head.next;
+		for(int current = 0; current < this.size(); current = current + 1) {
+			if(i == current) {
+				return start.item;
+			}
+			start = start.next;
+		}
+	}
+
+	method size() : int {
+		return this.size;
+	}
+}

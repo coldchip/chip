@@ -93,6 +93,16 @@ bool is_declaration(Token **current) {
 	Token *state = *current;
 
 	if(consume_type(current, TK_IDENTIFIER)) {
+		if(consume_string(current, "<")) {
+			if(!consume_type(current, TK_IDENTIFIER)) {
+				*current = state;
+				return false;
+			}
+			if(!consume_string(current, ">")) {
+				*current = state;
+				return false;
+			}
+		}
 		while(consume_string(current, "[")) {
 			if(!consume_string(current, "]")) {
 				*current = state;
@@ -115,6 +125,11 @@ bool is_declaration(Token **current) {
 Node *parse_type(Token **current) {
 	Node *node = new_node(ND_TYPE, *current);
 	expect_type(current, TK_IDENTIFIER);
+	if(consume_string(current, "<")) {
+		/* class template <K, V, ...> */
+		expect_type(current, TK_IDENTIFIER);
+		expect_string(current, ">");
+	}
 	while(consume_string(current, "[")) {
 		node->array_depth++;
 		expect_string(current, "]");
@@ -168,6 +183,12 @@ static Node *parse_class(Token **current) {
 	node->token = *current;
 
 	expect_type(current, TK_IDENTIFIER);
+
+	if(consume_string(current, "<")) {
+		/* class template <K, V, ...> */
+		expect_type(current, TK_IDENTIFIER);
+		expect_string(current, ">");
+	}
 
 	expect_string(current, "{");
 
@@ -300,7 +321,7 @@ static Node *parse_declaration(Token **current) {
 
 static Node *parse_stmt(Token **current) {
 	if(consume_string(current, "if")) {
-		Node *node = new_node(ND_IF, NULL);
+		Node *node = new_node(ND_IF, *current);
 		expect_string(current, "(");
 		node->condition = parse_expr(current);
 		expect_string(current, ")");
@@ -310,7 +331,7 @@ static Node *parse_stmt(Token **current) {
 		}
 		return node;
 	} else if(consume_string(current, "while")) {
-		Node *node = new_node(ND_WHILE, NULL);
+		Node *node = new_node(ND_WHILE, *current);
 
 		expect_string(current, "(");
 		node->condition = parse_expr(current);
@@ -318,7 +339,7 @@ static Node *parse_stmt(Token **current) {
 		node->body = parse_stmt(current);
 		return node;
 	} else if(consume_string(current, "for")) {
-		Node *node = new_node(ND_FOR, NULL);
+		Node *node = new_node(ND_FOR, *current);
 
 		expect_string(current, "(");
 
@@ -336,7 +357,7 @@ static Node *parse_stmt(Token **current) {
 		node->body = parse_stmt(current);
 		return node;
 	} else if(consume_string(current, "{")) {
-		Node *node = new_node(ND_BLOCK, NULL);
+		Node *node = new_node(ND_BLOCK, *current);
 
 		while(!equals_string(current, "}")) {
 			list_insert(list_end(&node->bodylist), parse_stmt(current));
@@ -346,7 +367,7 @@ static Node *parse_stmt(Token **current) {
 
 		return node;
 	} else if(consume_string(current, "return")) {
-		Node *node = new_node(ND_RETURN, NULL);
+		Node *node = new_node(ND_RETURN, *current);
 		if(!equals_string(current, ";")) {
 			node->body = parse_expr(current);
 		}
@@ -357,7 +378,7 @@ static Node *parse_stmt(Token **current) {
 		expect_string(current, ";");
 		return node;
 	} else {
-		Node *node = new_node(ND_EXPR, NULL);
+		Node *node = new_node(ND_EXPR, *current);
 		node->body = parse_expr(current);
 		expect_string(current, ";");
 

@@ -24,7 +24,7 @@
 List objects;
 
 static char *constants[8192] = {};
-static char codes[32768] = {};
+static char *codes;
 int code_size = 0;
 
 int load_file(const char *name) {
@@ -40,17 +40,19 @@ int load_file(const char *name) {
 		exit(1);
 	}
 
+	code_size = NTOHLL(hdr.code_size);
+	codes     = malloc(sizeof(char) * code_size);
+
 	if(NTOHL(hdr.version) != CHIP_VERSION) {
 		printf("incorrect chip executable version\n");
 		exit(1);
 	}
 
-	for(int i = 0; i < NTOHLL(hdr.code_size); i++) {
-		if(fread(&codes[code_size], sizeof(char), 1, fp) != 1) {
+	for(int i = 0; i < code_size; i++) {
+		if(fread(&codes[i], sizeof(char), 1, fp) != 1) {
 			printf("unable to read file\n");
 			exit(1);
 		}
-		code_size++;
 	}
 
 	for(int z = 0; z < NTOHLL(hdr.const_size); z++) {
@@ -554,7 +556,7 @@ int64_t eval(int pc) {
 				}
 			}
 			break;
-			case OP_NEWO: {
+			case OP_ALLOC: {
 				Object *o = new_object((int)left);
 				o->type = sizeof(o);
 				PUSH_STACK_OBJECT(o);

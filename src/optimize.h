@@ -3,6 +3,8 @@
 
 #include "codegen.h"
 
-void optimize_peephole(Op **codes, int code_count);
+void optimize(Op **codes, int code_count);
+void optimize_shortcut(Op **codes, int code_count);
+void optimize_deadcode(Op **codes, int code_count);
 
 #endif

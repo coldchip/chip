@@ -27,6 +27,10 @@ static Token *new_token(TokenType type, char *data, int length, int line) {
 					sb_append(sb, "\n");
 				}
 				break;
+				case 't': {
+					sb_append(sb, "\t");
+				}
+				break;
 				default: {
 					fprintf(stderr, "unknown escape character %c\n", data[i]);
 					exit(1);
@@ -224,7 +228,7 @@ void tokenize(char *input, List *tokens) {
 			list_insert(list_end(tokens), token);
 			continue;
 		} else {
-			printf("unknown token %c\n", *input);
+			printf("unknown token '%c'\n", *input);
 			exit(1);
 		}
 
