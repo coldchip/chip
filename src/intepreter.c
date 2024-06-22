@@ -242,15 +242,13 @@ int64_t eval(int pc) {
 				Object *o = new_object(size + 1);
 				o->array = malloc(sizeof(char) * size);
 
-				for(int i = 0; i < size; i++) {
-					o->array[i] = (char)str[i];
-				}
+				memcpy(o->array, str, size);
 
 				o->type = sizeof(char);
 
 				o->varlist[0].is_ref = false;
 				o->varlist[0].value  = size;
-
+                                                                                                                          
 				PUSH_STACK_OBJECT(o);
 			}
 			break;
@@ -267,7 +265,7 @@ int64_t eval(int pc) {
 			}
 			break;
 			case OP_POP: {
-				POP_STACK_OBJECT();
+				POP_STACK();
 			}
 			break;
 			case OP_CMPEQ: {

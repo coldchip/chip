@@ -1,13 +1,15 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "optimize.h"
 #include "codegen.h"
 
-void optimize(Op **codes, int code_count) {
-	optimize_shortcut(codes, code_count);
+void optimize(Op **codes, int code_count, Label *labels, int label_count) {
+	optimize_shortcut(codes, code_count, labels, label_count);
 	//optimize_deadcode(codes, code_count);
+	optimize_graph(codes, code_count, labels, label_count);
 }
 
-void optimize_shortcut(Op **codes, int code_count) {
+void optimize_shortcut(Op **codes, int code_count, Label *labels, int label_count) {
 	for(int i = 0; i < code_count; ++i) {
 		Op *current = codes[i];
 
@@ -35,17 +37,17 @@ void optimize_deadcode_recursive(Op **codes, int start, int code_count, bool *no
 		Op *current = codes[i];
 		nopes[i] = true;
 		if(current->op == OP_CALL) {
-			LabelEntry label = emit_get_label(current->label);
+			Label label = emit_get_label(current->label);
 			int line = (label.line);
 			optimize_deadcode_recursive(codes, line, code_count, nopes, level + 1);
 		}
 		if(current->op == OP_JE) {
-			LabelEntry label = emit_get_label(current->label);
+			Label label = emit_get_label(current->label);
 			int line = (label.line);
 			optimize_deadcode_recursive(codes, line, code_count, nopes, level + 1);
 		}
 		// if(current->op == OP_JMP) {
-		// 	LabelEntry label = emit_get_label(current->label);
+		// 	Label label = emit_get_label(current->label);
 		// 	int line = (label.line);
 		// 	optimize_deadcode_recursive(codes, line, code_count, nopes, level + 1);
 		// }
@@ -55,7 +57,7 @@ void optimize_deadcode_recursive(Op **codes, int start, int code_count, bool *no
 	}
 }
 
-void optimize_deadcode(Op **codes, int code_count) {
+void optimize_deadcode(Op **codes, int code_count, Label *labels, int label_count) {
 	bool nopes[code_count];
 
 
@@ -77,4 +79,48 @@ void optimize_deadcode(Op **codes, int code_count) {
 	}
 
 	printf("deadcodes optimised: %i\n", deadcodes);
+}
+
+void optimize_graph(Op **codes, int code_count, Label *labels, int label_count) {
+	List graphs;
+	list_clear(&graphs);
+
+	graph_t *graph = NULL;
+
+	for(int i = 0; i < code_count; i++) {
+		for(int j = 0; j < label_count; ++j) {
+			if((labels[j].line) == i) {
+				graph = malloc(sizeof(graph_t));
+				graph->label = labels[j];
+				graph->code_count = 0;
+				list_insert(list_end(&graphs), graph);
+				break;
+			}
+		}
+		graph->codes[graph->code_count++] = codes[i];
+	}
+
+	// eliminate dead code from JMP and RET
+	for(ListNode *g = list_begin(&graphs); g != list_end(&graphs); g = list_next(g)) {
+		graph_t *graph = (graph_t*)g;
+
+		bool has_ended = false;
+
+		for(int i = 0; i < graph->code_count; i++) {
+			Op *ins = graph->codes[i];
+
+			if((ins->op == OP_JMP || ins->op == OP_RET) && has_ended == false) {
+				printf("ended\n");
+				has_ended = true;
+				continue;
+			}
+
+			if(has_ended == true) {
+				printf("DEL %s\n", op_display[ins->op]);
+				graph->codes[i] = NULL;
+			}
+		}
+	}
+
+	printf("graph size: %li\n", list_size(&graphs));
 }

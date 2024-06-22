@@ -6,7 +6,7 @@
 #include "optimize.h"
 #include "codegen.h"
 
-static LabelEntry labels[8192] = {};
+static Label labels[8192] = {};
 int label_counter = 0;
 
 static Op *codes[32768] = {};
@@ -51,7 +51,7 @@ void emit_label_to_address() {
 
 			if(op_size[op]) {
 				if(current->label) {
-					LabelEntry label = emit_get_label(current->label);
+					Label label = emit_get_label(current->label);
 					current->left = line2addr(label.line);
 				}
 
@@ -67,7 +67,7 @@ void emit_label_to_address() {
 	printf("passes %i\n", passes);
 }
 
-LabelEntry emit_get_label(const char *name) {
+Label emit_get_label(const char *name) {
 	for(int i = 0; i < label_counter; ++i) {
 		if(strcmp(labels[i].name, name) == 0) {
 			return labels[i];
@@ -75,8 +75,8 @@ LabelEntry emit_get_label(const char *name) {
 	}
 }
 
-LabelEntry emit_label(const char *name) {
-	LabelEntry label = {
+Label emit_label(const char *name) {
+	Label label = {
 		.line = code_counter,
 	};
 	strcpy(label.name, name);
@@ -868,7 +868,7 @@ void gen(Node *node, const char *file) {
 
 	gen_visitor(node);
 
-	optimize(codes, code_counter);
+	optimize(codes, code_counter, labels, label_counter);
 
 	emit_label_to_address();
 	emit_asm();

@@ -209,13 +209,11 @@ class MD5 {
 
 		char[] hash = new char[](16);
 
-		int j = 0;
-		while(j < 4) {
+		for(int j = 0; j < 4; j = j + 1) {
 			hash[j + 0]  = <char>((this.state[0] >> (j * 8)) & 255);
 			hash[j + 4]  = <char>((this.state[1] >> (j * 8)) & 255);
 			hash[j + 8]  = <char>((this.state[2] >> (j * 8)) & 255);
 			hash[j + 12] = <char>((this.state[3] >> (j * 8)) & 255);
-			j = j + 1;
 		}
 
 		return hash;
@@ -278,7 +276,6 @@ class Main {
 			Console.write(l.get(i));
 			Console.write("\n");
 		}
-
 		return;
 	}
 }

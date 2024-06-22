@@ -44,10 +44,17 @@ typedef struct _Slot {
 	} \
 })
 
+#define ASSERT(c) ({ \
+	if(!c) {\
+		printf("assertion failed\n"); \
+		exit(1); \
+	} \
+})
+
 #define DEC_STACK() (sp--, CHECK_STACK())
 #define INC_STACK() (sp++, CHECK_STACK())
 
-#define POP_STACK() (DEC_STACK(), stack[sp].value)
+#define POP_STACK() (DEC_STACK(), stack[sp].is_ref = false, stack[sp].value)
 #define PUSH_STACK(v) (stack[sp].value = v, INC_STACK())
 
 #define POP_STACK_DOUBLE() (DEC_STACK(), stack[sp].value_float)
@@ -56,7 +63,7 @@ typedef struct _Slot {
 #define POP_FRAME() (vp-=512)
 #define PUSH_FRAME() (vp+=512)
 
-#define POP_STACK_OBJECT() (DEC_STACK(), stack[sp].is_ref = false, stack[sp].ref)
+#define POP_STACK_OBJECT() (DEC_STACK(), ASSERT(stack[sp].is_ref == true), stack[sp].is_ref = false, stack[sp].ref)
 #define PUSH_STACK_OBJECT(v) (stack[sp].ref = v, stack[sp].is_ref = true, INC_STACK())
 
 #define POP_STACK_SLOT() ({DEC_STACK(); Slot a = stack[sp]; stack[sp].is_ref = false; a;})

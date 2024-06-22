@@ -21,6 +21,14 @@
 	DEFINE_OP(OP_STORE_3, "store_3", false) \
 	DEFINE_OP(OP_STORE_4, "store_4", false) \
 	DEFINE_OP(OP_STORE_5, "store_5", false) \
+	DEFINE_OP(OP_PUSH,  "push", true) \
+	DEFINE_OP(OP_PUSH_0,  "push_0", false) \
+	DEFINE_OP(OP_PUSH_1,  "push_1", false) \
+	DEFINE_OP(OP_PUSH_2,  "push_2", false) \
+	DEFINE_OP(OP_PUSH_3,  "push_3", false) \
+	DEFINE_OP(OP_PUSH_4,  "push_4", false) \
+	DEFINE_OP(OP_PUSH_5,  "push_5", false) \
+	DEFINE_OP(OP_POP, "pop", false) \
 	DEFINE_OP(OP_CMPEQ, "cmpeq", false) \
 	DEFINE_OP(OP_CMPGT, "cmpgt", false) \
 	DEFINE_OP(OP_CMPLT, "cmplt", false) \
@@ -44,14 +52,6 @@
 	DEFINE_OP(OP_FMOD, "fmod", false) \
 	DEFINE_OP(OP_I2F, "i2f", false) \
 	DEFINE_OP(OP_DUP, "dup", false) \
-	DEFINE_OP(OP_PUSH,  "push", true) \
-	DEFINE_OP(OP_PUSH_0,  "push_0", false) \
-	DEFINE_OP(OP_PUSH_1,  "push_1", false) \
-	DEFINE_OP(OP_PUSH_2,  "push_2", false) \
-	DEFINE_OP(OP_PUSH_3,  "push_3", false) \
-	DEFINE_OP(OP_PUSH_4,  "push_4", false) \
-	DEFINE_OP(OP_PUSH_5,  "push_5", false) \
-	DEFINE_OP(OP_POP, "pop", false) \
 	DEFINE_OP(OP_LOAD_CONST, "loadconst", true) \
 	DEFINE_OP(OP_LOAD_FIELD, "loadfield", true) \
 	DEFINE_OP(OP_STORE_FIELD, "storefield", true) \
@@ -97,7 +97,7 @@ typedef struct {
 	TyMethod *method;
 	char name[256];
 	int line;
-} LabelEntry;
+} Label;
 
 typedef struct _Op {
 	OpType op;
@@ -117,10 +117,10 @@ typedef struct __attribute__((__packed__)) {
 static int        rand_string();
 
 void              emit_label_to_address();
-LabelEntry        emit_get_label(const char *name);
-LabelEntry        emit_label(const char *name);
-static Op *       emit_op(OpType op);
-static Op *       emit_op_left(OpType op, uint64_t left);
+Label             emit_get_label(const char *name);
+Label             emit_label(const char *name);
+static Op        *emit_op(OpType op);
+static Op        *emit_op_left(OpType op, uint64_t left);
 static Op        *emit_op_left_label(OpType op, const char *left);
 static int        emit_constant(List *list, char *data, bool obfuscated);
 static void       emit_file(const char *file);
