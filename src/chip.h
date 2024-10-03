@@ -7,6 +7,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#define CHIP_VERSION 0x00000001
+
 #if __BIG_ENDIAN__
 # define HTONS(x) (x)
 # define NTOHS(x) (x)

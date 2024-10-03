@@ -16,15 +16,15 @@ void optimize_shortcut(Op **codes, int code_count, Label *labels, int label_coun
 		if(current->left >= 0 && current->left <= 5) {
 			switch(current->op) {
 				case OP_LOAD: {
-					current->op = OP_LOAD_0 + current->left;
+					current->op = (OP_LOAD_0 + current->left);
 				}
 				break;
 				case OP_STORE: {
-					current->op = OP_STORE_0 + current->left;
+					current->op = (OP_STORE_0 + current->left);
 				}
 				break;
 				case OP_PUSH: {
-					current->op = OP_PUSH_0 + current->left;
+					current->op = (OP_PUSH_0 + current->left);
 				}
 				break;
 			}

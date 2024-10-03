@@ -34,6 +34,7 @@ class String {
 
 		char[] newData = new char[](newCapacity);
         Array.copy(newData, this.buffer, this.buffer.count);
+
         this.buffer = newData;
 	}
 

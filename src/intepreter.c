@@ -184,7 +184,7 @@ int64_t eval(int pc) {
 
 		switch(op) {
 			case OP_NOP: {
-
+				
 			}
 			break;
 			case OP_LOAD: {
@@ -265,7 +265,7 @@ int64_t eval(int pc) {
 			}
 			break;
 			case OP_POP: {
-				POP_STACK();
+				POP_STACK_OBJECT();
 			}
 			break;
 			case OP_CMPEQ: {
@@ -581,13 +581,13 @@ int64_t eval(int pc) {
 				int64_t index    = POP_STACK();
 				Object *instance = POP_STACK_OBJECT();
 
-				if(index > (instance->size / instance->type) - 1) {
+				if(index > instance->size - 1) {
 					printf("array out of bound access read error %li %i\n", index, instance->size - 1);
 					exit(1);
 				}
 
 				int64_t item = 0;
-				memcpy(&item, instance->array + (instance->type * index), instance->type);
+				memcpy(&item, instance->array + index, instance->type);
 				PUSH_STACK(item);
 			}
 			break;
@@ -596,12 +596,12 @@ int64_t eval(int pc) {
 				Object *instance = POP_STACK_OBJECT();
 				int64_t value = POP_STACK();
 
-				if(index > (instance->size / instance->type) - 1) {
+				if(index > instance->size - 1) {
 					printf("array out of bound access write error %li %i\n", index, instance->size - 1);
 					exit(1);
 				}
 
-				memcpy(instance->array + (instance->type * index), &value, instance->type);
+				memcpy(instance->array + index, &value, instance->type);
 			}
 			break;
 			case OP_JE: {

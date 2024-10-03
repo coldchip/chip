@@ -196,7 +196,7 @@ class MD5 {
 		}
 
 		this.bitlen = this.bitlen + (this.dataLength * 8);
-		this.data[56] = <char>this.bitlen;
+		this.data[56] = <char>(this.bitlen >> 0);
 		this.data[57] = <char>(this.bitlen >> 8);
 		this.data[58] = <char>(this.bitlen >> 16);
 		this.data[59] = <char>(this.bitlen >> 24);
@@ -215,7 +215,6 @@ class MD5 {
 			hash[j + 8]  = <char>((this.state[2] >> (j * 8)) & 255);
 			hash[j + 12] = <char>((this.state[3] >> (j * 8)) & 255);
 		}
-
 		return hash;
 	}
 }
@@ -271,7 +270,7 @@ class Main {
 			l.add(random);
 		}
 		for(int i = 0; i < l.size(); i = i + 1) {
-			Console.write(i);
+			Console.write(i + 1);
 			Console.write("\t");
 			Console.write(l.get(i));
 			Console.write("\n");

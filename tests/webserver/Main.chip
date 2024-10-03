@@ -48,8 +48,7 @@ class Main {
 					
 					body.append("\n\n\n");
 
-					int y = 0;
-					while(y < 64) {
+					for(int y = 0; y < 4; y = y + 1) {
 						float sqrt = Math.sqrt(y);
 						body.append(Convert.string(sqrt));
 						body.append(":");

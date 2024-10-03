@@ -140,7 +140,7 @@ static void emit_file(const char *file) {
 
 	chip_hdr_t hdr = {
 		.magic      = { 0x7F, 0x43, 0x48, 0x49, 0x50 },
-		.version    = HTONL(0x00000001),
+		.version    = HTONL(CHIP_VERSION),
 		.code_size  = HTONLL(code_size),
 		.const_size = HTONLL(const_size),
 		.entry      = HTONLL(0l)
@@ -416,6 +416,10 @@ static void gen_new(Node *node) {
 
 static void gen_new_array(Node *node) {
 	gen_visitor(node->args);
+
+	emit_op_left(OP_PUSH, node->ty->size);
+	emit_op(OP_MUL);
+
 	emit_op_left(OP_NEW_ARRAY, node->ty->size);
 }
 
@@ -423,6 +427,10 @@ static void gen_array_member(Node *node) {
 	if(node->body) {
 		gen_visitor(node->body);
 		gen_visitor(node->index);
+
+		emit_op_left(OP_PUSH, node->ty->size); // scale
+		emit_op(OP_MUL);
+
 		emit_op(OP_LOAD_ARRAY);
 	}
 }
@@ -453,6 +461,10 @@ static void gen_store(Node *node) {
 		if(node->index) {
 			/* x[y] = z */
 			gen_visitor(node->index);
+
+			emit_op_left(OP_PUSH, node->ty->size); // scale
+			emit_op(OP_MUL);
+
 			emit_op(OP_STORE_ARRAY);
 		} else {
 			/* x.y = z */
